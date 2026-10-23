@@ -5,6 +5,8 @@ cursor:
 
 # Lyrx Prototype 1 build plan
 
+The code that exists today is explained in [docs/codebase.md](docs/codebase.md). This file is the product plan, not a description of the current code.
+
 ## Purpose
 
 Build a small web application that helps one learner rehearse a Japanese song for karaoke without switching between an audio player, Japanese lyrics, romaji, and English meaning.

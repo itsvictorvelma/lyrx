@@ -2,9 +2,7 @@
 
 Lyrx helps a learner rehearse a Japanese song with audio, romaji pronunciation, and direct English meaning.
 
-Start with the [Prototype 1 build plan](AGENTS.md), then use the feature specifications in [`specs/`](specs/).
-
-Song summary, song detail, lyric line, and error contracts live in [`backend/app/contracts.py`](backend/app/contracts.py) and [`frontend/src/contracts.ts`](frontend/src/contracts.ts). Lyric indexes are zero-based. Timing fields are rejected. The import route is registered only for local development when import is explicitly enabled.
+Read [How the code fits together](docs/codebase.md) for the code that exists today. The [Prototype 1 build plan](AGENTS.md) and [`specs/`](specs/) describe the product that still needs to be built.
 
 ## Local development
 

@@ -1,3 +1,9 @@
+"""Settings read from backend/.env.
+
+Production cannot enable song import. Audio, rights evidence, and upload
+staging must be three different directories.
+"""
+
 from pathlib import Path
 from typing import Literal
 

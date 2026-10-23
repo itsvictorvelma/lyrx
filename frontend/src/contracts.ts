@@ -1,3 +1,7 @@
+// Same data shapes as backend/app/contracts.py.
+// Line numbers start at 0. Do not add timing fields.
+// Change both files in the same commit.
+
 export type SongStatus = 'draft' | 'published'
 
 export type SongSummary = {
