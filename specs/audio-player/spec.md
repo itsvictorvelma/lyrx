@@ -153,7 +153,6 @@ Player failure must not crash or remove the lyric content.
 - Only validated same-application/approved media URLs.
 - Do not log full URLs containing secrets or local paths.
 - No microphone, recording, media-session analytics, or listening history.
-- Media must be rights-cleared before public delivery.
 
 ## Performance
 

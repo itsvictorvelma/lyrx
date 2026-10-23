@@ -68,4 +68,4 @@ def test_development_import_reports_not_implemented() -> None:
 
 def test_settings_reject_shared_storage_roots() -> None:
     with pytest.raises(ValidationError, match="must be different directories"):
-        settings(rights_evidence_root="./media")
+        settings(import_staging_root="./media")

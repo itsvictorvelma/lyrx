@@ -21,11 +21,10 @@ coverage/
 *.sqlite
 *.sqlite3
 
-# Private media and rights material
+# Local audio and uploads
 media/
 private-media/
 uploads/
-rights-evidence/
 
 # macOS
 .DS_Store

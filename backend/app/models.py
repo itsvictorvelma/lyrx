@@ -1,12 +1,12 @@
 """Song storage tables.
 
-There are three tables: tracks, lyric_versions, and rights_records.
+There are two tables: tracks and lyric_versions.
 Lyric text is stored as JSON text. There are no timing columns.
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -45,19 +45,4 @@ class LyricVersion(Base):
     schema_version: Mapped[int] = mapped_column(Integer, server_default="1")
     lines_json: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), server_default="draft")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-class RightsRecord(Base):
-    __tablename__ = "rights_records"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    track_id: Mapped[str] = mapped_column(ForeignKey("tracks.id"), index=True)
-    asset_type: Mapped[str] = mapped_column(String(64))
-    rightsholder: Mapped[str] = mapped_column(String(300))
-    permitted_use: Mapped[str] = mapped_column(String(300))
-    territory: Mapped[str] = mapped_column(String(120))
-    effective_on: Mapped[date | None] = mapped_column(Date)
-    expires_on: Mapped[date | None] = mapped_column(Date)
-    evidence_reference: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
