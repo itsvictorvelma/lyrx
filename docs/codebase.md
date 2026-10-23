@@ -2,18 +2,16 @@
 
 This page describes the code that exists today. It is the map for anyone opening the project.
 
-The long-term product plan is [AGENTS.md](../AGENTS.md). Each future screen has a spec in [specs/](../specs/). Those files say what to build. This file says what is already built.
+The long-term product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built.
 
 ## The short version
 
-Lyrx will help a learner rehearse a Japanese song. The page will show the audio, the Japanese words, the pronunciation, and the direct English meaning.
+Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Japanese words, the pronunciation, and the direct English meaning.
 
 Today there are two small programs:
 
-- `backend/` is the API.
-- `frontend/` is the web page.
-
-There is no song list, import form, lesson page, audio player, or database yet. The web page is only a title and one sentence.
+- `backend/` is the API. It stores songs and serves the audio.
+- `frontend/` is the web page. It has Song Library, a development import screen, and Learn Song.
 
 ## Backend
 
@@ -72,10 +70,11 @@ Each lyric line has:
 - `originalText` — Japanese
 - `pronunciationRomaji` — pronunciation, not an English translation
 - `translationEnglish` — direct English meaning
+- `startSeconds` — optional time, in seconds, when that line begins
 
 Line numbers start at 0. They must be `0`, `1`, `2`, and so on, with no gaps or duplicates.
 
-Timing fields are rejected. These names are not allowed:
+`startSeconds` is the only timing value a line may carry. These names are still not allowed:
 
 `activeLine`, `cue`, `end`, `endTime`, `offset`, `start`, `startTime`, `timestamp`, `timestamps`, `timing`
 
@@ -99,7 +98,9 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
-| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3` |
+| `POST /api/songs/{songId}/line-times` | Always | Saves a new start time for one or more lines |
+| `POST /api/songs/{songId}/scan` | Always | Reads the saved audio and sets a start time on every line |
+| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3`. When `ALIGN_ON_IMPORT=true`, it also scans the audio |
 
 In production, `/api/import` is not registered. A request gets the normal not-found response.
 
@@ -114,7 +115,7 @@ The database has two tables, created by Alembic. The API does not create them wh
 | `tracks` | Song id, title, artist, languages, duration, draft/published status, and the audio file's storage name and checksum |
 | `lyric_versions` | One saved copy of the aligned lyric lines for a song, stored as JSON text |
 
-Lyric lines still have no timing fields in the database.
+A line start time is stored inside the lyric JSON. The tables have no timing column.
 
 From the `backend/` directory, create or update the local database with:
 
@@ -133,11 +134,29 @@ npm install
 npm run dev
 ```
 
-`frontend/src/App.tsx` lists songs from `GET /api/songs`. In development it also shows the import form. The form posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API.
+The page has three routes:
 
-The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.”
+| Route | What it shows |
+| --- | --- |
+| `/` | Song Library. Each song is a link to Learn Song. |
+| `/import` | Import Song. The link and the form are included only in a development build. |
+| `/songs/:songId` | Learn Song. Stacked Japanese, pronunciation, and direct meaning, plus the player. |
 
-The page uses the browser’s audio control for now. The finished player, separate screens, and lyric-layer toggles are still to come.
+`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
+
+Learn Song starts with all three layers visible. The buttons are Japanese, Pronunciation (Romaji), and Direct Meaning. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One layer always stays visible.
+
+The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Learn Song listens to that clock. It highlights the current line and can scroll that line into view.
+
+On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. Scrolling yourself turns follow off for the rest of the browser tab.
+
+Follow uses each line's `startSeconds`. The current line is the latest start at or before the playhead. Before the first start, no line is marked. **Set this line to now** saves the playhead as that line's start. **Stamp next line** does the same and then moves to the following line. **Play from** seeks to a line that already has a time. **Scan line times** reads the saved mp3, matches the Japanese text to the words it hears, and saves a start on every line. The first scan downloads a speech model and can take a few minutes. Sung words over a band are a first pass: an entrance, a rest, or a long phrase can still land early or late. Set that line to now to move it. Scan again replaces the saved times. There is no tempo or beats-per-line control.
+
+`ALIGN_ON_IMPORT=true` runs that same scan while a song is imported. A repeated import of the same text and audio keeps the times already saved, including corrections. `ALIGN_MODEL` chooses the speech model. `base` is the default. `small` is slower and usually closer.
+
+The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
+
+Colors, type, and spacing live as variables at the top of `frontend/src/index.css`.
 
 ## Tests
 
@@ -150,7 +169,7 @@ uv run pytest
 The tests check:
 
 - A valid song is accepted.
-- Timing fields are rejected.
+- `startSeconds` is accepted. Other timing fields are rejected.
 - Line numbers must start at 0 and have no gaps.
 - Production cannot expose song import.
 - The migration creates the two song tables and can remove them again.
@@ -159,16 +178,20 @@ The tests check:
 - The same import does not create a second copy.
 - A mismatched lyric file does not save a song or an audio file.
 
-The frontend check is:
+The frontend checks are:
 
 ```bash
 cd frontend
+npm test
+npm run lint
 npm run build
 ```
 
+`npm test` checks lyric order, layer visibility, and the player clock. It does not open a browser.
+
 ## What not to add yet
 
-Do not add accounts or lyric timing. The separate Song Library and Learn Song screens, and the custom audio player, are still to come.
+Do not add accounts, word-by-word timing, looping, or a microphone. Line start times and the current-line highlight are already part of Learn Song. The player still only reports the clock. Learn Song decides which line is current.
 
 ## When you change the code
 
