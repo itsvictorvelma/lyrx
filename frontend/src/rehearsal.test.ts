@@ -11,9 +11,15 @@ import {
   lyricProblem,
   playbackRate,
   FOLLOW_STORAGE_KEY,
-  LYRIC_INTRO_SECONDS,
+  FIRST_SONG_ID,
+  FIRST_SONG_INTRO_SECONDS,
+  PACE_STORAGE_KEY,
+  defaultIntroSeconds,
   followScrollTop,
-  lyricProgress,
+  readPace,
+  secondsPerLineFromBpm,
+  singingLineIndex,
+  writePace,
   readFollow,
   readLayers,
   toggleLayer,
@@ -116,12 +122,21 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('lyrics stay still until the singing starts', () => {
-  assert.equal(lyricProgress(0, 200), 0)
-  assert.equal(lyricProgress(LYRIC_INTRO_SECONDS, 200), 0)
-  assert.equal(lyricProgress(LYRIC_INTRO_SECONDS + (200 - LYRIC_INTRO_SECONDS) / 2, 200), 0.5)
-  assert.equal(lyricProgress(200, 200), 1)
-  assert.equal(lyricProgress(4, 5), null)
+test('each song keeps its own start and tempo', () => {
+  assert.equal(defaultIntroSeconds(FIRST_SONG_ID), FIRST_SONG_INTRO_SECONDS)
+  assert.equal(defaultIntroSeconds('another-song'), 0)
+  assert.equal(secondsPerLineFromBpm(120, 4), 2)
+  assert.equal(secondsPerLineFromBpm(20, 4), null)
+  assert.equal(singingLineIndex(3, 5.5, 2, 10), 0)
+  assert.equal(singingLineIndex(5.5, 5.5, 2, 10), 0)
+  assert.equal(singingLineIndex(9.5, 5.5, 2, 10), 2)
+  assert.equal(singingLineIndex(80, 5.5, 2, 10), 9)
+  const store = memory()
+  writePace(store, FIRST_SONG_ID, { introSeconds: 5.5, secondsPerLine: 2 })
+  writePace(store, 'another-song', { introSeconds: 12, secondsPerLine: 3 })
+  assert.deepEqual(readPace(store, 'another-song'), { introSeconds: 12, secondsPerLine: 3 })
+  assert.deepEqual(readPace(store, FIRST_SONG_ID), { introSeconds: 5.5, secondsPerLine: 2 })
+  assert.equal(readPace(memory({ [PACE_STORAGE_KEY]: '{no' }), 'another-song').introSeconds, 0)
 })
 
 test('follow scroll moves evenly and stays inside the page', () => {

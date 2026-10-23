@@ -4,18 +4,23 @@ import type { SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
 import {
+  defaultSecondsPerLine,
+  formatTime,
   languageDirection,
-  followScrollTop,
-  lyricProgress,
   lyricProblem,
   readFollow,
   readLayers,
+  readPace,
+  secondsPerLineFromBpm,
+  singingLineIndex,
   toggleLayer,
   visibleLayerCount,
   writeFollow,
   writeLayers,
+  writePace,
   type LayerKey,
   type LayerVisibility,
+  type SongPace,
 } from './rehearsal.ts'
 
 const LAYER_OPTIONS: { key: LayerKey; label: string }[] = [
@@ -35,8 +40,17 @@ export function LearnSong({ songId }: { songId: string }) {
   const [attempt, setAttempt] = useState(0)
   const [layers, setLayers] = useState<LayerVisibility>(() => readLayers(browserLayers()))
   const [following, setFollowing] = useState(() => readFollow(browserLayers()))
+  const [pace, setPace] = useState<SongPace>(() => readPace(browserStore(), songId))
+  const [paceNote, setPaceNote] = useState<string | null>(null)
   const followingRef = useRef(following)
+  const paceRef = useRef(pace)
   const lyricsRef = useRef<HTMLOListElement>(null)
+  const timeRef = useRef(0)
+  const durationRef = useRef(0)
+  const lineCountRef = useRef(0)
+  const lastLineRef = useRef(-1)
+  const bpmRef = useRef<HTMLInputElement>(null)
+  const beatsRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let active = true
@@ -69,7 +83,9 @@ export function LearnSong({ songId }: { songId: string }) {
 
   useEffect(() => {
     followingRef.current = following
-  }, [following])
+    paceRef.current = pace
+    lineCountRef.current = state.phase === 'ready' ? state.song.lines.length : 0
+  }, [following, pace, state])
 
   useEffect(() => {
     function release(event: Event) {
@@ -98,17 +114,50 @@ export function LearnSong({ songId }: { songId: string }) {
   }, [])
 
   function onProgress(current: number, duration: number) {
+    timeRef.current = current
+    durationRef.current = duration
     if (!followingRef.current || duration <= 0) return
-    const list = lyricsRef.current
-    if (!list) return
-    const listTop = list.getBoundingClientRect().top + window.scrollY
-    const start = Math.max(0, listTop - topOffset())
-    const end = Math.max(start, listTop + list.offsetHeight - window.innerHeight + bottomGap())
-    const progress = lyricProgress(current, duration)
-    if (progress == null) return
-    const next = followScrollTop(progress, start, end)
-    if (next == null) return
-    window.scrollTo(0, next)
+    const paceNow = paceRef.current
+    const seconds = paceNow.secondsPerLine ?? defaultSecondsPerLine(duration, lineCountRef.current, paceNow.introSeconds)
+    if (seconds == null) return
+    const index = singingLineIndex(current, paceNow.introSeconds, seconds, lineCountRef.current)
+    if (index == null || index === lastLineRef.current) return
+    lastLineRef.current = index
+    const line = lyricsRef.current?.querySelector(`[data-index="${index}"]`)
+    if (!(line instanceof HTMLElement)) return
+    window.scrollTo(0, Math.max(0, line.getBoundingClientRect().top + window.scrollY - topOffset()))
+  }
+
+  function savePace(next: SongPace) {
+    paceRef.current = next
+    lastLineRef.current = -1
+    setPace(next)
+    const storage = browserStore()
+    if (storage) writePace(storage, songId, next)
+  }
+
+  function markStart() {
+    savePace({ ...paceRef.current, introSeconds: Math.max(0, timeRef.current) })
+    setPaceNote(null)
+  }
+
+  function nudge(factor: number) {
+    const current =
+      paceRef.current.secondsPerLine ??
+      defaultSecondsPerLine(durationRef.current, lineCountRef.current, paceRef.current.introSeconds)
+    if (current == null) return
+    savePace({ ...paceRef.current, secondsPerLine: Math.min(20, Math.max(0.4, current * factor)) })
+    setPaceNote(null)
+  }
+
+  function useTempo() {
+    const seconds = secondsPerLineFromBpm(Number(bpmRef.current?.value), Number(beatsRef.current?.value))
+    if (seconds == null) {
+      setPaceNote('Enter a tempo from 40 to 300, and how many beats one line takes.')
+      return
+    }
+    savePace({ ...paceRef.current, secondsPerLine: seconds })
+    setPaceNote(null)
   }
 
   function changeFollow() {
@@ -168,8 +217,39 @@ export function LearnSong({ songId }: { songId: string }) {
               <span className="toggle-state">{following ? 'On' : 'Off'}</span>
             </button>
             <p id="follow-note">
-              Waits 5.5 seconds, which fits the first song only, then moves at an even pace. Scroll yourself to turn it off.
+              Moves one line at a time from this song's start and pace. Scroll yourself to turn it off.
             </p>
+            <p>Singing starts at {formatTime(pace.introSeconds)}. Saved on this song only.</p>
+            <div className="pace">
+              <button type="button" onClick={markStart}>
+                Mark singing start
+              </button>
+              <button type="button" onClick={() => nudge(0.85)}>
+                Faster
+              </button>
+              <button type="button" onClick={() => nudge(1.15)}>
+                Slower
+              </button>
+            </div>
+            <div className="pace">
+              <label>
+                BPM
+                <input ref={bpmRef} type="number" min={40} max={300} step={1} inputMode="numeric" />
+              </label>
+              <label>
+                Beats per line
+                <input ref={beatsRef} type="number" min={1} max={32} step={1} defaultValue={4} inputMode="numeric" />
+              </label>
+              <button type="button" onClick={useTempo}>
+                Use tempo
+              </button>
+            </div>
+            <p>
+              {pace.secondsPerLine
+                ? `About ${pace.secondsPerLine.toFixed(1)} seconds per line.`
+                : 'Until you set a tempo, each line shares the time after the start.'}
+            </p>
+            {paceNote ? <p role="alert">{paceNote}</p> : null}
           </div>
           <Player
             src={state.song.audioUrl}
@@ -184,7 +264,7 @@ export function LearnSong({ songId }: { songId: string }) {
           ) : (
             <ol className="lyrics" ref={lyricsRef}>
               {state.song.lines.map((line) => (
-                <li key={line.id} className="lyric">
+                <li key={line.id} className="lyric" data-index={line.index}>
                   {layers.japanese ? (
                     <p className="lyric-original" lang="ja">
                       <span className="lyric-label">Japanese</span>
@@ -252,15 +332,17 @@ function topOffset(): number {
   return header + player.getBoundingClientRect().height + 16
 }
 
-function bottomGap(): number {
-  const player = document.querySelector('.player')
-  if (!player || getComputedStyle(player).position !== 'fixed') return 16
-  return player.getBoundingClientRect().height + 16
-}
-
 function browserLayers(): Storage | null {
   try {
     return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+function browserStore(): Storage | null {
+  try {
+    return window.localStorage
   } catch {
     return null
   }
