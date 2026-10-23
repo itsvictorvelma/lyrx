@@ -48,8 +48,6 @@ Exactly one of each is accepted. ZIP archives, folders, alternate names, remote 
 - Artist
 - Source language, Japanese for the working bundle
 - Target language, English for the working bundle
-- Exact recording/release notes
-- Attribution
 
 Optional metadata must be explicitly enumerated before implementation; arbitrary key/value input is out of scope.
 
@@ -74,7 +72,7 @@ Layer semantics:
 - `pronunciation.txt` → Pronunciation (Romaji), reader-friendly Hepburn-style sound representation
 - `translation.txt` → Direct Meaning
 
-The importer cannot establish linguistic correctness automatically; human review is required before publication.
+The importer checks that the files line up. It does not check linguistic correctness.
 
 ## Audio validation
 
@@ -105,7 +103,7 @@ Idempotency:
 - Different content under an existing ID is a conflict unless the developer explicitly chooses the supported replace/new-version action.
 - Replacement never overwrites the only known-good version before the new transaction succeeds.
 
-New imports start as drafts. Publishing a song is a separate explicit action.
+A successful import is published immediately so the song list can return it. Submitting the same files again does not create a second copy. Different files for an existing song id are rejected unless replacement is confirmed.
 
 ## UI behavior
 
@@ -207,7 +205,7 @@ Use a small test fixture in automated tests.
 - Count and partial-blank mismatches are rejected with row/file details.
 - Invalid audio is rejected before durable writes.
 - Import is atomic and idempotent.
-- Success produces a draft and aligned preview.
+- Success publishes the song and shows the aligned preview.
 - Production contains neither route nor mutation.
 - Screen passes keyboard, focus, labeling, and responsive checks.
 
