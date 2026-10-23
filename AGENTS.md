@@ -5,11 +5,13 @@ cursor:
 
 # Lyrx Prototype 1 build plan
 
+The code that exists today is explained in [docs/codebase.md](docs/codebase.md). This file is the product plan, not a description of the current code.
+
 ## Purpose
 
 Build a small web application that helps one learner rehearse a Japanese song for karaoke without switching between an audio player, Japanese lyrics, romaji, and English meaning.
 
-Prototype 1 uses “Akuma no Ko” by Ai Higuchi as the working local-development song. Public deployment is prohibited until the recording, composition/lyrics, romaji adaptation, and English translation have documented permission for the intended use.
+Prototype 1 uses “Akuma no Ko” by Ai Higuchi as the working song.
 
 ## Approved product scope
 
@@ -146,8 +148,6 @@ Required form metadata:
 - Target language
 - Exact recording/release notes
 - Attribution
-- Rights status
-- Rights evidence reference
 
 The three text files align strictly by line index.
 
@@ -170,21 +170,15 @@ Minimum entities:
   - identity and display metadata
   - media object/path key and checksum
   - measured duration
-  - rights and publication status
+  - publication status
 - `lyric_versions`
   - track reference
   - source/target languages
   - schema version
   - validated aligned-line JSON
   - provenance/status and creation metadata
-- `rights_records`
-  - asset type
-  - source/rightsholder
-  - permitted use and territory
-  - effective/expiry dates
-  - evidence reference
 
-Do not add users, sessions, credentials, roles, playlists, progress, or timing tables.
+Do not add users, sessions, credentials, roles, playlists, progress, timing, or rights tables.
 
 Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific queries and implicit behavior. Every schema change requires an Alembic revision and upgrade/downgrade review.
 
@@ -202,7 +196,6 @@ Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific que
 10. Generate server-owned storage names; never use an uploaded path directly.
 11. Validate everything before committing. Database and media writes must appear atomic; failures clean up temporary files.
 12. Re-import is idempotent for the same song ID/content version. A materially different bundle requires explicit replacement confirmation in development.
-13. A song cannot become publishable unless bundle validation and the rights gate both pass.
 
 ## Screen responsibilities
 
@@ -222,7 +215,7 @@ Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific que
 - Present file/field/line-specific errors.
 - Show a three-layer aligned preview after success.
 - Return to Song Library after explicit completion.
-- It is not a text editor, rights-management system, or public upload feature.
+- It is not a text editor or a public upload feature.
 
 ### Learn Song
 
@@ -254,13 +247,11 @@ Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific que
 - No learner-side writes.
 - Import route and endpoint are not registered in production.
 - Development import binds to localhost and validates origin/request size.
-- Keep commercial audio, lyrics, rights evidence, and generated databases out of Git and container images unless explicitly approved.
-- Store rights evidence outside publicly served directories.
+- Keep audio, lyrics, and generated databases out of Git.
 - Use generated storage keys and prevent path traversal.
 - Limit accepted file count, file type, and configurable file size.
 - Escape all imported text through normal React rendering; never render imported HTML.
 - Return generic server errors and log sensitive diagnostics only to restricted server logs.
-- Public media and text require documented rights. Possession of files is not permission.
 - No analytics, voice capture, personal data, or third-party music/catalog APIs.
 
 ## Error-state policy
@@ -350,7 +341,6 @@ Important cases:
    - Accessibility
    - Responsive behavior
    - Production import exclusion
-   - Rights/publication gate
    - Full regression and deployment smoke tests
 
 Do not start a dependent phase until its contracts and validation rules are covered by tests. Import and app-shell work may proceed in parallel after shared contracts are frozen; Learn Song and Audio Player may proceed in parallel after Song detail is frozen.
@@ -368,14 +358,12 @@ Prototype 1 is complete when:
 - The app has no login, learner write, karaoke tracking, line seek, loop, autoplay, automation, provider API, or public upload.
 - Production does not register Import Song or its mutation.
 - SQLite schema creation/upgrades run only through Alembic and application access uses SQLAlchemy.
-- Rights provenance exists before any public song publication.
 - Required automated tests and manual accessibility/responsive smoke tests pass.
 
 ## Risks and mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Commercial content is exposed without permission | Rights status defaults to non-public; public release requires evidence review. |
 | Three files silently drift out of alignment | Strict line-count/index validation and three-layer preview. |
 | Romaji is mistaken for translation | Exact Pronunciation (Romaji) label, fixed stack order, linguistic review. |
 | Sticky player obscures lyrics or focus | Safe-area-aware responsive layout and viewport/focus tests. |
