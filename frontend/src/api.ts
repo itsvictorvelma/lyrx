@@ -30,6 +30,25 @@ export async function getSong(songId: string): Promise<SongDetail> {
   return (await response.json()) as SongDetail
 }
 
+export async function saveLineTimes(
+  songId: string,
+  lines: { index: number; startSeconds: number }[],
+): Promise<SongDetail> {
+  const response = await fetch(`${apiBaseUrl}/api/songs/${encodeURIComponent(songId)}/line-times`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lines }),
+  })
+  if (!response.ok) throw await readFailure(response)
+  return (await response.json()) as SongDetail
+}
+
+export async function scanSong(songId: string): Promise<SongDetail> {
+  const response = await fetch(`${apiBaseUrl}/api/songs/${encodeURIComponent(songId)}/scan`, { method: 'POST' })
+  if (!response.ok) throw await readFailure(response)
+  return (await response.json()) as SongDetail
+}
+
 async function readFailure(response: Response): Promise<ApiFailure> {
   try {
     const body = (await response.json()) as ErrorResponse

@@ -2,16 +2,6 @@ import type { LyricLine } from './contracts.ts'
 
 export const LAYER_STORAGE_KEY = 'lyrx.layers.v1'
 export const FOLLOW_STORAGE_KEY = 'lyrx.follow.v1'
-export const PACE_STORAGE_KEY = 'lyrx.pace.v1'
-
-// The first imported song starts singing here. Other songs do not use this number.
-export const FIRST_SONG_ID = 'akuma-no-ko'
-export const FIRST_SONG_INTRO_SECONDS = 5.5
-
-export type SongPace = {
-  introSeconds: number
-  secondsPerLine: number | null
-}
 
 export type LayerKey = 'japanese' | 'romaji' | 'meaning'
 
@@ -127,81 +117,27 @@ export function writeFollow(storage: KeyValueStore, following: boolean): void {
   }
 }
 
-export function defaultIntroSeconds(songId: string): number {
-  return songId === FIRST_SONG_ID ? FIRST_SONG_INTRO_SECONDS : 0
+export function readLineStarts(lines: readonly { startSeconds?: number | null }[]): (number | null)[] {
+  return lines.map((line) => {
+    const start = line.startSeconds
+    if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return null
+    return start
+  })
 }
 
-export function defaultSecondsPerLine(duration: number, lineCount: number, introSeconds: number): number | null {
-  if (!Number.isFinite(duration) || !Number.isFinite(introSeconds) || !Number.isFinite(lineCount) || lineCount < 1) {
-    return null
+export function hasLineTime(starts: readonly (number | null)[]): boolean {
+  return starts.some((start) => start != null)
+}
+
+export function activeLineIndex(current: number, starts: readonly (number | null)[]): number | null {
+  if (!Number.isFinite(current) || current < 0) return null
+  let best: number | null = null
+  for (let index = 0; index < starts.length; index += 1) {
+    const start = starts[index]
+    if (start == null || start > current) continue
+    if (best == null || start >= (starts[best] ?? -1)) best = index
   }
-  const singing = duration - introSeconds
-  if (singing <= 0) return null
-  return singing / lineCount
-}
-
-export function secondsPerLineFromBpm(bpm: number, beatsPerLine: number): number | null {
-  if (!Number.isFinite(bpm) || bpm < 40 || bpm > 300) return null
-  if (!Number.isFinite(beatsPerLine) || beatsPerLine <= 0 || beatsPerLine > 32) return null
-  return (60 / bpm) * beatsPerLine
-}
-
-export function singingLineIndex(
-  current: number,
-  introSeconds: number,
-  secondsPerLine: number,
-  lineCount: number,
-): number | null {
-  if (!Number.isFinite(current) || !Number.isFinite(introSeconds) || introSeconds < 0) return null
-  if (!Number.isFinite(secondsPerLine) || secondsPerLine <= 0) return null
-  if (!Number.isInteger(lineCount) || lineCount < 1) return null
-  if (current <= introSeconds) return 0
-  return Math.min(lineCount - 1, Math.floor((current - introSeconds) / secondsPerLine))
-}
-
-export function readPace(storage: KeyValueStore | null, songId: string): SongPace {
-  const fallback: SongPace = { introSeconds: defaultIntroSeconds(songId), secondsPerLine: null }
-  if (!storage) return fallback
-  try {
-    const raw = storage.getItem(PACE_STORAGE_KEY)
-    if (!raw) return fallback
-    const parsed: unknown = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return fallback
-    const entry = (parsed as Record<string, unknown>)[songId]
-    if (!isPace(entry)) return fallback
-    return entry
-  } catch {
-    return fallback
-  }
-}
-
-export function writePace(storage: KeyValueStore, songId: string, pace: SongPace): void {
-  try {
-    const raw = storage.getItem(PACE_STORAGE_KEY)
-    const parsed: unknown = raw ? JSON.parse(raw) : {}
-    const map = parsed && typeof parsed === 'object' ? { ...(parsed as Record<string, unknown>) } : {}
-    map[songId] = pace
-    storage.setItem(PACE_STORAGE_KEY, JSON.stringify(map))
-  } catch {
-    // localStorage can be blocked. The on-screen choice still applies until reload.
-  }
-}
-
-function isPace(value: unknown): value is SongPace {
-  if (!value || typeof value !== 'object') return false
-  const record = value as Record<string, unknown>
-  const intro = record.introSeconds
-  const seconds = record.secondsPerLine
-  const introOk = typeof intro === 'number' && intro >= 0 && intro < 600
-  const secondsOk = seconds === null || (typeof seconds === 'number' && seconds > 0 && seconds <= 30)
-  return introOk && secondsOk
-}
-
-export function followScrollTop(progress: number, start: number, end: number): number | null {
-  if (!Number.isFinite(progress) || progress < 0) return null
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null
-  const bounded = Math.min(1, progress)
-  return start + bounded * (end - start)
+  return best
 }
 
 export function lyricProblem(lines: LyricLine[]): LyricProblem | null {

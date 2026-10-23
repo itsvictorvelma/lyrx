@@ -351,6 +351,28 @@ label:has(input[type='checkbox']) {
   scroll-margin-bottom: calc(var(--player-clearance) + env(safe-area-inset-bottom));
 }
 
+.lyric.is-current {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.lyric-now {
+  display: none;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.lyric.is-current .lyric-now {
+  display: block;
+}
+
+.lyric-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .follow {
   display: grid;
   gap: var(--space-2);
@@ -363,16 +385,12 @@ label:has(input[type='checkbox']) {
   font-size: var(--text-sm);
 }
 
-.pace {
+.follow-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  align-items: end;
+  align-items: center;
   max-width: 100%;
-}
-
-.pace label {
-  min-width: 8rem;
 }
 
 .lyric p {

@@ -70,10 +70,11 @@ Each lyric line has:
 - `originalText` — Japanese
 - `pronunciationRomaji` — pronunciation, not an English translation
 - `translationEnglish` — direct English meaning
+- `startSeconds` — optional time, in seconds, when that line begins
 
 Line numbers start at 0. They must be `0`, `1`, `2`, and so on, with no gaps or duplicates.
 
-Timing fields are rejected. These names are not allowed:
+`startSeconds` is the only timing value a line may carry. These names are still not allowed:
 
 `activeLine`, `cue`, `end`, `endTime`, `offset`, `start`, `startTime`, `timestamp`, `timestamps`, `timing`
 
@@ -97,7 +98,9 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
-| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3` |
+| `POST /api/songs/{songId}/line-times` | Always | Saves a new start time for one or more lines |
+| `POST /api/songs/{songId}/scan` | Always | Reads the saved audio and sets a start time on every line |
+| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3`. When `ALIGN_ON_IMPORT=true`, it also scans the audio |
 
 In production, `/api/import` is not registered. A request gets the normal not-found response.
 
@@ -112,7 +115,7 @@ The database has two tables, created by Alembic. The API does not create them wh
 | `tracks` | Song id, title, artist, languages, duration, draft/published status, and the audio file's storage name and checksum |
 | `lyric_versions` | One saved copy of the aligned lyric lines for a song, stored as JSON text |
 
-Lyric lines still have no timing fields in the database.
+A line start time is stored inside the lyric JSON. The tables have no timing column.
 
 From the `backend/` directory, create or update the local database with:
 
@@ -143,9 +146,13 @@ The page has three routes:
 
 Learn Song starts with all three layers visible. The buttons are Japanese, Pronunciation (Romaji), and Direct Meaning. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One layer always stays visible.
 
-The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. It does not highlight a lyric line or jump to one.
+The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Learn Song listens to that clock. It highlights the current line and can scroll that line into view.
 
-On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. It moves one lyric line at a time. The start time and the pace are saved in this browser for that song only, under `lyrx.pace.v1`. Press Mark singing start when the vocals begin. Faster, Slower, or a BPM plus beats per line sets how long each line stays. The first song starts with a 5.5 second intro because that is when its singing begins. A different song starts at zero until you mark it. These numbers are not lyric timings, and they are not shared across songs. A BPM or a seconds-per-line pace cannot line up with arbitrary singing. Entrances, rests, and phrase lengths change inside one song, so nudging the pace cannot make follow accurate for every track. Accurate follow needs a time for each line, from a tap, an editor, a timestamp file, or a later alignment pass. Until you set a tempo, each line gets an equal share of the time after the start. Scrolling yourself turns follow off for the rest of the browser tab.
+On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. Scrolling yourself turns follow off for the rest of the browser tab.
+
+Follow uses each line's `startSeconds`. The current line is the latest start at or before the playhead. Before the first start, no line is marked. **Set this line to now** saves the playhead as that line's start. **Stamp next line** does the same and then moves to the following line. **Play from** seeks to a line that already has a time. **Scan line times** reads the saved mp3, matches the Japanese text to the words it hears, and saves a start on every line. The first scan downloads a speech model and can take a few minutes. Sung words over a band are a first pass: an entrance, a rest, or a long phrase can still land early or late. Set that line to now to move it. Scan again replaces the saved times. There is no tempo or beats-per-line control.
+
+`ALIGN_ON_IMPORT=true` runs that same scan while a song is imported. A repeated import of the same text and audio keeps the times already saved, including corrections. `ALIGN_MODEL` chooses the speech model. `base` is the default. `small` is slower and usually closer.
 
 The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
 
@@ -162,7 +169,7 @@ uv run pytest
 The tests check:
 
 - A valid song is accepted.
-- Timing fields are rejected.
+- `startSeconds` is accepted. Other timing fields are rejected.
 - Line numbers must start at 0 and have no gaps.
 - Production cannot expose song import.
 - The migration creates the two song tables and can remove them again.
@@ -184,7 +191,7 @@ npm run build
 
 ## What not to add yet
 
-Do not add accounts, line seeking, or a karaoke highlight. Follow pace is a rough per-song browser setting. It is not a path to accurate follow. Per-line timestamps would be a separate decision. The player and the lyric list stay independent.
+Do not add accounts, word-by-word timing, looping, or a microphone. Line start times and the current-line highlight are already part of Learn Song. The player still only reports the clock. Learn Song decides which line is current.
 
 ## When you change the code
 

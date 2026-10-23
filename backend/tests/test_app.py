@@ -14,6 +14,7 @@ def settings(**overrides: object) -> Settings:
         "public_media_base_url": "http://localhost:8000/media",
         "frontend_api_base_url": "http://localhost:8000",
         "import_enabled": False,
+        "align_on_import": False,
     }
     values.update(overrides)
     return Settings(**values)

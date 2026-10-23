@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
     "fastapi>=0.115",
+    "faster-whisper>=1.1.0",
     "mutagen>=1.48.1",
     "pydantic-settings>=2.6",
     "python-multipart>=0.0.32",
@@ -22,3 +23,16 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+# onnxruntime has no Intel macOS wheel. The scan does not use its voice filter,
+# so faster-whisper is installed without that package.
+[tool.uv]
+dependency-metadata = [
+    { name = "faster-whisper", requires-dist = [
+        "ctranslate2<5,>=4.0",
+        "huggingface-hub>=0.21",
+        "tokenizers<1,>=0.13",
+        "av>=11",
+        "tqdm",
+    ] },
+]

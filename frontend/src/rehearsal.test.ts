@@ -11,15 +11,9 @@ import {
   lyricProblem,
   playbackRate,
   FOLLOW_STORAGE_KEY,
-  FIRST_SONG_ID,
-  FIRST_SONG_INTRO_SECONDS,
-  PACE_STORAGE_KEY,
-  defaultIntroSeconds,
-  followScrollTop,
-  readPace,
-  secondsPerLineFromBpm,
-  singingLineIndex,
-  writePace,
+  activeLineIndex,
+  hasLineTime,
+  readLineStarts,
   readFollow,
   readLayers,
   toggleLayer,
@@ -122,32 +116,6 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('each song keeps its own start and tempo', () => {
-  assert.equal(defaultIntroSeconds(FIRST_SONG_ID), FIRST_SONG_INTRO_SECONDS)
-  assert.equal(defaultIntroSeconds('another-song'), 0)
-  assert.equal(secondsPerLineFromBpm(120, 4), 2)
-  assert.equal(secondsPerLineFromBpm(20, 4), null)
-  assert.equal(singingLineIndex(3, 5.5, 2, 10), 0)
-  assert.equal(singingLineIndex(5.5, 5.5, 2, 10), 0)
-  assert.equal(singingLineIndex(9.5, 5.5, 2, 10), 2)
-  assert.equal(singingLineIndex(80, 5.5, 2, 10), 9)
-  const store = memory()
-  writePace(store, FIRST_SONG_ID, { introSeconds: 5.5, secondsPerLine: 2 })
-  writePace(store, 'another-song', { introSeconds: 12, secondsPerLine: 3 })
-  assert.deepEqual(readPace(store, 'another-song'), { introSeconds: 12, secondsPerLine: 3 })
-  assert.deepEqual(readPace(store, FIRST_SONG_ID), { introSeconds: 5.5, secondsPerLine: 2 })
-  assert.equal(readPace(memory({ [PACE_STORAGE_KEY]: '{no' }), 'another-song').introSeconds, 0)
-})
-
-test('follow scroll moves evenly and stays inside the page', () => {
-  assert.equal(followScrollTop(0, 100, 500), 100)
-  assert.equal(followScrollTop(0.5, 100, 500), 300)
-  assert.equal(followScrollTop(1, 100, 500), 500)
-  assert.equal(followScrollTop(2, 100, 500), 500)
-  assert.equal(followScrollTop(Number.NaN, 100, 500), null)
-  assert.equal(followScrollTop(0.2, 400, 100), null)
-})
-
 test('follow stays on until the reader turns it off', () => {
   assert.equal(readFollow(null), true)
   assert.equal(readFollow(memory()), true)
@@ -162,6 +130,19 @@ test('routes stay on the library, import, and one song', () => {
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
   assert.deepEqual(parseRoute('/missing'), { name: 'missing' })
   assert.equal(songHref('akuma-no-ko'), '/songs/akuma-no-ko')
+})
+
+test('the current line is the latest start at or before the playhead', () => {
+  assert.deepEqual(readLineStarts([line(0), { ...line(1), startSeconds: 4 }]), [null, 4])
+  assert.equal(hasLineTime([null, null]), false)
+  assert.equal(hasLineTime([null, 4]), true)
+  const starts = [5.5, 8, 8, 12]
+  assert.equal(activeLineIndex(5.4, starts), null)
+  assert.equal(activeLineIndex(5.5, starts), 0)
+  assert.equal(activeLineIndex(8, starts), 2)
+  assert.equal(activeLineIndex(11.9, starts), 2)
+  assert.equal(activeLineIndex(12, starts), 3)
+  assert.equal(activeLineIndex(-1, starts), null)
 })
 
 test('language direction names Japanese and English', () => {

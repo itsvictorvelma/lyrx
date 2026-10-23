@@ -7,16 +7,19 @@ export function Player({
   src,
   durationHint,
   following = false,
+  seekRequest = null,
   onProgress,
 }: {
   src: string
   durationHint?: number | null
   following?: boolean
+  seekRequest?: { time: number; token: number } | null
   onProgress?: (current: number, duration: number) => void
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const rememberedVolume = useRef(1)
   const onProgressRef = useRef(onProgress)
+  const seekToken = useRef(0)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState<number | null>(null)
@@ -47,6 +50,17 @@ export function Player({
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [playing])
+
+  useEffect(() => {
+    if (!seekRequest || seekRequest.token === seekToken.current) return
+    seekToken.current = seekRequest.token
+    const audio = audioRef.current
+    const length = audio ? (finiteTime(audio.duration) ?? finiteTime(durationHint ?? Number.NaN)) : null
+    if (!audio || length == null) return
+    audio.currentTime = clampTime(seekRequest.time, length)
+    syncClock(audio)
+    onProgressRef.current?.(audio.currentTime, length)
+  }, [seekRequest, durationHint])
 
   useEffect(() => {
     if (!following) return

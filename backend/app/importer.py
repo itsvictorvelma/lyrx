@@ -2,10 +2,12 @@
 
 The four files are original.txt, pronunciation.txt, translation.txt, and audio.mp3.
 A successful import is published immediately so the song list can return it.
+When alignment is on, the audio is scanned and each line gets a start time.
 """
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -17,12 +19,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
+from app.align import assign_line_starts
 from app.config import Settings
 from app.contracts import LyricLine, SongDetail
 from app.errors import ApiError
 from app.lyrics import align_lyrics, decode_lyric_file
 from app.models import LyricVersion, Track
-from app.songs import database_not_ready, get_song
+from app.songs import content_hash, database_not_ready, dump_lines, get_song
+from app.transcribe import transcribe_words
+
+logger = logging.getLogger(__name__)
 
 SONG_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FILE_NAMES = {
@@ -55,26 +61,34 @@ def import_song(session: Session, settings: Settings, request: ImportRequest) ->
     _check_names(request)
     _check_size(request, settings.max_import_bytes)
     lines = _lines(request, metadata["song_id"])
-    duration, checksum = _audio(request, Path(settings.import_staging_root))
-    lines_json = json.dumps([line.model_dump() for line in lines], ensure_ascii=False)
-    content_version = hashlib.sha256(lines_json.encode("utf-8")).hexdigest()
-
+    staging = Path(settings.import_staging_root)
+    staging.mkdir(parents=True, exist_ok=True)
+    temporary = staging / f"{uuid4().hex}.mp3"
+    temporary.write_bytes(request.audio)
     try:
-        existing = session.get(Track, metadata["song_id"])
-    except (OperationalError, ProgrammingError) as exc:
-        raise database_not_ready() from exc
-    if existing is not None:
-        same_audio = existing.media_checksum == checksum
-        same_lines = _latest_lines(session, existing.id) == lines_json
-        if same_audio and same_lines:
-            return get_song(session, existing.id, settings.public_media_base_url), 200
-        if not request.replace:
-            raise ApiError(
-                409,
-                "song_conflict",
-                "A song with this title is already saved with different content. Check replace to update it.",
-            )
+        duration, checksum = _audio_file(temporary, request.audio)
+        try:
+            existing = session.get(Track, metadata["song_id"])
+        except (OperationalError, ProgrammingError) as exc:
+            raise database_not_ready() from exc
+        if existing is not None:
+            same_audio = existing.media_checksum == checksum
+            same_lines = _same_text(session, existing.id, lines)
+            if same_audio and same_lines:
+                return get_song(session, existing.id, settings.public_media_base_url), 200
+            if not request.replace:
+                raise ApiError(
+                    409,
+                    "song_conflict",
+                    "A song with this title is already saved with different content. Check replace to update it.",
+                )
+        if settings.align_on_import:
+            lines = _timed_lines(lines, temporary, metadata["source_language"], settings.align_model)
+    finally:
+        temporary.unlink(missing_ok=True)
 
+    lines_json = dump_lines(lines)
+    content_version = content_hash(lines_json)
     media_root = Path(settings.media_root)
     media_root.mkdir(parents=True, exist_ok=True)
     media_key = f"{uuid4().hex}.mp3"
@@ -206,20 +220,48 @@ def _lines(request: ImportRequest, song_id: str) -> list[LyricLine]:
     ]
 
 
-def _audio(request: ImportRequest, staging_root: Path) -> tuple[float, str]:
-    staging_root.mkdir(parents=True, exist_ok=True)
-    temporary = staging_root / f"{uuid4().hex}.mp3"
-    temporary.write_bytes(request.audio)
+def _audio_file(path: Path, audio: bytes) -> tuple[float, str]:
     try:
-        try:
-            duration = float(MP3(temporary).info.length)
-        except HeaderNotFoundError as exc:
-            raise ApiError(400, "invalid_audio", "audio.mp3 is not a readable MP3.") from exc
-    finally:
-        temporary.unlink(missing_ok=True)
+        duration = float(MP3(path).info.length)
+    except HeaderNotFoundError as exc:
+        raise ApiError(400, "invalid_audio", "audio.mp3 is not a readable MP3.") from exc
     if duration <= 0:
         raise ApiError(400, "invalid_audio", "audio.mp3 does not have a duration.")
-    return duration, hashlib.sha256(request.audio).hexdigest()
+    return duration, hashlib.sha256(audio).hexdigest()
+
+
+def _timed_lines(lines: list[LyricLine], path: Path, language: str, model_name: str) -> list[LyricLine]:
+    try:
+        words = transcribe_words(path, language, model_name)
+        starts = assign_line_starts([line.originalText for line in lines], words)
+    except Exception:
+        logger.exception("lyric scan failed during import")
+        return lines
+    return [
+        line.model_copy(update={"startSeconds": start}) if start is not None else line
+        for line, start in zip(lines, starts, strict=True)
+    ]
+
+
+def _same_text(session: Session, song_id: str, lines: list[LyricLine]) -> bool:
+    stored = _latest_lines(session, song_id)
+    if stored is None:
+        return False
+    return _fingerprint_json(stored) == _fingerprint_lines(lines)
+
+
+def _fingerprint_lines(lines: list[LyricLine]) -> str:
+    rows = [[line.originalText, line.pronunciationRomaji, line.translationEnglish] for line in lines]
+    return json.dumps(rows, ensure_ascii=False)
+
+
+def _fingerprint_json(lines_json: str) -> str | None:
+    try:
+        raw = json.loads(lines_json)
+        rows = [[line["originalText"], line["pronunciationRomaji"], line["translationEnglish"]] for line in raw]
+    except (TypeError, KeyError, json.JSONDecodeError):
+        return None
+    return json.dumps(rows, ensure_ascii=False)
 
 
 def _latest_lines(session: Session, song_id: str) -> str | None:

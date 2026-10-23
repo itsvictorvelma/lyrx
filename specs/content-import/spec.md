@@ -118,7 +118,7 @@ The Import Song screen contains:
 - Success summary and aligned three-layer preview
 - Explicit return to Song Library
 
-Do not provide line editing, drag reorder, lyric generation, timing, waveform, public sharing, or account controls.
+Do not provide line editing, drag reorder, lyric generation, a tempo control, a waveform, public sharing, or account controls. The import scan may store a start time on each line.
 
 ## Validation and error states
 
@@ -227,5 +227,5 @@ Mitigate with deterministic normalization, ignore rules and storage separation, 
 - In-browser lyric editing
 - Automatic romaji/translation generation
 - Transcoding/object storage/moderation
-- Timestamps, tap timing, waveform, synchronization
+- Waveform display, word timing, and a tempo control. Line start times from the audio scan are in scope.
 - Catalog/provider API import

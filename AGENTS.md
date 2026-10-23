@@ -25,7 +25,7 @@ Prototype 1 uses “Akuma no Ko” by Ai Higuchi as the working song.
   1. Song Library
   2. Import Song, available only in local development
   3. Learn Song
-- No lyric synchronization in Prototype 1.
+- Each lyric line may have a start time in seconds. Import can scan the audio to set those times, and Learn Song can move one line while the song plays. There is no tempo control and no word-level timing.
 
 Feature specifications:
 
@@ -125,8 +125,9 @@ No other public write API exists.
 - `originalText`
 - `pronunciationRomaji`
 - `translationEnglish`
+- Optional `startSeconds`, the time when that line begins
 
-No timestamp, start/end, active-line, or word/mora timing field is allowed in the Prototype 1 contract.
+No other timestamp, end time, active-line, or word/mora timing field is allowed.
 
 ### Import bundle
 
@@ -352,8 +353,8 @@ Prototype 1 is complete when:
 - Song Library lists the approved imported song and routes to Learn Song.
 - Learn Song always stacks Japanese, Pronunciation (Romaji), and Direct Meaning in line order at every breakpoint.
 - Each layer can be hidden/shown globally, at least one remains visible, and state lasts for the session.
-- The sticky player supports the exact approved controls, remains accessible and unobtrusive, and never drives lyric state.
-- The app has no login, learner write, karaoke tracking, line seek, loop, autoplay, automation, provider API, or public upload.
+- The sticky player supports the exact approved controls and remains accessible. Learn Song uses the playhead to highlight and follow the current line.
+- The app has no login, loop, autoplay, word-level timing, microphone, provider API, or public upload. A learner can save a line start time and scan a saved song.
 - Production does not register Import Song or its mutation.
 - SQLite schema creation/upgrades run only through Alembic and application access uses SQLAlchemy.
 - Required automated tests and manual accessibility/responsive smoke tests pass.
@@ -368,13 +369,11 @@ Prototype 1 is complete when:
 | Development import leaks into production | Compile/runtime route guard plus backend route absence test. |
 | SQLite assumptions block PostgreSQL | Dialect-portable SQLAlchemy, Alembic, external URL, regression suite. |
 | Browser media behavior varies | Standard MP3, user-gesture start, boundary and target-browser tests. |
-| Scope expands into karaoke platform work | Enforce non-goals and reject timing fields/features in review. |
+| A scan misses an entrance or a rest | Keep line start times editable. Do not add a tempo control back. |
 
 ## Explicitly deferred
 
-- Karaoke tracking or current-line highlighting
-- Any lyric timestamps, timing editor, forced alignment, word/mora timing, or sync offset
-- Line seek, A/B/line looping, autoplay, or automated scrolling
+- Word/mora timing, A/B looping, autoplay, or a tempo-based lyric pace
 - Recording, microphone monitoring, pitch scoring, duet/live features
 - Authentication, accounts, saved learner progress, private libraries
 - Public uploads, remote administration, moderation, transcoding pipeline
