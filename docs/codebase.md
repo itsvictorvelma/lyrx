@@ -145,7 +145,7 @@ Learn Song starts with all three layers visible. The buttons are Japanese, Pronu
 
 The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. It does not highlight a lyric line or jump to one.
 
-On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. It moves one lyric line at a time. The start time and the pace are saved in this browser for that song only, under `lyrx.pace.v1`. Press Mark singing start when the vocals begin. Faster, Slower, or a BPM plus beats per line sets how long each line stays. The first song starts with a 5.5 second intro because that is when its singing begins. A different song starts at zero until you mark it. These numbers are not lyric timings, and they are not shared across songs. Until you set a tempo, each line gets an equal share of the time after the start, which will drift if the phrasing is uneven. Scrolling yourself turns follow off for the rest of the browser tab.
+On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. It moves one lyric line at a time. The start time and the pace are saved in this browser for that song only, under `lyrx.pace.v1`. Press Mark singing start when the vocals begin. Faster, Slower, or a BPM plus beats per line sets how long each line stays. The first song starts with a 5.5 second intro because that is when its singing begins. A different song starts at zero until you mark it. These numbers are not lyric timings, and they are not shared across songs. A BPM or a seconds-per-line pace cannot line up with arbitrary singing. Entrances, rests, and phrase lengths change inside one song, so nudging the pace cannot make follow accurate for every track. Accurate follow needs a time for each line, from a tap, an editor, a timestamp file, or a later alignment pass. Until you set a tempo, each line gets an equal share of the time after the start. Scrolling yourself turns follow off for the rest of the browser tab.
 
 The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
 
@@ -184,7 +184,7 @@ npm run build
 
 ## What not to add yet
 
-Do not add accounts, lyric line timings, line seeking, or a karaoke highlight. Follow pace is a per-song browser setting, not a timing field on the lyrics. The player and the lyric list stay independent.
+Do not add accounts, line seeking, or a karaoke highlight. Follow pace is a rough per-song browser setting. It is not a path to accurate follow. Per-line timestamps would be a separate decision. The player and the lyric list stay independent.
 
 ## When you change the code
 

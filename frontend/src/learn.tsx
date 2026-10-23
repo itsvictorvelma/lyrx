@@ -217,7 +217,7 @@ export function LearnSong({ songId }: { songId: string }) {
               <span className="toggle-state">{following ? 'On' : 'Off'}</span>
             </button>
             <p id="follow-note">
-              Moves one line at a time from this song's start and pace. Scroll yourself to turn it off.
+              Moves at one steady pace for this song. Entrances, rests, and uneven lines still throw it off. Scroll yourself to turn it off.
             </p>
             <p>Singing starts at {formatTime(pace.introSeconds)}. Saved on this song only.</p>
             <div className="pace">
@@ -247,7 +247,7 @@ export function LearnSong({ songId }: { songId: string }) {
             <p>
               {pace.secondsPerLine
                 ? `About ${pace.secondsPerLine.toFixed(1)} seconds per line.`
-                : 'Until you set a tempo, each line shares the time after the start.'}
+                : 'Without a tempo, each line shares the time after the start. A tempo is still one steady pace.'}
             </p>
             {paceNote ? <p role="alert">{paceNote}</p> : null}
           </div>
