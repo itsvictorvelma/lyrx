@@ -2,18 +2,16 @@
 
 This page describes the code that exists today. It is the map for anyone opening the project.
 
-The long-term product plan is [AGENTS.md](../AGENTS.md). Each future screen has a spec in [specs/](../specs/). Those files say what to build. This file says what is already built.
+The long-term product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built.
 
 ## The short version
 
-Lyrx will help a learner rehearse a Japanese song. The page will show the audio, the Japanese words, the pronunciation, and the direct English meaning.
+Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Japanese words, the pronunciation, and the direct English meaning.
 
 Today there are two small programs:
 
-- `backend/` is the API.
-- `frontend/` is the web page.
-
-There is no song list, import form, lesson page, audio player, or database yet. The web page is only a title and one sentence.
+- `backend/` is the API. It stores songs and serves the audio.
+- `frontend/` is the web page. It has Song Library, a development import screen, and Learn Song.
 
 ## Backend
 
@@ -133,11 +131,25 @@ npm install
 npm run dev
 ```
 
-`frontend/src/App.tsx` lists songs from `GET /api/songs`. In development it also shows the import form. The form posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API.
+The page has three routes:
 
-The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.”
+| Route | What it shows |
+| --- | --- |
+| `/` | Song Library. Each song is a link to Learn Song. |
+| `/import` | Import Song. The link and the form are included only in a development build. |
+| `/songs/:songId` | Learn Song. Stacked Japanese, pronunciation, and direct meaning, plus the player. |
 
-The page uses the browser’s audio control for now. The finished player, separate screens, and lyric-layer toggles are still to come.
+`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
+
+Learn Song starts with all three layers visible. The buttons are Japanese, Pronunciation (Romaji), and Direct Meaning. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One layer always stays visible.
+
+The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. It does not highlight a lyric line or jump to one.
+
+On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll.
+
+The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
+
+Colors, type, and spacing live as variables at the top of `frontend/src/index.css`.
 
 ## Tests
 
@@ -159,16 +171,20 @@ The tests check:
 - The same import does not create a second copy.
 - A mismatched lyric file does not save a song or an audio file.
 
-The frontend check is:
+The frontend checks are:
 
 ```bash
 cd frontend
+npm test
+npm run lint
 npm run build
 ```
 
+`npm test` checks lyric order, layer visibility, and the player clock. It does not open a browser.
+
 ## What not to add yet
 
-Do not add accounts or lyric timing. The separate Song Library and Learn Song screens, and the custom audio player, are still to come.
+Do not add accounts, lyric timing, line seeking, or a karaoke highlight. The player and the lyric list stay independent.
 
 ## When you change the code
 
