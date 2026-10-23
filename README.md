@@ -14,6 +14,8 @@ cp .env.example .env
 uv run uvicorn app.main:create_app --factory --reload
 ```
 
+If startup says `Field required`, `backend/.env` is missing. Copy the example file and run this from `backend/`.
+
 Health check: `GET /api/health`
 
 ### Frontend

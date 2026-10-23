@@ -24,6 +24,8 @@ cp .env.example .env
 uv run uvicorn app.main:create_app --factory --reload
 ```
 
+If startup says `Field required` for `environment` or `database_url`, `backend/.env` is missing. The copy command above fixes it. Run the command from `backend/`, not the repository root.
+
 Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 ```json
