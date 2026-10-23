@@ -11,7 +11,9 @@ import {
   lyricProblem,
   playbackRate,
   FOLLOW_STORAGE_KEY,
+  LYRIC_INTRO_SECONDS,
   followScrollTop,
+  lyricProgress,
   readFollow,
   readLayers,
   toggleLayer,
@@ -112,6 +114,14 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   blank.translationEnglish = '   '
   assert.equal(lyricProblem([blank]), 'text')
   assert.equal(lyricProblem([line(0), line(1)]), null)
+})
+
+test('lyrics stay still until the singing starts', () => {
+  assert.equal(lyricProgress(0, 200), 0)
+  assert.equal(lyricProgress(LYRIC_INTRO_SECONDS, 200), 0)
+  assert.equal(lyricProgress(LYRIC_INTRO_SECONDS + (200 - LYRIC_INTRO_SECONDS) / 2, 200), 0.5)
+  assert.equal(lyricProgress(200, 200), 1)
+  assert.equal(lyricProgress(4, 5), null)
 })
 
 test('follow scroll moves evenly and stays inside the page', () => {

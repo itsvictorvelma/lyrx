@@ -6,6 +6,7 @@ import { Player } from './player.tsx'
 import {
   languageDirection,
   followScrollTop,
+  lyricProgress,
   lyricProblem,
   readFollow,
   readLayers,
@@ -103,7 +104,9 @@ export function LearnSong({ songId }: { songId: string }) {
     const listTop = list.getBoundingClientRect().top + window.scrollY
     const start = Math.max(0, listTop - topOffset())
     const end = Math.max(start, listTop + list.offsetHeight - window.innerHeight + bottomGap())
-    const next = followScrollTop(current / duration, start, end)
+    const progress = lyricProgress(current, duration)
+    if (progress == null) return
+    const next = followScrollTop(progress, start, end)
     if (next == null) return
     window.scrollTo(0, next)
   }
@@ -165,8 +168,7 @@ export function LearnSong({ songId }: { songId: string }) {
               <span className="toggle-state">{following ? 'On' : 'Off'}</span>
             </button>
             <p id="follow-note">
-              Scrolls the lyrics evenly while the song plays. It does not lock to each line. Scroll yourself to turn
-              it off.
+              The words stay still for the first 5.5 seconds, then move at an even pace. Scroll yourself to turn it off.
             </p>
           </div>
           <Player

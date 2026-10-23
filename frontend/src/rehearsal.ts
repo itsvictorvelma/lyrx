@@ -117,8 +117,17 @@ export function writeFollow(storage: KeyValueStore, following: boolean): void {
   }
 }
 
-// ponytail: even pace across the lyric list. A long intro moves the lyrics early.
-// Upgrade path: real line timings, then scroll to that line.
+// The singing in the first imported song starts about here. ponytail: one fixed intro
+// for every song. Upgrade path: store the intro on the song, then real line timings.
+export const LYRIC_INTRO_SECONDS = 5.5
+
+export function lyricProgress(current: number, duration: number, introSeconds = LYRIC_INTRO_SECONDS): number | null {
+  if (!Number.isFinite(current) || !Number.isFinite(duration) || duration <= 0) return null
+  if (!Number.isFinite(introSeconds) || introSeconds < 0 || introSeconds >= duration) return null
+  if (current <= introSeconds) return 0
+  return Math.min(1, (current - introSeconds) / (duration - introSeconds))
+}
+
 export function followScrollTop(progress: number, start: number, end: number): number | null {
   if (!Number.isFinite(progress) || progress < 0) return null
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null
