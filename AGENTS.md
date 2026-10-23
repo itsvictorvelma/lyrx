@@ -146,8 +146,6 @@ Required form metadata:
 - Artist
 - Source language
 - Target language
-- Exact recording/release notes
-- Attribution
 
 The three text files align strictly by line index.
 

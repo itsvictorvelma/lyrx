@@ -56,16 +56,6 @@ def test_development_import_route_requires_explicit_flag() -> None:
     assert "post" in enabled.openapi()["paths"][IMPORT_PATH]
 
 
-def test_development_import_reports_not_implemented() -> None:
-    response = TestClient(create_app(settings(import_enabled=True))).post(IMPORT_PATH)
-
-    assert response.status_code == 501
-    assert response.json() == {
-        "code": "import_not_implemented",
-        "message": "Song import is not implemented.",
-    }
-
-
 def test_settings_reject_shared_storage_roots() -> None:
     with pytest.raises(ValidationError, match="must be different directories"):
         settings(import_staging_root="./media")

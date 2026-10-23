@@ -97,7 +97,9 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | Route | When it exists | What it does now |
 | --- | --- | --- |
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
-| `POST /api/import` | Development only, and only when import is enabled | Returns "not implemented". It does not save a song. |
+| `GET /api/songs` | Always | Lists published songs |
+| `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
+| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3` |
 
 In production, `/api/import` is not registered. A request gets the normal not-found response.
 
@@ -131,9 +133,11 @@ npm install
 npm run dev
 ```
 
-`frontend/src/App.tsx` shows the Lyrx title and one sentence. It does not call the API yet.
+`frontend/src/App.tsx` lists songs from `GET /api/songs`. In development it also shows the import form. The form posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API.
 
-`frontend/src/contracts.ts` matches the backend song and error shapes. It is there so the next screen uses the same field names.
+The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.”
+
+The page uses the browser’s audio control for now. The finished player, separate screens, and lyric-layer toggles are still to come.
 
 ## Tests
 
@@ -151,6 +155,9 @@ The tests check:
 - Production cannot expose song import.
 - The migration creates the two song tables and can remove them again.
 - Starting the API does not create a database file.
+- A valid import can be read back from the song list and song detail.
+- The same import does not create a second copy.
+- A mismatched lyric file does not save a song or an audio file.
 
 The frontend check is:
 
@@ -161,7 +168,7 @@ npm run build
 
 ## What not to add yet
 
-Do not add screens, accounts, or lyric timing yet. The next planned pieces are the Song Library and Learn Song screens. Their specs already describe that work.
+Do not add accounts or lyric timing. The separate Song Library and Learn Song screens, and the custom audio player, are still to come.
 
 ## When you change the code
 
