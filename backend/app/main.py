@@ -1,3 +1,10 @@
+"""Lyrx API.
+
+GET /api/health is always available.
+POST /api/import exists only in development when import is enabled.
+That route does not save a song yet.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
