@@ -121,7 +121,7 @@ Recommended handling when one layer remains:
 
 - Fail the lyric region safely instead of displaying misaligned rows.
 - Show a user-safe unavailable-content message.
-- Log song/version and validation code, not full copyrighted text by default.
+- Log song/version and validation code, not the full lyric text by default.
 
 ### Media failure
 
@@ -160,7 +160,7 @@ Recommended handling when one layer remains:
 - No account or learner write.
 - Imported text renders as plain escaped content.
 - No analytics, recording, microphone, or personal data.
-- No rights evidence/internal paths in the response.
+- No internal paths in the response.
 - Only publishable content resolves in production.
 - Session storage contains only three booleans/schema version, no song text.
 

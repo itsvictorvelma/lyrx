@@ -1,7 +1,7 @@
 """Settings read from backend/.env.
 
-Production cannot enable song import. Audio, rights evidence, and upload
-staging must be three different directories.
+Production cannot enable song import. Audio files and temporary uploads
+must be different directories.
 """
 
 from pathlib import Path
@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     import_enabled: bool = False
     max_import_bytes: int = Field(default=20_000_000, gt=0)
     allowed_development_origin: str = "http://localhost:5173"
-    rights_evidence_root: str = "./rights-evidence"
     import_staging_root: str = "./uploads"
 
     @model_validator(mode="after")
@@ -36,15 +35,10 @@ class Settings(BaseSettings):
         if self.environment == "production" and self.import_enabled:
             raise ValueError("import cannot be enabled when environment is production")
 
-        roots = {
-            "media_root": Path(self.media_root).expanduser().resolve(),
-            "rights_evidence_root": Path(self.rights_evidence_root).expanduser().resolve(),
-            "import_staging_root": Path(self.import_staging_root).expanduser().resolve(),
-        }
-        if len(set(roots.values())) != len(roots):
-            raise ValueError(
-                "media_root, rights_evidence_root, and import_staging_root must be different directories"
-            )
+        media_root = Path(self.media_root).expanduser().resolve()
+        import_staging_root = Path(self.import_staging_root).expanduser().resolve()
+        if media_root == import_staging_root:
+            raise ValueError("media_root and import_staging_root must be different directories")
         return self
 
 

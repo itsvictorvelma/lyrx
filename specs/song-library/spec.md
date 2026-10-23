@@ -104,7 +104,7 @@ Do not add search, filters, sorting controls, genres, playlists, recommendations
 ## Security and privacy
 
 - No user data or account state.
-- Do not show filesystem/media paths, rights evidence, internal status notes, or draft songs in production.
+- Do not show filesystem/media paths, internal status notes, or draft songs in production.
 - Imported title/artist render as escaped text.
 - Development controls depend on the actual environment boundary, not a query parameter or client storage.
 
@@ -121,8 +121,8 @@ Do not add search, filters, sorting controls, genres, playlists, recommendations
 ### API integration
 
 - List includes required fields and stable order
-- Production returns publishable songs only
-- No rights evidence or local paths leak
+- Production returns published songs only
+- No local paths leak
 
 ### End-to-end
 
@@ -154,7 +154,7 @@ Requires the application foundation and at least one imported development fixtur
 ## Risks
 
 - Building for hypothetical catalog scale bloats the prototype.
-- Draft or rights metadata leaks publicly.
+- Draft songs leak into the production library.
 - Card interactions become inaccessible through nested click targets.
 
 Mitigate with a minimal summary contract, server-side publication filtering, and semantic links/lists.

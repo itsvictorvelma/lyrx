@@ -9,7 +9,7 @@ from app.database import make_engine
 from app.main import create_app
 from tests.test_app import settings
 
-SONG_TABLES = {"tracks", "lyric_versions", "rights_records"}
+SONG_TABLES = {"tracks", "lyric_versions"}
 FORBIDDEN_COLUMNS = {
     "active_line",
     "cue",

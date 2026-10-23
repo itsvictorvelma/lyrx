@@ -41,7 +41,7 @@ Copy `backend/.env.example` to `backend/.env` before starting the API. The examp
 Two rules are enforced in code:
 
 1. Production cannot turn song import on. If `ENVIRONMENT` is `production` and `IMPORT_ENABLED` is `true`, the API refuses to start.
-2. Audio files, rights evidence, and temporary uploads must be three different folders.
+2. Audio files and temporary uploads must be different folders.
 
 Import stays off unless you are in development and you set `IMPORT_ENABLED=true`.
 
@@ -105,13 +105,12 @@ Development requests may come from `http://localhost:5173`. Production does not 
 
 ## Database
 
-The database has three tables, created by Alembic. The API does not create them when it starts.
+The database has two tables, created by Alembic. The API does not create them when it starts.
 
 | Table | What it stores |
 | --- | --- |
 | `tracks` | Song id, title, artist, languages, duration, draft/published status, and the audio file's storage name and checksum |
 | `lyric_versions` | One saved copy of the aligned lyric lines for a song, stored as JSON text |
-| `rights_records` | Who owns each part of a song and what use is allowed |
 
 Lyric lines still have no timing fields in the database.
 
@@ -150,7 +149,7 @@ The tests check:
 - Timing fields are rejected.
 - Line numbers must start at 0 and have no gaps.
 - Production cannot expose song import.
-- The migration creates the three song tables and can remove them again.
+- The migration creates the two song tables and can remove them again.
 - Starting the API does not create a database file.
 
 The frontend check is:

@@ -58,7 +58,7 @@ Create the smallest stable platform on which the three approved screens can be i
 - SQLAlchemy owns models, sessions, and repository queries.
 - SQLite database URL is environment configured.
 - Alembic owns schema creation and evolution; application startup must not call `create_all`.
-- First revision creates only `tracks`, `lyric_versions`, and `rights_records`.
+- The schema has only `tracks` and `lyric_versions`.
 - Store aligned-line documents as schema-versioned JSON text after domain validation.
 - Use dialect-portable identifiers, booleans, timestamps, constraints, and indexes.
 
@@ -133,7 +133,7 @@ Production invariants:
 
 - Import flag cannot enable the import router.
 - Import mutation is absent from generated routes/OpenAPI.
-- Media root is not the same directory as rights evidence or temporary upload staging.
+- Media root is not the same directory as temporary upload staging.
 - Debug mode and verbose error output are disabled.
 
 ## Validation and error states
@@ -162,7 +162,7 @@ Production invariants:
 - Generated media paths prevent traversal and hide local paths.
 - Imported strings render as text, never raw HTML.
 - CORS is restricted to configured origins; do not use permissive credentials settings.
-- Secrets and rights evidence are excluded from responses, source control, frontend bundles, and public media.
+- Secrets are excluded from responses, source control, frontend bundles, and public media.
 - Log request IDs and safe identifiers, not lyric payloads or local file paths by default.
 
 ## Tests

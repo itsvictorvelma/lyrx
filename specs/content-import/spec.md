@@ -50,8 +50,6 @@ Exactly one of each is accepted. ZIP archives, folders, alternate names, remote 
 - Target language, English for the working bundle
 - Exact recording/release notes
 - Attribution
-- Rights status
-- Rights evidence reference
 
 Optional metadata must be explicitly enumerated before implementation; arbitrary key/value input is out of scope.
 
@@ -107,13 +105,7 @@ Idempotency:
 - Different content under an existing ID is a conflict unless the developer explicitly chooses the supported replace/new-version action.
 - Replacement never overwrites the only known-good version before the new transaction succeeds.
 
-## Rights and publication gate
-
-- New imports start as draft/non-public.
-- Rights status/evidence metadata is mandatory even when status is “not cleared.”
-- Publication requires an approved rights record covering the recording, Japanese lyrics, romaji adaptation, Direct Meaning, territories, term, and public web use.
-- Rights evidence stays outside public/static directories and API responses.
-- Import success does not imply publication approval.
+New imports start as drafts. Publishing a song is a separate explicit action.
 
 ## UI behavior
 
@@ -146,7 +138,6 @@ Use stable codes and actionable messages for:
 - Duplicate/idempotent import
 - Existing-ID content conflict
 - Database or media-copy failure
-- Rights state incompatible with publication
 
 Client validation is advisory. Server validation is authoritative.
 
@@ -181,7 +172,6 @@ Client validation is advisory. Server validation is authoritative.
 - Media-copy/database failures clean up both sides
 - Identical re-import does not duplicate
 - Different-content conflict is deterministic
-- Draft/publication rights gate
 - Production router/OpenAPI has no import mutation
 
 ### Frontend
@@ -198,7 +188,7 @@ Client validation is advisory. Server validation is authoritative.
 - Submit mismatched files and verify no new song/media exists.
 - Attempt production `/import` and mutation; both are unavailable.
 
-Use synthetic or expressly test-licensed fixtures in automated tests, not the commercial working song.
+Use a small test fixture in automated tests.
 
 ## Sequencing
 
@@ -208,7 +198,7 @@ Use synthetic or expressly test-licensed fixtures in automated tests, not the co
 4. Transaction/idempotency service.
 5. Development mutation.
 6. Import Song form and preview.
-7. Rights/publication gate and production exclusion tests.
+7. Production exclusion tests.
 
 ## Acceptance criteria
 
@@ -218,14 +208,13 @@ Use synthetic or expressly test-licensed fixtures in automated tests, not the co
 - Invalid audio is rejected before durable writes.
 - Import is atomic and idempotent.
 - Success produces a draft and aligned preview.
-- Rights evidence is required for publication but never publicly exposed.
 - Production contains neither route nor mutation.
 - Screen passes keyboard, focus, labeling, and responsive checks.
 
 ## Risks
 
 - Different editors create newline/BOM false mismatches.
-- Commercial assets leak into Git, images, logs, or public media.
+- Audio and lyric files leak into Git, images, logs, or public media.
 - Database/media operations diverge after partial failure.
 - A development flag accidentally becomes a remote admin surface.
 - Romaji/direct meaning appear aligned but are linguistically wrong.
