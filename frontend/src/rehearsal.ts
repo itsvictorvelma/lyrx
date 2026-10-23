@@ -117,8 +117,9 @@ export function writeFollow(storage: KeyValueStore, following: boolean): void {
   }
 }
 
-// The singing in the first imported song starts about here. ponytail: one fixed intro
-// for every song. Upgrade path: store the intro on the song, then real line timings.
+// Temporary first-song limit. The singing in that track starts about 5.5 seconds in.
+// This number is not correct for other songs. ponytail: one global intro.
+// Upgrade path: a per-song intro, only if asked. Lyric lines still have no timings.
 export const LYRIC_INTRO_SECONDS = 5.5
 
 export function lyricProgress(current: number, duration: number, introSeconds = LYRIC_INTRO_SECONDS): number | null {

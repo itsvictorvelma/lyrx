@@ -168,7 +168,7 @@ export function LearnSong({ songId }: { songId: string }) {
               <span className="toggle-state">{following ? 'On' : 'Off'}</span>
             </button>
             <p id="follow-note">
-              The words stay still for the first 5.5 seconds, then move at an even pace. Scroll yourself to turn it off.
+              Waits 5.5 seconds, which fits the first song only, then moves at an even pace. Scroll yourself to turn it off.
             </p>
           </div>
           <Player

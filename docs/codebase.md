@@ -145,7 +145,7 @@ Learn Song starts with all three layers visible. The buttons are Japanese, Pronu
 
 The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. It does not highlight a lyric line or jump to one.
 
-On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. The words stay still for the first 5.5 seconds, then move at an even pace. It does not know where each line is sung. Scrolling yourself turns it off for the rest of the browser tab.
+On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. It waits 5.5 seconds, then moves the words at an even pace. That wait matches the first song, whose singing starts then. It is a temporary stand-in in `LYRIC_INTRO_SECONDS`. It is not stored on the song, and it is wrong for a track with a different intro. Follow still does not know where each line is sung. Scrolling yourself turns it off for the rest of the browser tab.
 
 The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
 
@@ -184,7 +184,7 @@ npm run build
 
 ## What not to add yet
 
-Do not add accounts, lyric timing, line seeking, or a karaoke highlight. The player and the lyric list stay independent.
+Do not add accounts, lyric line timings, line seeking, or a karaoke highlight. The 5.5 second follow wait is only for the first song. Do not treat it as the intro for every track. The player and the lyric list stay independent.
 
 ## When you change the code
 
