@@ -106,10 +106,6 @@ function ImportForm({ onImported }: { onImported: (song: SongDetail) => void }) 
       <h2>Import Song</h2>
       <p>Development only. Each file must use the exact name shown on its field.</p>
       <label>
-        Song id
-        <input name="songId" required pattern="[a-z0-9]+(-[a-z0-9]+)*" autoComplete="off" />
-      </label>
-      <label>
         Title
         <input name="title" required />
       </label>
@@ -142,7 +138,7 @@ function ImportForm({ onImported }: { onImported: (song: SongDetail) => void }) 
         <input name="audio" type="file" accept="audio/mpeg,.mp3" required />
       </label>
       <label>
-        <input name="replace" type="checkbox" value="true" /> Replace an existing song with this id
+        <input name="replace" type="checkbox" value="true" /> Replace the saved song with this title
       </label>
       {error ? <p role="alert">{error}</p> : null}
       <button type="submit" disabled={pending}>

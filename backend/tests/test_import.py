@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
+from app.importer import song_id_from_title
 from app.main import create_app
 from app.models import LyricVersion, Track
 from tests.test_app import settings
@@ -29,7 +30,7 @@ def app_for(tmp_path: Path):
     return application
 
 
-def bundle(translation: str = "rain\nsky\n", song_id: str = "ame") -> dict[str, tuple[str, bytes, str]]:
+def bundle(translation: str = "rain\nsky\n") -> dict[str, tuple[str, bytes, str]]:
     return {
         "original": ("original.txt", "雨\n空\n".encode(), "text/plain"),
         "pronunciation": ("pronunciation.txt", b"ame\nsora\n", "text/plain"),
@@ -38,15 +39,19 @@ def bundle(translation: str = "rain\nsky\n", song_id: str = "ame") -> dict[str, 
     }
 
 
-def fields(song_id: str = "ame", replace: str = "false") -> dict[str, str]:
+def fields(replace: str = "false") -> dict[str, str]:
     return {
-        "songId": song_id,
         "title": "Ame",
         "artist": "Example",
         "sourceLanguage": "ja",
         "targetLanguage": "en",
         "replace": replace,
     }
+
+
+def test_song_id_comes_from_the_title() -> None:
+    assert song_id_from_title("Akuma no Ko") == "akuma-no-ko"
+    assert song_id_from_title("雨").startswith("song-")
 
 
 def test_import_can_be_read_back(tmp_path: Path) -> None:

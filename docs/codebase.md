@@ -135,7 +135,7 @@ npm run dev
 
 `frontend/src/App.tsx` lists songs from `GET /api/songs`. In development it also shows the import form. The form posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API.
 
-The saved song is published immediately. The same files can be imported again without creating a copy. To replace a song, check “Replace an existing song with this id.”
+The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.”
 
 The page uses the browser’s audio control for now. The finished player, separate screens, and lyric-layer toggles are still to come.
 

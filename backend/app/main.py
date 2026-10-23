@@ -62,7 +62,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         @app.post(IMPORT_PATH, response_model=SongDetail, response_model_exclude_none=True)
         async def import_bundle(
-            songId: str = Form(),
             title: str = Form(),
             artist: str = Form(),
             sourceLanguage: str = Form(),
@@ -75,7 +74,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             session: Session = Depends(open_session),
         ) -> JSONResponse:
             request = ImportRequest(
-                song_id=songId,
                 title=title,
                 artist=artist,
                 source_language=sourceLanguage,

@@ -35,7 +35,6 @@ FILE_NAMES = {
 
 @dataclass(frozen=True)
 class ImportRequest:
-    song_id: str
     title: str
     artist: str
     source_language: str
@@ -55,7 +54,7 @@ def import_song(session: Session, settings: Settings, request: ImportRequest) ->
     metadata = _metadata(request)
     _check_names(request)
     _check_size(request, settings.max_import_bytes)
-    lines = _lines(request)
+    lines = _lines(request, metadata["song_id"])
     duration, checksum = _audio(request, Path(settings.import_staging_root))
     lines_json = json.dumps([line.model_dump() for line in lines], ensure_ascii=False)
     content_version = hashlib.sha256(lines_json.encode("utf-8")).hexdigest()
@@ -73,7 +72,7 @@ def import_song(session: Session, settings: Settings, request: ImportRequest) ->
             raise ApiError(
                 409,
                 "song_conflict",
-                "That song id already has different content. Submit again with replacement confirmed.",
+                "A song with this title is already saved with different content. Check replace to update it.",
             )
 
     media_root = Path(settings.media_root)
@@ -140,20 +139,24 @@ def import_song(session: Session, settings: Settings, request: ImportRequest) ->
     return get_song(session, metadata["song_id"], settings.public_media_base_url), 201
 
 
+def song_id_from_title(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", title.casefold()).strip("-")[:80].strip("-")
+    if SONG_ID.fullmatch(slug):
+        return slug
+    return f"song-{hashlib.sha256(title.casefold().encode()).hexdigest()[:8]}"
+
+
 def _metadata(request: ImportRequest) -> dict[str, str]:
-    song_id = request.song_id.strip()
     title = request.title.strip()
     artist = request.artist.strip()
     source_language = request.source_language.strip()
     target_language = request.target_language.strip()
-    if not SONG_ID.fullmatch(song_id):
-        raise ApiError(400, "invalid_metadata", "Song id must use lowercase letters, numbers, and hyphens.")
     if not title or not artist or not source_language or not target_language:
         raise ApiError(400, "invalid_metadata", "Title, artist, and both languages are required.")
     if len(source_language) > 16 or len(target_language) > 16:
         raise ApiError(400, "invalid_metadata", "Language codes must be 16 characters or fewer.")
     return {
-        "song_id": song_id,
+        "song_id": song_id_from_title(title),
         "title": title,
         "artist": artist,
         "source_language": source_language,
@@ -185,11 +188,10 @@ def _check_size(request: ImportRequest, limit: int) -> None:
             raise ApiError(413, "file_too_large", f"{name} is larger than the import limit.")
 
 
-def _lines(request: ImportRequest) -> list[LyricLine]:
+def _lines(request: ImportRequest, song_id: str) -> list[LyricLine]:
     original = decode_lyric_file(request.original, "original.txt")
     pronunciation = decode_lyric_file(request.pronunciation, "pronunciation.txt")
     translation = decode_lyric_file(request.translation, "translation.txt")
-    song_id = request.song_id.strip()
     return [
         LyricLine(
             id=f"{song_id}-{index}",
