@@ -103,6 +103,26 @@ In production, `/api/import` is not registered. A request gets the normal not-fo
 
 Development requests may come from `http://localhost:5173`. Production does not add that browser permission.
 
+## Database
+
+The database has three tables, created by Alembic. The API does not create them when it starts.
+
+| Table | What it stores |
+| --- | --- |
+| `tracks` | Song id, title, artist, languages, duration, draft/published status, and the audio file's storage name and checksum |
+| `lyric_versions` | One saved copy of the aligned lyric lines for a song, stored as JSON text |
+| `rights_records` | Who owns each part of a song and what use is allowed |
+
+Lyric lines still have no timing fields in the database.
+
+From the `backend/` directory, create or update the local database with:
+
+```bash
+uv run alembic upgrade head
+```
+
+That uses `DATABASE_URL` from `backend/.env`. The example points at `backend/lyrx.db`. That file stays on your machine and is not committed.
+
 ## Frontend
 
 Start it from the `frontend/` directory:
@@ -124,12 +144,14 @@ From the `backend/` directory:
 uv run pytest
 ```
 
-The tests check four things:
+The tests check:
 
 - A valid song is accepted.
 - Timing fields are rejected.
 - Line numbers must start at 0 and have no gaps.
 - Production cannot expose song import.
+- The migration creates the three song tables and can remove them again.
+- Starting the API does not create a database file.
 
 The frontend check is:
 
@@ -140,7 +162,7 @@ npm run build
 
 ## What not to add yet
 
-Do not add screens, database tables, accounts, or lyric timing while finishing this foundation. The next planned pieces are the database and the real Song Library and Learn Song screens. Their specs already describe that work.
+Do not add screens, accounts, or lyric timing yet. The next planned pieces are the Song Library and Learn Song screens. Their specs already describe that work.
 
 ## When you change the code
 
