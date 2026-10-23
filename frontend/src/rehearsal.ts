@@ -1,6 +1,7 @@
 import type { LyricLine } from './contracts.ts'
 
 export const LAYER_STORAGE_KEY = 'lyrx.layers.v1'
+export const FOLLOW_STORAGE_KEY = 'lyrx.follow.v1'
 
 export type LayerKey = 'japanese' | 'romaji' | 'meaning'
 
@@ -95,6 +96,34 @@ export function toggleLayer(current: LayerVisibility, key: LayerKey): LayerVisib
   const next = { ...current, [key]: !current[key] }
   if (visibleLayerCount(next) === 0) return null
   return next
+}
+
+export function readFollow(storage: KeyValueStore | null): boolean {
+  if (!storage) return true
+  try {
+    const value = storage.getItem(FOLLOW_STORAGE_KEY)
+    if (value === '0') return false
+    return true
+  } catch {
+    return true
+  }
+}
+
+export function writeFollow(storage: KeyValueStore, following: boolean): void {
+  try {
+    storage.setItem(FOLLOW_STORAGE_KEY, following ? '1' : '0')
+  } catch {
+    // sessionStorage can be blocked. The on-screen choice still applies until reload.
+  }
+}
+
+// ponytail: even pace across the lyric list. A long intro moves the lyrics early.
+// Upgrade path: real line timings, then scroll to that line.
+export function followScrollTop(progress: number, start: number, end: number): number | null {
+  if (!Number.isFinite(progress) || progress < 0) return null
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null
+  const bounded = Math.min(1, progress)
+  return start + bounded * (end - start)
 }
 
 export function lyricProblem(lines: LyricLine[]): LyricProblem | null {

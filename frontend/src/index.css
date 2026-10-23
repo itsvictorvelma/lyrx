@@ -23,7 +23,7 @@
   --text-reading: 1.5rem;
   --text-xl: 2rem;
   --radius: 4px;
-  --measure: 40rem;
+  --measure: 76rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -193,6 +193,7 @@ form .button-primary {
 .song-list {
   display: grid;
   gap: var(--space-3);
+  max-width: 40rem;
   margin: var(--space-5) 0 0;
   padding: 0;
   list-style: none;
@@ -344,10 +345,22 @@ label:has(input[type='checkbox']) {
 
 .lyric {
   display: grid;
-  gap: var(--space-3);
-  padding: var(--space-5) 0;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--line);
   scroll-margin-bottom: calc(var(--player-clearance) + env(safe-area-inset-bottom));
+}
+
+.follow {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  margin-top: var(--space-4);
+}
+
+.follow p {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
 }
 
 .lyric p {

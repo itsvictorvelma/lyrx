@@ -3,9 +3,20 @@ import { clampTime, finiteTime, formatTime, playbackRate } from './rehearsal.ts'
 
 const RATES = [0.75, 1, 1.25] as const
 
-export function Player({ src, durationHint }: { src: string; durationHint?: number | null }) {
+export function Player({
+  src,
+  durationHint,
+  following = false,
+  onProgress,
+}: {
+  src: string
+  durationHint?: number | null
+  following?: boolean
+  onProgress?: (current: number, duration: number) => void
+}) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const rememberedVolume = useRef(1)
+  const onProgressRef = useRef(onProgress)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState<number | null>(null)
@@ -16,9 +27,34 @@ export function Player({ src, durationHint }: { src: string; durationHint?: numb
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
+    onProgressRef.current = onProgress
+  }, [onProgress])
+
+  useEffect(() => {
     const audio = audioRef.current
     return () => audio?.pause()
   }, [])
+
+  useEffect(() => {
+    if (!playing) return
+    let frame = 0
+    const tick = () => {
+      const audio = audioRef.current
+      const length = audio ? finiteTime(audio.duration) : null
+      if (audio && length) onProgressRef.current?.(audio.currentTime, length)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [playing])
+
+  useEffect(() => {
+    if (!following) return
+    const audio = audioRef.current
+    const length = audio ? finiteTime(audio.duration) : null
+    if (!audio || !length || audio.currentTime <= 0) return
+    onProgressRef.current?.(audio.currentTime, length)
+  }, [following, duration])
 
   function syncClock(audio: HTMLAudioElement) {
     setCurrent(finiteTime(audio.currentTime) ?? 0)
@@ -53,6 +89,7 @@ export function Player({ src, durationHint }: { src: string; durationHint?: numb
     if (length == null) return
     audio.currentTime = clampTime(value, length)
     syncClock(audio)
+    onProgressRef.current?.(audio.currentTime, length)
   }
 
   function skip(delta: number) {

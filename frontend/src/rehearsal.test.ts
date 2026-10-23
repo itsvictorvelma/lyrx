@@ -10,6 +10,9 @@ import {
   languageDirection,
   lyricProblem,
   playbackRate,
+  FOLLOW_STORAGE_KEY,
+  followScrollTop,
+  readFollow,
   readLayers,
   toggleLayer,
   writeLayers,
@@ -109,6 +112,22 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   blank.translationEnglish = '   '
   assert.equal(lyricProblem([blank]), 'text')
   assert.equal(lyricProblem([line(0), line(1)]), null)
+})
+
+test('follow scroll moves evenly and stays inside the page', () => {
+  assert.equal(followScrollTop(0, 100, 500), 100)
+  assert.equal(followScrollTop(0.5, 100, 500), 300)
+  assert.equal(followScrollTop(1, 100, 500), 500)
+  assert.equal(followScrollTop(2, 100, 500), 500)
+  assert.equal(followScrollTop(Number.NaN, 100, 500), null)
+  assert.equal(followScrollTop(0.2, 400, 100), null)
+})
+
+test('follow stays on until the reader turns it off', () => {
+  assert.equal(readFollow(null), true)
+  assert.equal(readFollow(memory()), true)
+  assert.equal(readFollow(memory({ [FOLLOW_STORAGE_KEY]: '0' })), false)
+  assert.equal(readFollow(memory({ [FOLLOW_STORAGE_KEY]: '1' })), true)
 })
 
 test('routes stay on the library, import, and one song', () => {
