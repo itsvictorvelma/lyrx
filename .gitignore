@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# SQLite
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Private media and rights material
+media/
+private-media/
+uploads/
+rights-evidence/
+
+# macOS
+.DS_Store
