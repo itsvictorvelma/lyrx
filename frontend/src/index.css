@@ -236,11 +236,11 @@ label:has(input[type='checkbox']) {
 }
 
 .layers {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  align-items: stretch;
-  margin-top: var(--space-5);
+  align-items: center;
+  margin-top: var(--space-4);
   min-width: 0;
 }
 
@@ -251,20 +251,16 @@ label:has(input[type='checkbox']) {
 }
 
 .layer-toggle {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  justify-content: space-between;
+  width: auto;
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
 }
 
 .layer-toggle[aria-pressed='true'] {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--paper);
-}
-
-.toggle-state {
-  font-size: var(--text-sm);
 }
 
 .learn {
@@ -337,71 +333,81 @@ label:has(input[type='checkbox']) {
   font-size: var(--text-sm);
 }
 
+.learn:has(.lyric-sheet) {
+  padding-bottom: calc(20rem + env(safe-area-inset-bottom));
+}
+
 .lyric-sheet {
+  display: flex;
+  gap: var(--space-5);
+  align-items: stretch;
+  height: calc(100dvh - (var(--header-height) * 2) - var(--space-3) - 19rem);
+  min-height: 16rem;
   margin-top: var(--space-4);
   overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-margin-top: var(--header-height);
+  overscroll-behavior-x: contain;
 }
 
-.lyric-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+.lyric-pane {
+  flex: 1 0 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
-.lyric-table[data-columns='1'] {
-  min-width: 16rem;
+.lyric-pane + .lyric-pane {
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-5);
 }
 
-.lyric-table[data-columns='2'] {
-  min-width: 32rem;
-}
-
-.lyric-table[data-columns='3'] {
-  min-width: 48rem;
-}
-
-.lyric-table caption {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.lyric-table th,
-.lyric-table td {
-  padding: var(--space-3) var(--space-4);
+.lyric-pane-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--line);
-  vertical-align: top;
-  text-align: start;
-  overflow-wrap: break-word;
-}
-
-.lyric-table th {
+  background: var(--paper);
   color: var(--ink-soft);
   font-size: var(--text-sm);
   font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+.lyric-original,
+.lyric-romaji,
+.lyric-meaning {
+  overflow-wrap: break-word;
+}
+
+.lyric-original p,
+.lyric-romaji p,
+.lyric-meaning p {
+  margin: 0 0 var(--space-5);
 }
 
 .lyric-original {
-  font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Iowan Old Style', Palatino, serif;
   font-size: var(--text-reading);
-  font-weight: 600;
-  line-height: 1.7;
+  font-weight: 500;
+  line-height: 1.85;
 }
 
-.lyric-romaji {
+.lyric-romaji,
+.lyric-meaning {
+  font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif;
   font-size: var(--text-lg);
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
 .lyric-meaning {
   color: var(--ink-soft);
-  line-height: 1.5;
 }
 
 @media (min-width: 48rem) {
@@ -410,19 +416,31 @@ label:has(input[type='checkbox']) {
     scroll-padding-bottom: var(--space-4);
   }
 
-  .layers {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .layer-toggle {
-    justify-content: flex-start;
-    width: auto;
-  }
-
   .learn {
     padding-bottom: var(--space-6);
+  }
+
+  .learn:has(.lyric-sheet) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - var(--header-height) - var(--space-6) - var(--space-7));
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .lyric-sheet {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  .lyric-pane {
+    flex: 1 1 0%;
+    width: 0;
+    height: auto;
+    scroll-snap-align: none;
   }
 
   .player {

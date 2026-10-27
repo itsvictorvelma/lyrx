@@ -137,11 +137,11 @@ The page has three routes:
 | --- | --- |
 | `/` | Song Library. Each song is a link to Learn Song. |
 | `/import` | Import Song. The link and the form are included only in a development build. |
-| `/songs/:songId` | Learn Song. Original, pronunciation, and direct English in three columns, plus the player. |
+| `/songs/:songId` | Learn Song. Original, pronunciation, and direct English as three documents, plus the player. |
 
 `frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song starts with all three columns visible. The buttons are Original, Pronunciation (Romaji), and Direct English. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One column always stays visible. Each lyric line is one table row. The columns stay side by side on a narrow window, and the lyric sheet scrolls sideways.
+Learn Song starts with all three panes visible. The buttons are Original, Pronunciation (Romaji), and Direct English. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One pane always stays visible. Each pane is a document: a heading, then the lines in order, with no cells or per-line labels. On a wide window the visible panes share the width. On a narrow window they stay side by side and the sheet snaps sideways.
 
 The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. The player does not mark a lyric line or move the page.
 

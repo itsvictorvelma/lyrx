@@ -128,30 +128,19 @@ export function LearnSong({ songId }: { songId: string }) {
               These lyrics could not be shown.
             </p>
           ) : (
-            <div className="lyric-sheet" tabIndex={0}>
-              <table className="lyric-table" data-columns={visible.length}>
-                <caption>Lyrics</caption>
-                <thead>
-                  <tr>
-                    {visible.map((column) => (
-                      <th key={column.key} scope="col">
-                        {column.label}
-                      </th>
+            <div className="lyric-sheet" tabIndex={0} aria-label="Lyrics">
+              {visible.map((pane) => (
+                <section key={pane.key} className="lyric-pane" lang={pane.lang} aria-labelledby={`pane-${pane.key}`}>
+                  <h2 id={`pane-${pane.key}`} className="lyric-pane-title">
+                    {pane.label}
+                  </h2>
+                  <div className={pane.className}>
+                    {state.song.lines.map((line) => (
+                      <p key={line.id}>{pane.text(line)}</p>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.song.lines.map((line) => (
-                    <tr key={line.id}>
-                      {visible.map((column) => (
-                        <td key={column.key} className={column.className} lang={column.lang}>
-                          {column.text(line)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </>
@@ -169,22 +158,21 @@ function LayerToggles({
 }) {
   const count = visibleLayerCount(layers)
   return (
-    <div className="layers" role="group" aria-label="Lyric columns">
-      <p id="layer-rule">At least one column stays visible.</p>
-      {COLUMNS.map((column) => {
-        const shown = layers[column.key]
+    <div className="layers" role="group" aria-label="Lyric panes">
+      <p id="layer-rule">At least one pane stays visible.</p>
+      {COLUMNS.map((pane) => {
+        const shown = layers[pane.key]
         return (
           <button
-            key={column.key}
+            key={pane.key}
             type="button"
             className="layer-toggle"
             aria-pressed={shown}
             aria-describedby="layer-rule"
             disabled={shown && count === 1}
-            onClick={() => onToggle(column.key)}
+            onClick={() => onToggle(pane.key)}
           >
-            {column.label}
-            <span className="toggle-state">{shown ? 'Shown' : 'Hidden'}</span>
+            {pane.label}
           </button>
         )
       })}

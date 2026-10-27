@@ -145,7 +145,7 @@ Client validation is advisory. Server validation is authoritative.
 - Error summary receives focus after failed submission and links to invalid inputs.
 - Field errors are associated programmatically.
 - Progress/success messages use appropriate live regions.
-- A lyric preview identifies Original, Pronunciation (Romaji), and Direct English on the same row.
+- A lyric preview identifies Original, Pronunciation (Romaji), and Direct English as separate documents.
 - Keyboard-only import is complete.
 - No drag/drop-only interaction.
 - File inputs remain operable at narrow widths and high zoom.
