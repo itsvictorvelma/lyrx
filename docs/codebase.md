@@ -24,6 +24,8 @@ uv run uvicorn app.main:create_app --factory --reload
 
 If startup says `Field required` for `environment` or `database_url`, `backend/.env` is missing. The copy command above fixes it. Run the command from `backend/`, not the repository root.
 
+Use `uv run` so startup uses `backend/.venv`. System Python does not have the project packages and raises `ModuleNotFoundError: No module named 'sqlalchemy'`. `app.main` exposes `create_app`, not an `app` object, so `uvicorn app.main:app` does not start the API. After a dependency change, run `uv sync` in `backend/` before starting.
+
 Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 ```json

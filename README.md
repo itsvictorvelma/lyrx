@@ -14,7 +14,7 @@ cp .env.example .env
 uv run uvicorn app.main:create_app --factory --reload
 ```
 
-If startup says `Field required`, `backend/.env` is missing. Copy the example file and run this from `backend/`.
+If startup says `Field required`, `backend/.env` is missing. Copy the example file and run this from `backend/`. Use `uv run`, not system Python. System Python raises `ModuleNotFoundError: No module named 'sqlalchemy'`. The server target is `app.main:create_app --factory`, not `app.main:app`. After a dependency change, run `uv sync` in `backend/`.
 
 Health check: `GET /api/health`
 
