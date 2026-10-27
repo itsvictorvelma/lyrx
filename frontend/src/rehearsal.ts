@@ -1,7 +1,6 @@
 import type { LyricLine } from './contracts.ts'
 
 export const LAYER_STORAGE_KEY = 'lyrx.layers.v1'
-export const FOLLOW_STORAGE_KEY = 'lyrx.follow.v1'
 
 export type LayerKey = 'japanese' | 'romaji' | 'meaning'
 
@@ -96,48 +95,6 @@ export function toggleLayer(current: LayerVisibility, key: LayerKey): LayerVisib
   const next = { ...current, [key]: !current[key] }
   if (visibleLayerCount(next) === 0) return null
   return next
-}
-
-export function readFollow(storage: KeyValueStore | null): boolean {
-  if (!storage) return true
-  try {
-    const value = storage.getItem(FOLLOW_STORAGE_KEY)
-    if (value === '0') return false
-    return true
-  } catch {
-    return true
-  }
-}
-
-export function writeFollow(storage: KeyValueStore, following: boolean): void {
-  try {
-    storage.setItem(FOLLOW_STORAGE_KEY, following ? '1' : '0')
-  } catch {
-    // sessionStorage can be blocked. The on-screen choice still applies until reload.
-  }
-}
-
-export function readLineStarts(lines: readonly { startSeconds?: number | null }[]): (number | null)[] {
-  return lines.map((line) => {
-    const start = line.startSeconds
-    if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return null
-    return start
-  })
-}
-
-export function hasLineTime(starts: readonly (number | null)[]): boolean {
-  return starts.some((start) => start != null)
-}
-
-export function activeLineIndex(current: number, starts: readonly (number | null)[]): number | null {
-  if (!Number.isFinite(current) || current < 0) return null
-  let best: number | null = null
-  for (let index = 0; index < starts.length; index += 1) {
-    const start = starts[index]
-    if (start == null || start > current) continue
-    if (best == null || start >= (starts[best] ?? -1)) best = index
-  }
-  return best
 }
 
 export function lyricProblem(lines: LyricLine[]): LyricProblem | null {

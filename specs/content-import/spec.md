@@ -68,9 +68,9 @@ The importer:
 
 Layer semantics:
 
-- `original.txt` → Japanese
+- `original.txt` → Original
 - `pronunciation.txt` → Pronunciation (Romaji), reader-friendly Hepburn-style sound representation
-- `translation.txt` → Direct Meaning
+- `translation.txt` → Direct English
 
 The importer checks that the files line up. It does not check linguistic correctness.
 
@@ -118,7 +118,7 @@ The Import Song screen contains:
 - Success summary and aligned three-layer preview
 - Explicit return to Song Library
 
-Do not provide line editing, drag reorder, lyric generation, a tempo control, a waveform, public sharing, or account controls. The import scan may store a start time on each line.
+Do not provide line editing, drag reorder, lyric generation, a tempo control, a waveform, an audio scan, public sharing, or account controls.
 
 ## Validation and error states
 
@@ -145,7 +145,7 @@ Client validation is advisory. Server validation is authoritative.
 - Error summary receives focus after failed submission and links to invalid inputs.
 - Field errors are associated programmatically.
 - Progress/success messages use appropriate live regions.
-- Preview uses a semantic ordered list; each unit identifies Japanese, Pronunciation (Romaji), and Direct Meaning.
+- A lyric preview identifies Original, Pronunciation (Romaji), and Direct English on the same row.
 - Keyboard-only import is complete.
 - No drag/drop-only interaction.
 - File inputs remain operable at narrow widths and high zoom.
@@ -227,5 +227,5 @@ Mitigate with deterministic normalization, ignore rules and storage separation, 
 - In-browser lyric editing
 - Automatic romaji/translation generation
 - Transcoding/object storage/moderation
-- Waveform display, word timing, and a tempo control. Line start times from the audio scan are in scope.
+- Waveform display, line start times, audio scanning, word timing, and a tempo control.
 - Catalog/provider API import

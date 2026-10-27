@@ -3,8 +3,6 @@
 GET /api/health is always available.
 GET /api/songs lists published songs.
 GET /api/songs/{song_id} returns one song and its lyric lines.
-POST /api/songs/{song_id}/line-times saves a start time for one or more lines.
-POST /api/songs/{song_id}/scan reads the audio and sets a start time on each line.
 POST /api/import exists only in development when import is enabled.
 """
 
@@ -17,11 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings, get_settings
-from app.contracts import ErrorResponse, LineTimeRequest, SongDetail, SongSummary
+from app.contracts import ErrorResponse, SongDetail, SongSummary
 from app.database import make_engine
 from app.errors import ApiError
 from app.importer import ImportRequest, import_song
-from app.songs import get_song, list_songs, replace_line_starts, scan_saved_song
+from app.songs import get_song, list_songs
 
 IMPORT_PATH = "/api/import"
 
@@ -59,18 +57,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/songs/{song_id}", response_model=SongDetail, response_model_exclude_none=True)
     def read_song(song_id: str, session: Session = Depends(open_session)) -> SongDetail:
         return get_song(session, song_id, resolved.public_media_base_url)
-
-    @app.post("/api/songs/{song_id}/line-times", response_model=SongDetail, response_model_exclude_none=True)
-    def write_line_times(
-        song_id: str,
-        body: LineTimeRequest,
-        session: Session = Depends(open_session),
-    ) -> SongDetail:
-        return replace_line_starts(session, song_id, body.lines, resolved.public_media_base_url)
-
-    @app.post("/api/songs/{song_id}/scan", response_model=SongDetail, response_model_exclude_none=True)
-    def scan_song(song_id: str, session: Session = Depends(open_session)) -> SongDetail:
-        return scan_saved_song(session, resolved, song_id)
 
     if resolved.environment == "development" and resolved.import_enabled:
 

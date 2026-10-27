@@ -6,20 +6,12 @@ const RATES = [0.75, 1, 1.25] as const
 export function Player({
   src,
   durationHint,
-  following = false,
-  seekRequest = null,
-  onProgress,
 }: {
   src: string
   durationHint?: number | null
-  following?: boolean
-  seekRequest?: { time: number; token: number } | null
-  onProgress?: (current: number, duration: number) => void
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const rememberedVolume = useRef(1)
-  const onProgressRef = useRef(onProgress)
-  const seekToken = useRef(0)
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState<number | null>(null)
@@ -30,45 +22,9 @@ export function Player({
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
-    onProgressRef.current = onProgress
-  }, [onProgress])
-
-  useEffect(() => {
     const audio = audioRef.current
     return () => audio?.pause()
   }, [])
-
-  useEffect(() => {
-    if (!playing) return
-    let frame = 0
-    const tick = () => {
-      const audio = audioRef.current
-      const length = audio ? finiteTime(audio.duration) : null
-      if (audio && length) onProgressRef.current?.(audio.currentTime, length)
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [playing])
-
-  useEffect(() => {
-    if (!seekRequest || seekRequest.token === seekToken.current) return
-    seekToken.current = seekRequest.token
-    const audio = audioRef.current
-    const length = audio ? (finiteTime(audio.duration) ?? finiteTime(durationHint ?? Number.NaN)) : null
-    if (!audio || length == null) return
-    audio.currentTime = clampTime(seekRequest.time, length)
-    syncClock(audio)
-    onProgressRef.current?.(audio.currentTime, length)
-  }, [seekRequest, durationHint])
-
-  useEffect(() => {
-    if (!following) return
-    const audio = audioRef.current
-    const length = audio ? finiteTime(audio.duration) : null
-    if (!audio || !length || audio.currentTime <= 0) return
-    onProgressRef.current?.(audio.currentTime, length)
-  }, [following, duration])
 
   function syncClock(audio: HTMLAudioElement) {
     setCurrent(finiteTime(audio.currentTime) ?? 0)
@@ -103,7 +59,6 @@ export function Player({
     if (length == null) return
     audio.currentTime = clampTime(value, length)
     syncClock(audio)
-    onProgressRef.current?.(audio.currentTime, length)
   }
 
   function skip(delta: number) {

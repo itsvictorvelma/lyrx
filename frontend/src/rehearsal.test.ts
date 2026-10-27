@@ -10,11 +10,6 @@ import {
   languageDirection,
   lyricProblem,
   playbackRate,
-  FOLLOW_STORAGE_KEY,
-  activeLineIndex,
-  hasLineTime,
-  readLineStarts,
-  readFollow,
   readLayers,
   toggleLayer,
   writeLayers,
@@ -116,13 +111,6 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('follow stays on until the reader turns it off', () => {
-  assert.equal(readFollow(null), true)
-  assert.equal(readFollow(memory()), true)
-  assert.equal(readFollow(memory({ [FOLLOW_STORAGE_KEY]: '0' })), false)
-  assert.equal(readFollow(memory({ [FOLLOW_STORAGE_KEY]: '1' })), true)
-})
-
 test('routes stay on the library, import, and one song', () => {
   assert.deepEqual(parseRoute('/'), { name: 'library' })
   assert.deepEqual(parseRoute('/import'), { name: 'import' })
@@ -130,19 +118,6 @@ test('routes stay on the library, import, and one song', () => {
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
   assert.deepEqual(parseRoute('/missing'), { name: 'missing' })
   assert.equal(songHref('akuma-no-ko'), '/songs/akuma-no-ko')
-})
-
-test('the current line is the latest start at or before the playhead', () => {
-  assert.deepEqual(readLineStarts([line(0), { ...line(1), startSeconds: 4 }]), [null, 4])
-  assert.equal(hasLineTime([null, null]), false)
-  assert.equal(hasLineTime([null, 4]), true)
-  const starts = [5.5, 8, 8, 12]
-  assert.equal(activeLineIndex(5.4, starts), null)
-  assert.equal(activeLineIndex(5.5, starts), 0)
-  assert.equal(activeLineIndex(8, starts), 2)
-  assert.equal(activeLineIndex(11.9, starts), 2)
-  assert.equal(activeLineIndex(12, starts), 3)
-  assert.equal(activeLineIndex(-1, starts), null)
 })
 
 test('language direction names Japanese and English', () => {

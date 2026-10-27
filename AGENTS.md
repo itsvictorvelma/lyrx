@@ -25,7 +25,7 @@ Prototype 1 uses “Akuma no Ko” by Ai Higuchi as the working song.
   1. Song Library
   2. Import Song, available only in local development
   3. Learn Song
-- Each lyric line may have a start time in seconds. Import can scan the audio to set those times, and Learn Song can move one line while the song plays. There is no tempo control and no word-level timing.
+- Learn Song shows each lyric line in three columns: Original, Pronunciation (Romaji), and Direct English. There is no line timing, audio scan, current-line highlight, or tempo control.
 
 Feature specifications:
 
@@ -37,11 +37,13 @@ Feature specifications:
 
 ## Non-negotiable user experience
 
-Each lyric unit is ordered and vertically stacked at every breakpoint:
+Each lyric line is one row of three columns, in this left-to-right order, at every breakpoint:
 
-1. **Japanese**
+1. **Original**
 2. **Pronunciation (Romaji)**
-3. **Direct Meaning**
+3. **Direct English**
+
+On a narrow screen the same three columns stay in one row and the sheet scrolls sideways.
 
 Pronunciation (Romaji) is reader-friendly Hepburn-style Latin spelling of Japanese sounds. It is not an English translation.
 
@@ -125,9 +127,8 @@ No other public write API exists.
 - `originalText`
 - `pronunciationRomaji`
 - `translationEnglish`
-- Optional `startSeconds`, the time when that line begins
 
-No other timestamp, end time, active-line, or word/mora timing field is allowed.
+No timestamp, end time, active-line, `startSeconds`, or word/mora timing field is allowed.
 
 ### Import bundle
 
@@ -219,7 +220,7 @@ Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific que
 ### Learn Song
 
 - Fetch Song detail.
-- Render responsive, vertically stacked lyric units.
+- Render each line as one row of Original, Pronunciation (Romaji), and Direct English.
 - Provide the three global layer toggles.
 - Host the sticky player without coupling playback time to lyrics.
 - Preserve manual scroll and visibility state during player actions.
@@ -351,10 +352,10 @@ Prototype 1 is complete when:
 - A valid four-file bundle imports atomically in development.
 - Misaligned or invalid bundles are rejected with actionable errors and no partial state.
 - Song Library lists the approved imported song and routes to Learn Song.
-- Learn Song always stacks Japanese, Pronunciation (Romaji), and Direct Meaning in line order at every breakpoint.
+- Learn Song shows Original, Pronunciation (Romaji), and Direct English as aligned columns at every breakpoint.
 - Each layer can be hidden/shown globally, at least one remains visible, and state lasts for the session.
-- The sticky player supports the exact approved controls and remains accessible. Learn Song uses the playhead to highlight and follow the current line.
-- The app has no login, loop, autoplay, word-level timing, microphone, provider API, or public upload. A learner can save a line start time and scan a saved song.
+- The sticky player supports the exact approved controls and remains accessible. Playback time does not highlight or scroll the lyrics.
+- The app has no login, loop, autoplay, line timing, audio scan, word-level timing, microphone, provider API, or public upload.
 - Production does not register Import Song or its mutation.
 - SQLite schema creation/upgrades run only through Alembic and application access uses SQLAlchemy.
 - Required automated tests and manual accessibility/responsive smoke tests pass.
@@ -364,16 +365,16 @@ Prototype 1 is complete when:
 | Risk | Mitigation |
 |---|---|
 | Three files silently drift out of alignment | Strict line-count/index validation and three-layer preview. |
-| Romaji is mistaken for translation | Exact Pronunciation (Romaji) label, fixed stack order, linguistic review. |
+| Romaji is mistaken for translation | Exact Pronunciation (Romaji) column label, fixed column order, linguistic review. |
 | Sticky player obscures lyrics or focus | Safe-area-aware responsive layout and viewport/focus tests. |
 | Development import leaks into production | Compile/runtime route guard plus backend route absence test. |
 | SQLite assumptions block PostgreSQL | Dialect-portable SQLAlchemy, Alembic, external URL, regression suite. |
 | Browser media behavior varies | Standard MP3, user-gesture start, boundary and target-browser tests. |
-| A scan misses an entrance or a rest | Keep line start times editable. Do not add a tempo control back. |
+| A narrow screen crushes the three columns | Keep one row and let the lyric sheet scroll sideways. |
 
 ## Explicitly deferred
 
-- Word/mora timing, A/B looping, autoplay, or a tempo-based lyric pace
+- Line start times, audio scanning, current-line highlight, follow-scroll, word/mora timing, A/B looping, autoplay, or a tempo-based lyric pace
 - Recording, microphone monitoring, pitch scoring, duet/live features
 - Authentication, accounts, saved learner progress, private libraries
 - Public uploads, remote administration, moderation, transcoding pipeline

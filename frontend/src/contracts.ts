@@ -1,6 +1,5 @@
 // Same data shapes as backend/app/contracts.py.
-// Line numbers start at 0. A line may include startSeconds.
-// Do not add other timing fields.
+// Line numbers start at 0. Timing fields are rejected.
 // Change both files in the same commit.
 
 export type SongStatus = 'draft' | 'published'
@@ -21,7 +20,6 @@ export type LyricLine = {
   originalText: string
   pronunciationRomaji: string
   translationEnglish: string
-  startSeconds?: number
 }
 
 export type SongDetail = SongSummary & {

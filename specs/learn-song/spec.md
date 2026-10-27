@@ -16,7 +16,7 @@ Dependencies:
 
 ## Goal
 
-Let a learner rehearse a Japanese song using one screen that combines audio with line-aligned Japanese, reader-friendly romaji pronunciation, and direct English meaning.
+Let a learner rehearse a Japanese song using one screen that combines audio with line-aligned Original, Pronunciation (Romaji), and Direct English columns.
 
 ## Route
 
@@ -45,7 +45,7 @@ Each lyric unit:
 - `pronunciationRomaji`
 - `translationEnglish`
 
-Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Each line may include `startSeconds`. The screen highlights that line and can scroll to it. There is no tempo control.
+Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Timing fields, including `startSeconds`, are rejected. There is no current-line highlight and no tempo control.
 
 ## Layout
 
@@ -57,21 +57,21 @@ Order:
 4. [Sticky audio player](../audio-player/spec.md)
 5. Ordered lyric units
 
-Each lyric unit always stacks:
+Each lyric line is one table row. Columns, left to right:
 
-1. **Japanese** — visually primary
+1. **Original** — visually primary
 2. **Pronunciation (Romaji)** — prominent pronunciation aid
-3. **Direct Meaning** — visually secondary context
+3. **Direct English** — visually secondary context
 
-The unit remains vertically stacked at all widths. Responsive design may change max width, padding, type scale, and sticky-player placement, but never converts layers to columns or reorders them.
+The three columns stay in that order at every width. A narrow screen keeps the row and scrolls the sheet sideways. Responsive design may change max width, padding, type scale, and sticky-player placement, but does not stack a line's three texts or reorder the columns.
 
 ## Layer visibility
 
 Controls:
 
-- Japanese
+- Original
 - Pronunciation (Romaji)
-- Direct Meaning
+- Direct English
 
 Rules:
 
@@ -90,18 +90,16 @@ Recommended handling when one layer remains:
 
 ## Player relationship
 
-- The player reports the playhead. Learn Song chooses the current line from `startSeconds`.
-- Follow scrolls the current line into view. Scrolling by hand turns follow off.
-- A line can be stamped to the playhead, and a saved start can seek the player.
-- There is no tempo, beats-per-line, line loop, or word timing.
-- The player stays reachable while the list scrolls but must not cover focused/currently read lyric content.
+- The player plays the song. It does not choose, highlight, or scroll a lyric line.
+- There is no tempo, beats-per-line, line loop, line timing, or word timing.
+- The player stays reachable while the lyrics scroll but must not cover focused lyric content.
 
 ## State and error behavior
 
 ### Loading
 
 - Keep route/screen heading structure stable.
-- Show song/player/lyrics loading status without a fake active lyric.
+- Show song/player/lyrics loading status.
 
 ### Success
 
@@ -136,24 +134,24 @@ Recommended handling when one layer remains:
 ## Accessibility
 
 - Main heading includes song title.
-- Lyrics are a semantic ordered list.
-- Each lyric unit is a grouped list item with layer labels available to assistive technology.
+- Lyrics are a table. Each line is a row. Column headers name Original, Pronunciation (Romaji), and Direct English.
+- Hidden columns are omitted from the row so the remaining cells stay aligned.
 - Japanese text uses Japanese language annotation.
-- English interface/Direct Meaning use English annotation.
-- Romaji is labeled Pronunciation (Romaji), never just “English.”
+- English interface and Direct English use English annotation.
+- Romaji is labeled Pronunciation (Romaji), never just “English.” Direct English is the translation column.
 - Toggle controls expose pressed/checked state and have visible focus.
 - Sticky player does not obscure focused lyric units at 200%/400% zoom.
-- Reading order follows visual stack.
+- Reading order follows the visual columns, left to right, then the next row.
 - Typography and spacing remain legible for Japanese characters and Latin text.
 - No color-only distinctions.
 
 ## Responsive behavior
 
-- Narrow: safe-area-aware player placement; one stacked unit per row.
-- Medium/wide: centered readable measure; layers remain stacked.
+- Narrow: safe-area-aware player placement; the three columns stay one row and the sheet scrolls sideways.
+- Medium/wide: centered readable measure; the same columns share the row.
 - Reserve/offset content space for the sticky player.
 - Long Japanese/romaji/meaning strings wrap rather than clip.
-- High zoom does not create horizontal page scroll.
+- High zoom may scroll the lyric sheet sideways. The rest of the page does not gain a second horizontal scrollbar.
 - Toggling layers does not produce large unexpected layout/focus jumps.
 
 ## Security and privacy
@@ -169,7 +167,7 @@ Recommended handling when one layer remains:
 
 ### Unit/component
 
-- Correct stack order and exact labels
+- Correct column order and exact labels
 - API order retained
 - Duplicate/non-monotonic/missing line rejection
 - Toggle each layer
@@ -197,19 +195,19 @@ Recommended handling when one layer remains:
 ### End-to-end
 
 1. Navigate from Song Library to Learn Song.
-2. Confirm all three layers are visible and stacked.
+2. Confirm all three columns are visible and aligned.
 3. Hide/show each layer and enforce at least one.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
-6. Scan or stamp a line, then confirm follow highlights that line. There is no tempo control.
+6. Exercise the player and confirm it does not highlight or scroll a line. There is no tempo control.
 
 ## Sequencing
 
 1. Freeze Song detail/line contract.
 2. Build data validation and screen states.
-3. Build stacked LyricUnit and ordered viewport.
+3. Build the three-column lyric table.
 4. Add layer controls and session persistence.
-5. Integrate Audio Player without timeline coupling.
+5. Integrate Audio Player without line highlighting or follow-scroll.
 6. Complete accessibility and responsive tests.
 
 Can proceed in parallel with Audio Player once its layout envelope and event contract are frozen.
@@ -217,29 +215,29 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 ## Acceptance criteria
 
 - A publishable song opens directly by URL without login.
-- Every imported line is shown once, in order, as a vertically stacked unit.
-- Labels are exactly Japanese, Pronunciation (Romaji), and Direct Meaning.
+- Every imported line is shown once, in order, as one aligned row.
+- Labels are exactly Original, Pronunciation (Romaji), and Direct English.
 - All three toggles work globally; at least one remains visible.
 - Toggle state survives within the browser session only.
 - Player remains reachable and independent of lyrics.
 - Manual scroll survives player actions.
 - Loading, unavailable, malformed, API, and media failures are understandable/recoverable as applicable.
 - Screen meets keyboard, language, focus, zoom, wrapping, contrast, and sticky-content requirements.
-- Line start times highlight and follow the current line. There is no tempo control, word timing, or loop.
+- There is no line timing, current-line highlight, follow-scroll, tempo control, word timing, or loop.
 
 ## Risks
 
 - Romaji appears to be an English translation.
-- Responsive design turns aligned units into ambiguous columns.
+- A narrow layout stacks the three texts and the row stops lining up.
 - Sticky player covers content/focus.
 - Session state creates a blank screen if all layers become hidden.
 - Malformed persisted/imported data silently misaligns meaning.
 
-Mitigate with exact labels/order, always-stacked contract, offset/zoom tests, at-least-one invariant, and runtime contract validation.
+Mitigate with exact labels/order, one row at every width, offset/zoom tests, at-least-one invariant, and runtime contract validation.
 
 ## Non-goals and deferred work
 
-- Tempo or beats-per-line pacing
+- Line start times, audio scanning, current-line highlight, follow-scroll, or tempo pacing
 - Word/mora timing, line/A-B loop
 - Word/mora segmentation
 - Editing or reporting content

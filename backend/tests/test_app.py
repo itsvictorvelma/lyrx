@@ -14,7 +14,6 @@ def settings(**overrides: object) -> Settings:
         "public_media_base_url": "http://localhost:8000/media",
         "frontend_api_base_url": "http://localhost:8000",
         "import_enabled": False,
-        "align_on_import": False,
     }
     values.update(overrides)
     return Settings(**values)
@@ -47,6 +46,13 @@ def test_forced_production_import_flag_does_not_boot() -> None:
 
     with pytest.raises(RuntimeError, match="import cannot be enabled"):
         create_app(forced)
+
+
+def test_line_timing_routes_are_absent() -> None:
+    paths = create_app(settings()).openapi()["paths"]
+
+    assert "/api/songs/{song_id}/line-times" not in paths
+    assert "/api/songs/{song_id}/scan" not in paths
 
 
 def test_development_import_route_requires_explicit_flag() -> None:

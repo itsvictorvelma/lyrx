@@ -2,12 +2,10 @@
 
 The four files are original.txt, pronunciation.txt, translation.txt, and audio.mp3.
 A successful import is published immediately so the song list can return it.
-When alignment is on, the audio is scanned and each line gets a start time.
 """
 
 import hashlib
 import json
-import logging
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -19,16 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.align import assign_line_starts
 from app.config import Settings
 from app.contracts import LyricLine, SongDetail
 from app.errors import ApiError
 from app.lyrics import align_lyrics, decode_lyric_file
 from app.models import LyricVersion, Track
 from app.songs import content_hash, database_not_ready, dump_lines, get_song
-from app.transcribe import transcribe_words
-
-logger = logging.getLogger(__name__)
 
 SONG_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FILE_NAMES = {
@@ -82,8 +76,6 @@ def import_song(session: Session, settings: Settings, request: ImportRequest) ->
                     "song_conflict",
                     "A song with this title is already saved with different content. Check replace to update it.",
                 )
-        if settings.align_on_import:
-            lines = _timed_lines(lines, temporary, metadata["source_language"], settings.align_model)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -228,19 +220,6 @@ def _audio_file(path: Path, audio: bytes) -> tuple[float, str]:
     if duration <= 0:
         raise ApiError(400, "invalid_audio", "audio.mp3 does not have a duration.")
     return duration, hashlib.sha256(audio).hexdigest()
-
-
-def _timed_lines(lines: list[LyricLine], path: Path, language: str, model_name: str) -> list[LyricLine]:
-    try:
-        words = transcribe_words(path, language, model_name)
-        starts = assign_line_starts([line.originalText for line in lines], words)
-    except Exception:
-        logger.exception("lyric scan failed during import")
-        return lines
-    return [
-        line.model_copy(update={"startSeconds": start}) if start is not None else line
-        for line, start in zip(lines, starts, strict=True)
-    ]
 
 
 def _same_text(session: Session, song_id: str, lines: list[LyricLine]) -> bool:

@@ -1,7 +1,7 @@
 """Prototype 1 API contracts.
 
 Lyric line indexes are zero-based, unique, and contiguous.
-A line may carry startSeconds. Other timing fields are rejected.
+Timing fields, including startSeconds, are rejected.
 """
 
 from typing import Literal
@@ -15,6 +15,7 @@ TIMING_FIELDS = {
     "endTime",
     "offset",
     "start",
+    "startSeconds",
     "startTime",
     "timestamp",
     "timestamps",
@@ -66,23 +67,6 @@ class LyricLine(ContractModel):
     originalText: str = Field(min_length=1)
     pronunciationRomaji: str = Field(min_length=1)
     translationEnglish: str = Field(min_length=1)
-    startSeconds: float | None = Field(default=None, ge=0, le=6 * 60 * 60, allow_inf_nan=False)
-
-
-class LineTimeUpdate(ContractModel):
-    index: int = Field(ge=0)
-    startSeconds: float = Field(ge=0, le=6 * 60 * 60, allow_inf_nan=False)
-
-
-class LineTimeRequest(ContractModel):
-    lines: list[LineTimeUpdate] = Field(min_length=1, max_length=500)
-
-    @model_validator(mode="after")
-    def unique_indexes(self) -> "LineTimeRequest":
-        indexes = [line.index for line in self.lines]
-        if len(indexes) != len(set(indexes)):
-            raise ValueError("line indexes must be unique")
-        return self
 
 
 class SongDetail(SongSummary):

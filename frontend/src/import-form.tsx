@@ -94,7 +94,7 @@ function ImportForm({ onImported }: { onImported: (song: SongDetail) => void }) 
         </p>
       ) : null}
       {pending ? (
-        <p role="status">Importing and scanning the song for line times. The first scan can take a few minutes.</p>
+        <p role="status">Importing the song.</p>
       ) : null}
       <button type="submit" className="button-primary" disabled={pending}>
         {pending ? 'Importing…' : 'Import song'}
