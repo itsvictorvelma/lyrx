@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState, type KeyboardEvent } from 'react'
 import { ApiFailure, getSong } from './api.ts'
 import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
 import {
-  languageDirection,
   lyricProblem,
   readLayers,
   toggleLayer,
@@ -22,20 +21,8 @@ const COLUMNS: {
   text: (line: LyricLine) => string
 }[] = [
   { key: 'japanese', label: 'Original', lang: 'ja', className: 'lyric-original', text: (line) => line.originalText },
-  {
-    key: 'romaji',
-    label: 'Pronunciation (Romaji)',
-    lang: 'ja-Latn',
-    className: 'lyric-romaji',
-    text: (line) => line.pronunciationRomaji,
-  },
-  {
-    key: 'meaning',
-    label: 'Direct English',
-    lang: 'en',
-    className: 'lyric-meaning',
-    text: (line) => line.translationEnglish,
-  },
+  { key: 'romaji', label: 'Romaji', lang: 'ja-Latn', className: 'lyric-romaji', text: (line) => line.pronunciationRomaji },
+  { key: 'meaning', label: 'English', lang: 'en', className: 'lyric-meaning', text: (line) => line.translationEnglish },
 ]
 
 type LoadState =
@@ -48,6 +35,15 @@ export function LearnSong({ songId }: { songId: string }) {
   const [state, setState] = useState<LoadState>({ phase: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const [layers, setLayers] = useState<LayerVisibility>(() => readLayers(browserLayers()))
+  const [reading, setReading] = useState<LayerKey>('japanese')
+  const wide = useWideLayout()
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.reading = 'true'
+    return () => {
+      delete document.documentElement.dataset.reading
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -93,7 +89,7 @@ export function LearnSong({ songId }: { songId: string }) {
 
   const title =
     state.phase === 'ready' ? state.song.title : state.phase === 'loading' ? 'Loading song' : 'Song unavailable'
-  const visible = COLUMNS.filter((column) => layers[column.key])
+  const active = COLUMNS.find((column) => column.key === reading) ?? COLUMNS[0]
 
   return (
     <article className="learn">
@@ -118,30 +114,18 @@ export function LearnSong({ songId }: { songId: string }) {
       {state.phase === 'ready' ? (
         <>
           <p className="byline">{state.song.artist}</p>
-          <p className="song-meta">
-            {languageDirection(state.song.sourceLanguage, state.song.targetLanguage)}
-          </p>
-          <LayerToggles layers={layers} onToggle={changeLayer} />
-          <Player src={state.song.audioUrl} durationHint={state.song.durationSeconds} />
+          <div className="learn-tools">
+            <Player src={state.song.audioUrl} title={state.song.title} durationHint={state.song.durationSeconds} />
+            {!wide && !problem ? <LyricTabs active={active.key} onSelect={setReading} /> : null}
+          </div>
           {problem ? (
             <p className="notice" role="alert">
               These lyrics could not be shown.
             </p>
+          ) : wide ? (
+            <DesktopLyrics song={state.song} layers={layers} onToggle={changeLayer} />
           ) : (
-            <div className="lyric-sheet" tabIndex={0} aria-label="Lyrics">
-              {visible.map((pane) => (
-                <section key={pane.key} className="lyric-pane" lang={pane.lang} aria-labelledby={`pane-${pane.key}`}>
-                  <h2 id={`pane-${pane.key}`} className="lyric-pane-title">
-                    {pane.label}
-                  </h2>
-                  <div className={pane.className}>
-                    {state.song.lines.map((line) => (
-                      <p key={line.id}>{pane.text(line)}</p>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <LyricDocument column={active} lines={state.song.lines} labelledBy={`tab-${active.key}`} />
           )}
         </>
       ) : null}
@@ -149,35 +133,130 @@ export function LearnSong({ songId }: { songId: string }) {
   )
 }
 
-function LayerToggles({
+function DesktopLyrics({
+  song,
   layers,
   onToggle,
 }: {
+  song: SongDetail
   layers: LayerVisibility
   onToggle: (key: LayerKey) => void
 }) {
   const count = visibleLayerCount(layers)
   return (
-    <div className="layers" role="group" aria-label="Lyric panes">
-      <p id="layer-rule">At least one pane stays visible.</p>
-      {COLUMNS.map((pane) => {
-        const shown = layers[pane.key]
+    <div className="lyric-sheet">
+      <p id="layer-rule" className="sr-only">
+        At least one pane stays visible.
+      </p>
+      {COLUMNS.map((column) => {
+        const shown = layers[column.key]
+        return (
+          <section
+            key={column.key}
+            className={shown ? 'lyric-pane' : 'lyric-pane is-collapsed'}
+            aria-labelledby={`pane-${column.key}`}
+          >
+            <header className="lyric-pane-title">
+              <h2 id={`pane-${column.key}`}>{column.label}</h2>
+              <button
+                type="button"
+                className="pane-visibility"
+                aria-pressed={shown}
+                aria-label={`${shown ? 'Hide' : 'Show'} ${column.label}`}
+                aria-describedby={shown && count === 1 ? 'layer-rule' : undefined}
+                disabled={shown && count === 1}
+                onClick={() => onToggle(column.key)}
+              >
+                {shown ? 'Hide' : 'Show'}
+              </button>
+            </header>
+            {shown ? <LyricBody column={column} lines={song.lines} /> : null}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function LyricTabs({ active, onSelect }: { active: LayerKey; onSelect: (key: LayerKey) => void }) {
+  function move(event: KeyboardEvent<HTMLButtonElement>, key: LayerKey) {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+    event.preventDefault()
+    const index = COLUMNS.findIndex((column) => column.key === key)
+    const delta = event.key === 'ArrowRight' ? 1 : -1
+    const next = COLUMNS[(index + delta + COLUMNS.length) % COLUMNS.length]
+    if (!next) return
+    onSelect(next.key)
+    const id = `tab-${next.key}`
+    requestAnimationFrame(() => document.getElementById(id)?.focus())
+  }
+
+  return (
+    <div className="lyric-tabs" role="tablist" aria-label="Lyrics">
+      {COLUMNS.map((column) => {
+        const selected = column.key === active
         return (
           <button
-            key={pane.key}
+            key={column.key}
             type="button"
-            className="layer-toggle"
-            aria-pressed={shown}
-            aria-describedby="layer-rule"
-            disabled={shown && count === 1}
-            onClick={() => onToggle(pane.key)}
+            role="tab"
+            id={`tab-${column.key}`}
+            aria-selected={selected}
+            aria-controls={`panel-${column.key}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onSelect(column.key)}
+            onKeyDown={(event) => move(event, column.key)}
           >
-            {pane.label}
+            {column.label}
           </button>
         )
       })}
     </div>
   )
+}
+
+function LyricDocument({
+  column,
+  lines,
+  labelledBy,
+}: {
+  column: (typeof COLUMNS)[number]
+  lines: LyricLine[]
+  labelledBy: string
+}) {
+  return (
+    <section
+      className="lyric-document"
+      role="tabpanel"
+      id={`panel-${column.key}`}
+      aria-labelledby={labelledBy}
+    >
+      <h2 className="sr-only">{column.label}</h2>
+      <LyricBody column={column} lines={lines} />
+    </section>
+  )
+}
+
+function LyricBody({ column, lines }: { column: (typeof COLUMNS)[number]; lines: LyricLine[] }) {
+  return (
+    <div className={column.className} lang={column.lang}>
+      {lines.map((line) => (
+        <p key={line.id}>{column.text(line)}</p>
+      ))}
+    </div>
+  )
+}
+
+function useWideLayout(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 48rem)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 48rem)')
+    const update = () => setWide(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return wide
 }
 
 function browserLayers(): Storage | null {

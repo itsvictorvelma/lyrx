@@ -137,15 +137,13 @@ The page has three routes:
 | --- | --- |
 | `/` | Song Library. Each song is a link to Learn Song. |
 | `/import` | Import Song. The link and the form are included only in a development build. |
-| `/songs/:songId` | Learn Song. Original, pronunciation, and direct English as three documents, plus the player. |
+| `/songs/:songId` | Learn Song. Original, romaji, and English, plus the player. |
 
 `frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song starts with all three panes visible. The buttons are Original, Pronunciation (Romaji), and Direct English. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One pane always stays visible. Each pane is a document: a heading, then the lines in order, with no cells or per-line labels. On a wide window the visible panes share the width. On a narrow window they stay side by side and the sheet snaps sideways.
+Learn Song is a light reading page. It starts with all three documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Romaji, or English, and that heading holds Hide or Show. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One document always stays visible. There are no cells or per-line labels. On a narrow window the same three names are tabs, and one document is on screen.
 
-The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. The player does not mark a lyric line or move the page.
-
-On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll.
+The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it.
 
 The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
 

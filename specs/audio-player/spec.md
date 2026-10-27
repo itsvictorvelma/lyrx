@@ -89,13 +89,13 @@ No restart, next/previous track, loop, A/B loop, line seek, autoplay, auto-scrol
 
 ## Sticky responsive layout
 
-- Player remains reachable while lyrics scroll.
-- Wider screens: sticky below the application header.
-- Narrow screens: safe-area-aware sticky/fixed bottom presentation.
-- Reserve enough page space that the final lyric and focused controls are not covered.
-- At high zoom or narrow widths, controls may wrap/reflow while retaining order and operability.
+- The player is a compact bar: play/pause, back and forward 10 seconds, the song title, seek, elapsed time and duration, volume, mute, and playback rate.
+- Play, pause, and mute are icons. Their accessible names stay Play, Pause, Mute, and Unmute. The 10-second controls read −10 and +10, with the accessible names Back 10 seconds and Forward 10 seconds.
+- The bar stays under the application header at every width, in normal flow. Lyrics begin below it and the page scrolls underneath.
+- The final lyric and focused controls are not covered, because the bar is not a fixed bottom sheet.
+- At high zoom or narrow widths, controls may wrap while retaining order and operability.
 - No horizontal overflow.
-- Layer toggles and lyric reading order remain independent.
+- Layer visibility and lyric reading order remain independent.
 
 ## State model
 
@@ -185,8 +185,7 @@ Player failure must not crash or remove the lyric content.
 
 ### Responsive
 
-- Narrow safe-area bottom player
-- Wider sticky-below-header player
+- Narrow and wide: compact bar stuck under the header
 - Control wrapping at high zoom
 - Final lyric and focused content not obscured
 - No horizontal overflow

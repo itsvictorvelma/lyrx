@@ -5,9 +5,11 @@ const RATES = [0.75, 1, 1.25] as const
 
 export function Player({
   src,
+  title,
   durationHint,
 }: {
   src: string
+  title: string
   durationHint?: number | null
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -113,11 +115,11 @@ export function Player({
   }
 
   const shownDuration = duration ?? finiteTime(durationHint ?? Number.NaN)
-  const status = mediaError ?? notice ?? (duration == null ? 'Loading audio.' : '')
+  const status = mediaError ?? notice
   const audible = muted ? 0 : volume
 
   return (
-    <section className="player" aria-label="Audio player">
+    <section className="player" aria-label={`${title} audio player`}>
       <audio
         ref={audioRef}
         className="player-audio"
@@ -139,62 +141,105 @@ export function Player({
           setDuration(null)
         }}
       />
-      <div className="player-seek">
-        <span className="player-time">{formatTime(current)}</span>
-        <input
-          type="range"
-          min={0}
-          max={duration ?? 0}
-          step={0.1}
-          value={duration == null ? 0 : Math.min(current, duration)}
-          disabled={duration == null}
-          aria-label="Seek"
-          aria-valuetext={formatTime(current)}
-          onChange={(event) => seek(Number(event.currentTarget.value))}
-        />
-        <span className="player-time">{formatTime(shownDuration)}</span>
-      </div>
-      <div className="player-controls">
-        <button type="button" className="button-primary" onClick={() => void togglePlay()}>
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button type="button" onClick={() => skip(-10)} disabled={duration == null}>
-          Back 10 seconds
-        </button>
-        <button type="button" onClick={() => skip(10)} disabled={duration == null}>
-          Forward 10 seconds
-        </button>
-        <label className="volume">
-          <span>Volume</span>
+      <div className="player-main">
+        <div className="player-transport">
+          <button type="button" className="icon-button is-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => void togglePlay()}>
+            <Icon name={playing ? 'pause' : 'play'} />
+          </button>
+          <button type="button" className="skip-button" aria-label="Back 10 seconds" disabled={duration == null} onClick={() => skip(-10)}>
+            −10
+          </button>
+          <button type="button" className="skip-button" aria-label="Forward 10 seconds" disabled={duration == null} onClick={() => skip(10)}>
+            +10
+          </button>
+        </div>
+        <p className="player-title">{title}</p>
+        <div className="player-seek">
+          <span className="player-time">{formatTime(current)}</span>
           <input
             type="range"
             min={0}
-            max={1}
-            step={0.01}
-            value={audible}
-            aria-valuetext={`${Math.round(audible * 100)} percent`}
-            onChange={(event) => changeVolume(Number(event.currentTarget.value))}
+            max={duration ?? 0}
+            step={0.1}
+            value={duration == null ? 0 : Math.min(current, duration)}
+            disabled={duration == null}
+            aria-label="Seek"
+            aria-valuetext={formatTime(current)}
+            onChange={(event) => seek(Number(event.currentTarget.value))}
           />
-        </label>
-        <button type="button" aria-pressed={muted} onClick={toggleMute}>
-          {muted ? 'Unmute' : 'Mute'}
-        </button>
-        <div className="rates" role="group" aria-label="Playback rate">
-          {RATES.map((item) => (
-            <button key={item} type="button" aria-pressed={rate === item} onClick={() => chooseRate(item)}>
-              {item}×
-            </button>
-          ))}
+          <span className="player-time">{formatTime(shownDuration)}</span>
         </div>
-        {mediaError ? (
-          <button type="button" onClick={reload}>
-            Try again
+        <div className="player-mix">
+          <label className="volume">
+            <span className="sr-only">Volume</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={audible}
+              aria-label="Volume"
+              aria-valuetext={`${Math.round(audible * 100)} percent`}
+              onChange={(event) => changeVolume(Number(event.currentTarget.value))}
+            />
+          </label>
+          <button type="button" className="icon-button" aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>
+            <Icon name={muted ? 'muted' : 'volume'} />
           </button>
-        ) : null}
+          <div className="rates" role="group" aria-label="Playback rate">
+            {RATES.map((item) => (
+              <button key={item} type="button" className="rate" aria-pressed={rate === item} onClick={() => chooseRate(item)}>
+                {item}×
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <p className="player-status" role="status">
-        {status}
-      </p>
+      {status ? (
+        <div className="player-status" role="status">
+          <span>{status}</span>
+          {mediaError ? (
+            <button type="button" className="text-button" onClick={reload}>
+              Try again
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <p className="sr-only" role="status">
+          {duration == null ? 'Loading audio.' : ''}
+        </p>
+      )}
     </section>
+  )
+}
+
+function Icon({ name }: { name: 'play' | 'pause' | 'volume' | 'muted' }) {
+  if (name === 'play') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5.5v13l11-6.5L8 5.5z" fill="currentColor" />
+      </svg>
+    )
+  }
+  if (name === 'pause') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" fill="currentColor" />
+      </svg>
+    )
+  }
+  if (name === 'muted') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9.5h3.2L11 6v12l-3.8-3.5H4v-5z" fill="currentColor" />
+        <path d="m16 10 4 4m0-4-4 4" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9.5h3.2L11 6v12l-3.8-3.5H4v-5z" fill="currentColor" />
+      <path d="M15.5 9.2a3.6 3.6 0 0 1 0 5.6" fill="none" stroke="currentColor" strokeWidth="1.75" />
+    </svg>
   )
 }

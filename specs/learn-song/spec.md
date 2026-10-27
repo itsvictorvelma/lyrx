@@ -16,7 +16,7 @@ Dependencies:
 
 ## Goal
 
-Let a learner rehearse a Japanese song using one screen that combines audio with three lyric documents: Original, Pronunciation (Romaji), and Direct English.
+Let a learner rehearse a Japanese song using one light reading screen that combines audio with three lyric documents: Original, Romaji, and English.
 
 ## Route
 
@@ -49,40 +49,45 @@ Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or requi
 
 ## Layout
 
+The page uses the warm paper palette even when the system theme is dark. Surfaces stay quiet: no boxed lyric cards, row stripes, or heavy buttons.
+
 Order:
 
 1. Back link to Song Library
-2. Song title/artist and language direction
-3. Layer visibility controls
-4. [Sticky audio player](../audio-player/spec.md)
-5. Ordered lyric units
+2. Song title and artist
+3. [Compact sticky audio player](../audio-player/spec.md)
+4. Ordered lyric documents
 
-Each layer is one document pane, left to right:
+Each layer is one document, left to right:
 
-1. **Original** — visually primary, Japanese text
-2. **Pronunciation (Romaji)** — prominent pronunciation aid
-3. **Direct English** — visually secondary context
+1. **Original** — strongest, Japanese text
+2. **Romaji** — medium, pronunciation
+3. **English** — same reading size as romaji, slightly muted
 
-Lines stay in index order inside each pane. There are no cells, row stripes, or per-line labels. A narrow screen keeps the panes side by side and snaps sideways from one document to the next. A wide screen lets the visible panes share the row. Responsive design may change max width, padding, type scale, and sticky-player placement, but does not stack the three documents or reorder them.
+Lines stay in index order inside each document. There are no cells, row stripes, or per-line labels. A wide window shows the open documents side by side and the page scrolls once. A narrow window shows one document, chosen with Original, Romaji, and English tabs. Responsive design may change max width, padding, and type scale, but it does not reorder the documents.
 
 ## Layer visibility
 
-Controls:
+Wide-window controls live in the column headings:
 
 - Original
-- Pronunciation (Romaji)
-- Direct English
+- Romaji
+- English
+
+Each heading shows Hide when that document is open and Show when it is collapsed. A collapsed column keeps its heading so it can be opened again. The open documents share the row.
+
+Narrow-window controls are tabs with those same three names. One tab is selected, so one document is always on screen. Choosing a tab does not erase the wide-window choice.
 
 Rules:
 
 - All three are visible on first visit/default.
-- Toggle choice applies to every lyric unit.
-- At least one layer must remain visible.
+- The wide-window choice applies to every lyric unit.
+- At least one wide-window layer must remain visible.
 - Persist only in browser `sessionStorage`.
 - Storage is namespaced/versioned and validated on read.
 - Invalid/unavailable storage falls back to all visible.
 - Toggling does not alter source data, line order, scroll position, or player state.
-- The UI communicates hidden/visible state without color alone.
+- The UI communicates hidden/visible state without color alone. The button says Hide or Show.
 
 Recommended handling when one layer remains:
 
@@ -134,12 +139,12 @@ Recommended handling when one layer remains:
 ## Accessibility
 
 - Main heading includes song title.
-- Lyrics are three documents. Each pane has a heading: Original, Pronunciation (Romaji), or Direct English.
-- Hidden panes are omitted so the remaining documents share the width.
+- Lyrics are three documents. Visible headings and tabs read Original, Romaji, and English.
+- On a wide window, a hidden document collapses to its heading. The open documents share the width.
 - Japanese text uses Japanese language annotation.
-- English interface and Direct English use English annotation.
-- Romaji is labeled Pronunciation (Romaji), never just “English.” Direct English is the translation pane.
-- Toggle controls expose pressed state and have visible focus.
+- English interface text and the English document use English annotation.
+- Romaji is labeled Romaji. English is the translation document.
+- Hide, Show, and tab controls expose pressed or selected state and have visible focus.
 - Sticky player does not obscure focused lyric text at 200%/400% zoom.
 - Reading order is the first pane from top to bottom, then the next pane.
 - Typography and spacing remain legible for Japanese characters and Latin text.
@@ -147,11 +152,11 @@ Recommended handling when one layer remains:
 
 ## Responsive behavior
 
-- Narrow: safe-area-aware player placement; the panes stay side by side and the sheet snaps sideways.
-- Medium/wide: centered readable measure; the visible panes share the width.
-- Reserve/offset content space for the sticky player.
-- Long Japanese/romaji/meaning strings wrap rather than clip.
-- High zoom may scroll the lyric sheet sideways. The rest of the page does not gain a second horizontal scrollbar.
+- Narrow: Original, Romaji, and English tabs. One document is visible. The player stays under the header.
+- Medium/wide: centered readable measure. The open documents share the width and the page scrolls once. There is no nested lyric scrollbar.
+- The sticky player occupies space at the top, so it does not cover the lyrics.
+- Long Japanese, romaji, and English strings wrap rather than clip.
+- The page does not gain a horizontal scrollbar.
 - Toggling layers does not produce large unexpected layout/focus jumps.
 
 ## Security and privacy
@@ -167,7 +172,7 @@ Recommended handling when one layer remains:
 
 ### Unit/component
 
-- Correct pane order and exact labels
+- Correct document order and the labels Original, Romaji, and English
 - API order retained
 - Duplicate/non-monotonic/missing line rejection
 - Toggle each layer
@@ -195,7 +200,7 @@ Recommended handling when one layer remains:
 ### End-to-end
 
 1. Navigate from Song Library to Learn Song.
-2. Confirm all three panes are visible, in order, without a table grid.
+2. Confirm all three documents are visible, in order, without a table grid.
 3. Hide/show each layer and enforce at least one.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
@@ -216,7 +221,7 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 
 - A publishable song opens directly by URL without login.
 - Every imported line is shown once, in order, inside each visible pane.
-- Labels are exactly Original, Pronunciation (Romaji), and Direct English.
+- Labels are Original, Romaji, and English.
 - All three toggles work globally; at least one remains visible.
 - Toggle state survives within the browser session only.
 - Player remains reachable and independent of lyrics.
@@ -228,12 +233,12 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 ## Risks
 
 - Romaji appears to be an English translation.
-- A narrow layout stacks the three documents into one scrolling page.
+- A narrow layout squeezes three documents onto one screen.
 - Sticky player covers content/focus.
 - Session state creates a blank screen if all layers become hidden.
 - Malformed persisted/imported data silently misaligns meaning.
 
-Mitigate with exact labels/order, side-by-side panes at every width, offset/zoom tests, at-least-one invariant, and runtime contract validation.
+Mitigate with the labels Romaji and English, fixed order, tabs on a narrow window, offset/zoom tests, the at-least-one invariant, and runtime contract validation.
 
 ## Non-goals and deferred work
 

@@ -25,7 +25,7 @@ Prototype 1 uses “Akuma no Ko” by Ai Higuchi as the working song.
   1. Song Library
   2. Import Song, available only in local development
   3. Learn Song
-- Learn Song shows Original, Pronunciation (Romaji), and Direct English as three documents. There is no line timing, audio scan, current-line highlight, or tempo control.
+- Learn Song shows Original, Romaji, and English. A wide window reads them as three documents. A narrow window uses tabs. There is no line timing, audio scan, current-line highlight, or tempo control.
 
 Feature specifications:
 
@@ -37,19 +37,19 @@ Feature specifications:
 
 ## Non-negotiable user experience
 
-Each lyric layer is one document pane, in this left-to-right order, at every breakpoint:
+Each lyric layer is one document, in this left-to-right order:
 
-1. **Original**
-2. **Pronunciation (Romaji)**
-3. **Direct English**
+1. **Original** — Japanese
+2. **Romaji** — pronunciation, not a translation
+3. **English** — direct meaning
 
-Lines stay in order inside a pane. On a narrow screen the panes stay side by side and the sheet snaps sideways. On a wide screen the visible panes share the width.
+Lines stay in order inside a document. On a wide window the documents share one page scroll. Hide and show sit in each column heading, the open panes share the width, and at least one pane stays open. On a narrow window, Original, Romaji, and English are tabs, and one document is on screen.
 
-Pronunciation (Romaji) is reader-friendly Hepburn-style Latin spelling of Japanese sounds. It is not an English translation.
+Romaji is reader-friendly Hepburn-style Latin spelling of Japanese sounds.
 
-Learn Song has one global visibility toggle for each layer. All layers are visible initially. Toggle state lasts for the browser session, applies to every lyric unit, and must leave at least one layer visible.
+All three documents are open on a first visit. The wide-window choice lasts for the browser session, applies to every lyric unit, and must leave at least one document visible.
 
-The player stays reachable while lyrics scroll and contains only:
+The player is a compact bar stuck under the header while lyrics scroll. It contains only:
 
 - Play/pause
 - Continuous seek
@@ -220,8 +220,9 @@ Use dialect-portable SQLAlchemy types and constraints. Avoid SQLite-specific que
 ### Learn Song
 
 - Fetch Song detail.
-- Render Original, Pronunciation (Romaji), and Direct English as three documents.
-- Provide the three global layer toggles.
+- Render Original, Romaji, and English.
+- On a wide window, hide and show each document from its heading.
+- On a narrow window, switch documents with tabs.
 - Host the sticky player without coupling playback time to lyrics.
 - Preserve manual scroll and visibility state during player actions.
 - Provide loading, not-found, malformed-content, media-failure, and general request-failure states.
@@ -352,8 +353,8 @@ Prototype 1 is complete when:
 - A valid four-file bundle imports atomically in development.
 - Misaligned or invalid bundles are rejected with actionable errors and no partial state.
 - Song Library lists the approved imported song and routes to Learn Song.
-- Learn Song shows Original, Pronunciation (Romaji), and Direct English as side-by-side documents at every breakpoint.
-- Each layer can be hidden/shown globally, at least one remains visible, and state lasts for the session.
+- Learn Song shows Original, Romaji, and English. A wide window reads them side by side. A narrow window uses tabs.
+- On a wide window each layer can be hidden or shown, at least one remains visible, and that choice lasts for the session.
 - The sticky player supports the exact approved controls and remains accessible. Playback time does not highlight or scroll the lyrics.
 - The app has no login, loop, autoplay, line timing, audio scan, word-level timing, microphone, provider API, or public upload.
 - Production does not register Import Song or its mutation.
@@ -365,12 +366,12 @@ Prototype 1 is complete when:
 | Risk | Mitigation |
 |---|---|
 | Three files silently drift out of alignment | Strict line-count/index validation and three-layer preview. |
-| Romaji is mistaken for translation | Exact Pronunciation (Romaji) pane heading, fixed pane order, linguistic review. |
+| Romaji is mistaken for translation | The middle document is labeled Romaji, the English document is labeled English, and the order stays fixed. |
 | Sticky player obscures lyrics or focus | Safe-area-aware responsive layout and viewport/focus tests. |
 | Development import leaks into production | Compile/runtime route guard plus backend route absence test. |
 | SQLite assumptions block PostgreSQL | Dialect-portable SQLAlchemy, Alembic, external URL, regression suite. |
 | Browser media behavior varies | Standard MP3, user-gesture start, boundary and target-browser tests. |
-| A narrow screen crushes the three documents | Keep the panes side by side and snap the lyric sheet sideways. |
+| A narrow screen crushes the three documents | Narrow windows use Original, Romaji, and English tabs. |
 
 ## Explicitly deferred
 
