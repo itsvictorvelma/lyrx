@@ -63,31 +63,28 @@ test('playbackRate allows only the three rehearsal speeds', () => {
   assert.equal(playbackRate(2), null)
 })
 
-test('layer storage falls back when missing, invalid, or all hidden', () => {
+test('layer storage falls back when missing or invalid, and keeps an all-hidden choice', () => {
   assert.deepEqual(readLayers(null), ALL_LAYERS)
   assert.deepEqual(readLayers(memory()), ALL_LAYERS)
   assert.deepEqual(readLayers(memory({ [LAYER_STORAGE_KEY]: '{no' })), ALL_LAYERS)
   assert.deepEqual(readLayers(memory({ [LAYER_STORAGE_KEY]: '{"japanese":false}' })), ALL_LAYERS)
-  assert.deepEqual(
-    readLayers(memory({ [LAYER_STORAGE_KEY]: '{"japanese":false,"romaji":false,"meaning":false}' })),
-    ALL_LAYERS,
-  )
+  const none = { japanese: false, romaji: false, meaning: false }
+  assert.deepEqual(readLayers(memory({ [LAYER_STORAGE_KEY]: JSON.stringify(none) })), none)
   assert.deepEqual(
     readLayers(memory({ [LAYER_STORAGE_KEY]: '{"japanese":false,"romaji":true,"meaning":true}' })),
     { japanese: false, romaji: true, meaning: true },
   )
 })
 
-test('the last visible layer cannot be hidden', () => {
+test('any layer can be hidden, including the last one', () => {
   const store = memory()
   const hidden = toggleLayer(ALL_LAYERS, 'japanese')
   assert.deepEqual(hidden, { japanese: false, romaji: true, meaning: true })
-  assert.ok(hidden)
   writeLayers(store, hidden)
-  const one = toggleLayer({ japanese: false, romaji: false, meaning: true }, 'meaning')
-  assert.equal(one, null)
-  const shown = toggleLayer({ japanese: false, romaji: false, meaning: true }, 'romaji')
-  assert.deepEqual(shown, { japanese: false, romaji: true, meaning: true })
+  const none = toggleLayer({ japanese: false, romaji: false, meaning: true }, 'meaning')
+  assert.deepEqual(none, { japanese: false, romaji: false, meaning: false })
+  const shown = toggleLayer(none, 'romaji')
+  assert.deepEqual(shown, { japanese: false, romaji: true, meaning: false })
   assert.equal(store.getItem(LAYER_STORAGE_KEY), JSON.stringify(hidden))
 })
 

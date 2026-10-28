@@ -43,11 +43,11 @@ Each lyric layer is one document, in this left-to-right order:
 2. **Romaji** — pronunciation, not a translation
 3. **English** — direct meaning
 
-Lines stay in order inside a document. On a wide window the documents share one page scroll. Hide and show sit in each column heading, the open panes share the width, and at least one pane stays open. On a narrow window, Original, Romaji, and English are tabs, and one document is on screen.
+Lines stay in order inside a document. On a wide window the three columns keep their width and the page scrolls once. Hide and show sit in each column heading and fade that column's text only. On a narrow window, Original, Romaji, and English are tabs, and hiding text does not move the page.
 
 Romaji is reader-friendly Hepburn-style Latin spelling of Japanese sounds.
 
-All three documents are open on a first visit. The wide-window choice lasts for the browser session, applies to every lyric unit, and must leave at least one document visible.
+All three documents are open on a first visit. The choice lasts for the browser session and applies to every lyric unit. Any layer, including the last one, can be hidden.
 
 The player is a compact bar stuck under the header while lyrics scroll. It contains only:
 
@@ -354,7 +354,7 @@ Prototype 1 is complete when:
 - Misaligned or invalid bundles are rejected with actionable errors and no partial state.
 - Song Library lists the approved imported song and routes to Learn Song.
 - Learn Song shows Original, Romaji, and English. A wide window reads them side by side. A narrow window uses tabs.
-- On a wide window each layer can be hidden or shown, at least one remains visible, and that choice lasts for the session.
+- Each layer's text can be hidden or shown without moving the other columns, and that choice lasts for the session.
 - The sticky player supports the exact approved controls and remains accessible. Playback time does not highlight or scroll the lyrics.
 - The app has no login, loop, autoplay, line timing, audio scan, word-level timing, microphone, provider API, or public upload.
 - Production does not register Import Song or its mutation.

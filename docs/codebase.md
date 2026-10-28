@@ -143,7 +143,7 @@ The page has three routes:
 
 `frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song is a light reading page. It starts with all three documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Romaji, or English, and that heading holds Hide or Show. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One document always stays visible. There are no cells or per-line labels. On a narrow window the same three names are tabs, and one document is on screen.
+Learn Song is a light reading page. It starts with all three documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same three names are tabs, and hiding the text does not move the page.
 
 The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it.
 

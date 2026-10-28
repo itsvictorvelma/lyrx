@@ -74,24 +74,20 @@ Wide-window controls live in the column headings:
 - Romaji
 - English
 
-Each heading shows Hide when that document is open and Show when it is collapsed. A collapsed column keeps its heading so it can be opened again. The open documents share the row.
+Each heading shows Hide when that document's text is visible and Show when it is hidden. Hiding fades the text over about 200ms and leaves the column width, heading, and line positions unchanged. The other columns do not reflow. `prefers-reduced-motion` removes the fade. Hidden text is not selectable and is removed from the accessibility tree.
 
-Narrow-window controls are tabs with those same three names. One tab is selected, so one document is always on screen. Choosing a tab does not erase the wide-window choice.
+Narrow-window controls are tabs with those same three names, plus Hide or Show for the selected document. One tab is selected, so one document is on screen. Hiding its text does not change scroll position or layout. Choosing a tab does not erase another layer's visibility.
 
 Rules:
 
 - All three are visible on first visit/default.
-- The wide-window choice applies to every lyric unit.
-- At least one wide-window layer must remain visible.
+- The choice applies to every lyric unit.
+- Any layer can be hidden, including the last one.
 - Persist only in browser `sessionStorage`.
 - Storage is namespaced/versioned and validated on read.
 - Invalid/unavailable storage falls back to all visible.
-- Toggling does not alter source data, line order, scroll position, or player state.
-- The UI communicates hidden/visible state without color alone. The button says Hide or Show.
-
-Recommended handling when one layer remains:
-
-- Disable the final visible layer's “hide” action or reject it with an immediate accessible explanation.
+- Toggling does not alter source data, line order, scroll position, column geometry, or player state.
+- The button says Hide or Show, exposes `aria-pressed`, and has a visible keyboard focus style.
 
 ## Player relationship
 
@@ -140,7 +136,7 @@ Recommended handling when one layer remains:
 
 - Main heading includes song title.
 - Lyrics are three documents. Visible headings and tabs read Original, Romaji, and English.
-- On a wide window, a hidden document collapses to its heading. The open documents share the width.
+- On a wide window, hiding text does not collapse the column. The three columns keep their width.
 - Japanese text uses Japanese language annotation.
 - English interface text and the English document use English annotation.
 - Romaji is labeled Romaji. English is the translation document.
@@ -201,7 +197,7 @@ Recommended handling when one layer remains:
 
 1. Navigate from Song Library to Learn Song.
 2. Confirm all three documents are visible, in order, without a table grid.
-3. Hide/show each layer and enforce at least one.
+3. Hide/show each layer's text without moving the columns or the scroll position.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
 6. Exercise the player and confirm it does not highlight or scroll a line. There is no tempo control.
@@ -222,7 +218,7 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 - A publishable song opens directly by URL without login.
 - Every imported line is shown once, in order, inside each visible pane.
 - Labels are Original, Romaji, and English.
-- All three toggles work globally; at least one remains visible.
+- All three toggles hide or show text without reflow, including when every layer is hidden.
 - Toggle state survives within the browser session only.
 - Player remains reachable and independent of lyrics.
 - Manual scroll survives player actions.
@@ -235,10 +231,10 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 - Romaji appears to be an English translation.
 - A narrow layout squeezes three documents onto one screen.
 - Sticky player covers content/focus.
-- Session state creates a blank screen if all layers become hidden.
+- Hiding a layer shifts the other columns or the scroll position.
 - Malformed persisted/imported data silently misaligns meaning.
 
-Mitigate with the labels Romaji and English, fixed order, tabs on a narrow window, offset/zoom tests, the at-least-one invariant, and runtime contract validation.
+Mitigate with the labels Romaji and English, fixed order, tabs on a narrow window, offset/zoom tests, fixed column geometry when text is hidden, and runtime contract validation.
 
 ## Non-goals and deferred work
 

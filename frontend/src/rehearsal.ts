@@ -65,10 +65,6 @@ export function playbackRate(value: number): 0.75 | 1 | 1.25 | null {
   return null
 }
 
-export function visibleLayerCount(layers: LayerVisibility): number {
-  return Number(layers.japanese) + Number(layers.romaji) + Number(layers.meaning)
-}
-
 export function readLayers(storage: KeyValueStore | null): LayerVisibility {
   if (!storage) return { ...ALL_LAYERS }
   try {
@@ -76,7 +72,6 @@ export function readLayers(storage: KeyValueStore | null): LayerVisibility {
     if (!raw) return { ...ALL_LAYERS }
     const parsed: unknown = JSON.parse(raw)
     if (!isLayerVisibility(parsed)) return { ...ALL_LAYERS }
-    if (visibleLayerCount(parsed) === 0) return { ...ALL_LAYERS }
     return parsed
   } catch {
     return { ...ALL_LAYERS }
@@ -91,10 +86,8 @@ export function writeLayers(storage: KeyValueStore, value: LayerVisibility): voi
   }
 }
 
-export function toggleLayer(current: LayerVisibility, key: LayerKey): LayerVisibility | null {
-  const next = { ...current, [key]: !current[key] }
-  if (visibleLayerCount(next) === 0) return null
-  return next
+export function toggleLayer(current: LayerVisibility, key: LayerKey): LayerVisibility {
+  return { ...current, [key]: !current[key] }
 }
 
 export function lyricProblem(lines: LyricLine[]): LyricProblem | null {

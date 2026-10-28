@@ -7,7 +7,6 @@ import {
   lyricProblem,
   readLayers,
   toggleLayer,
-  visibleLayerCount,
   writeLayers,
   type LayerKey,
   type LayerVisibility,
@@ -76,7 +75,6 @@ export function LearnSong({ songId }: { songId: string }) {
 
   function changeLayer(key: LayerKey) {
     const next = toggleLayer(layers, key)
-    if (!next) return
     setLayers(next)
     const storage = browserLayers()
     if (storage) writeLayers(storage, next)
@@ -116,7 +114,12 @@ export function LearnSong({ songId }: { songId: string }) {
           <p className="byline">{state.song.artist}</p>
           <div className="learn-tools">
             <Player src={state.song.audioUrl} title={state.song.title} durationHint={state.song.durationSeconds} />
-            {!wide && !problem ? <LyricTabs active={active.key} onSelect={setReading} /> : null}
+            {!wide && !problem ? (
+              <div className="lyric-switch">
+                <LyricTabs active={active.key} onSelect={setReading} />
+                <LayerToggle label={active.label} shown={layers[active.key]} onToggle={() => changeLayer(active.key)} />
+              </div>
+            ) : null}
           </div>
           {problem ? (
             <p className="notice" role="alert">
@@ -125,7 +128,12 @@ export function LearnSong({ songId }: { songId: string }) {
           ) : wide ? (
             <DesktopLyrics song={state.song} layers={layers} onToggle={changeLayer} />
           ) : (
-            <LyricDocument column={active} lines={state.song.lines} labelledBy={`tab-${active.key}`} />
+            <LyricDocument
+              column={active}
+              lines={state.song.lines}
+              labelledBy={`tab-${active.key}`}
+              shown={layers[active.key]}
+            />
           )}
         </>
       ) : null}
@@ -142,39 +150,35 @@ function DesktopLyrics({
   layers: LayerVisibility
   onToggle: (key: LayerKey) => void
 }) {
-  const count = visibleLayerCount(layers)
   return (
     <div className="lyric-sheet">
-      <p id="layer-rule" className="sr-only">
-        At least one pane stays visible.
-      </p>
       {COLUMNS.map((column) => {
         const shown = layers[column.key]
         return (
-          <section
-            key={column.key}
-            className={shown ? 'lyric-pane' : 'lyric-pane is-collapsed'}
-            aria-labelledby={`pane-${column.key}`}
-          >
+          <section key={column.key} className="lyric-pane" aria-labelledby={`pane-${column.key}`}>
             <header className="lyric-pane-title">
               <h2 id={`pane-${column.key}`}>{column.label}</h2>
-              <button
-                type="button"
-                className="pane-visibility"
-                aria-pressed={shown}
-                aria-label={`${shown ? 'Hide' : 'Show'} ${column.label}`}
-                aria-describedby={shown && count === 1 ? 'layer-rule' : undefined}
-                disabled={shown && count === 1}
-                onClick={() => onToggle(column.key)}
-              >
-                {shown ? 'Hide' : 'Show'}
-              </button>
+              <LayerToggle label={column.label} shown={shown} onToggle={() => onToggle(column.key)} />
             </header>
-            {shown ? <LyricBody column={column} lines={song.lines} /> : null}
+            <LyricBody column={column} lines={song.lines} shown={shown} />
           </section>
         )
       })}
     </div>
+  )
+}
+
+function LayerToggle({ label, shown, onToggle }: { label: string; shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="pane-visibility"
+      aria-pressed={shown}
+      aria-label={`${shown ? 'Hide' : 'Show'} ${label}`}
+      onClick={onToggle}
+    >
+      {shown ? 'Hide' : 'Show'}
+    </button>
   )
 }
 
@@ -219,27 +223,32 @@ function LyricDocument({
   column,
   lines,
   labelledBy,
+  shown,
 }: {
   column: (typeof COLUMNS)[number]
   lines: LyricLine[]
   labelledBy: string
+  shown: boolean
 }) {
   return (
-    <section
-      className="lyric-document"
-      role="tabpanel"
-      id={`panel-${column.key}`}
-      aria-labelledby={labelledBy}
-    >
+    <section className="lyric-document" role="tabpanel" id={`panel-${column.key}`} aria-labelledby={labelledBy}>
       <h2 className="sr-only">{column.label}</h2>
-      <LyricBody column={column} lines={lines} />
+      <LyricBody column={column} lines={lines} shown={shown} />
     </section>
   )
 }
 
-function LyricBody({ column, lines }: { column: (typeof COLUMNS)[number]; lines: LyricLine[] }) {
+function LyricBody({
+  column,
+  lines,
+  shown,
+}: {
+  column: (typeof COLUMNS)[number]
+  lines: LyricLine[]
+  shown: boolean
+}) {
   return (
-    <div className={column.className} lang={column.lang}>
+    <div className={shown ? column.className : `${column.className} is-hidden`} lang={column.lang} aria-hidden={shown ? undefined : true}>
       {lines.map((line) => (
         <p key={line.id}>{column.text(line)}</p>
       ))}
