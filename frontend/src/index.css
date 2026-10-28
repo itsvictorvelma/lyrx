@@ -23,6 +23,7 @@
   --text-reading: 1.5rem;
   --text-xl: 2rem;
   --radius: 4px;
+  --page-gutter: var(--space-4);
   --measure: 76rem;
 }
 
@@ -161,7 +162,7 @@ input[type='range'] {
 main {
   width: min(100%, var(--measure));
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-7);
+  padding: var(--space-6) var(--page-gutter) var(--space-7);
 }
 
 .lede,
@@ -267,14 +268,14 @@ label:has(input[type='checkbox']) {
   top: var(--header-height);
   z-index: 2;
   margin-top: var(--space-5);
-  margin-inline: calc(var(--space-4) * -1);
+  margin-inline: calc(var(--page-gutter) * -1);
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
 
 .player {
   position: relative;
-  padding: var(--space-2) var(--space-4) 0;
+  padding: var(--space-2) var(--page-gutter) 0;
 }
 
 .sr-only {
@@ -416,7 +417,7 @@ label:has(input[type='checkbox']) {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-right: var(--space-4);
+  padding-right: var(--page-gutter);
   border-top: 1px solid var(--line);
 }
 
@@ -425,7 +426,7 @@ label:has(input[type='checkbox']) {
   flex: 1;
   gap: var(--space-4);
   min-width: 0;
-  padding: 0 var(--space-4);
+  padding: 0 var(--page-gutter);
 }
 
 .lyric-tabs button {
@@ -577,7 +578,26 @@ label:has(input[type='checkbox']) {
 
 @media (min-width: 48rem) {
   :root {
+    --measure: 100rem;
+    --page-gutter: clamp(1.25rem, 1.5vw, 2.5rem);
     --tools-height: 3.6875rem;
+  }
+
+  .lyric-sheet {
+    gap: var(--space-4);
+  }
+
+  .lyric-pane + .lyric-pane {
+    padding-left: var(--space-4);
+  }
+
+  .lyric-original {
+    font-size: 1.375rem;
+  }
+
+  .lyric-romaji,
+  .lyric-meaning {
+    font-size: 1.125rem;
   }
 
   .player-main {
