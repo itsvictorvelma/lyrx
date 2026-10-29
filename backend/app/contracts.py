@@ -51,6 +51,10 @@ class ErrorResponse(ContractModel):
     requestId: str | None = None
 
 
+class HealthResponse(ContractModel):
+    status: Literal["ok"]
+
+
 class SongSummary(ContractModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)

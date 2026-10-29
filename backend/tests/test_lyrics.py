@@ -1,6 +1,6 @@
 import pytest
 
-from app.errors import ApiError
+from app.errors import DomainError
 from app.lyrics import align_lyrics, decode_lyric_file
 
 
@@ -17,14 +17,14 @@ def test_decode_strips_bom_and_normalizes_newlines() -> None:
 
 
 def test_align_lyrics_reports_each_line_count() -> None:
-    with pytest.raises(ApiError, match="original.txt has 2") as error:
+    with pytest.raises(DomainError, match="original.txt has 2") as error:
         align_lyrics("雨\n空\n", "ame\n", "rain\nsky\n")
 
     assert error.value.code == "line_count_mismatch"
 
 
 def test_align_lyrics_rejects_a_partial_blank_row() -> None:
-    with pytest.raises(ApiError, match="Row 2") as error:
+    with pytest.raises(DomainError, match="Row 2") as error:
         align_lyrics("雨\n\n", "ame\nsora\n", "rain\nsky\n")
 
     assert error.value.code == "partial_blank_row"

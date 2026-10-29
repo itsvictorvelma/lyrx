@@ -1,20 +1,13 @@
-"""API errors returned to the browser.
+"""Failures raised by song rules.
 
-The response has a code and a message. It does not include file paths or secrets.
+The HTTP status is chosen later, when the response is built.
 """
 
 from app.contracts import ErrorDetail
 
 
-class ApiError(Exception):
-    def __init__(
-        self,
-        status_code: int,
-        code: str,
-        message: str,
-        details: list[ErrorDetail] | None = None,
-    ) -> None:
-        self.status_code = status_code
+class DomainError(Exception):
+    def __init__(self, code: str, message: str, details: list[ErrorDetail] | None = None) -> None:
         self.code = code
         self.message = message
         self.details = details

@@ -86,13 +86,15 @@ An error has:
 - `code` — a short stable name for the error
 - `message` — a safe sentence for a person
 - `details` — optional list of `field`, `file`, and `line`
-- `requestId` — optional trace id
+- `requestId` — a trace id on every error response
+
+Invalid form fields and unexpected failures use this same shape. The message does not include a file path or lyric text. When saved lyrics cannot be read, the API logs the song id and content version.
 
 The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a field, change both files in the same commit.
 
 ### Routes
 
-`backend/app/main.py` creates the API.
+`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Song reads and import rules live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
 
 | Route | When it exists | What it does now |
 | --- | --- | --- |
@@ -101,7 +103,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
 | `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3` |
 
-In production, `/api/import` is not registered. A request gets the normal not-found response.
+In production, `/api/import` is not registered. A request gets the error shape with code `not_found`.
 
 Development requests may come from `http://localhost:5173`. Production does not add that browser permission.
 
@@ -170,6 +172,7 @@ The tests check:
 - A valid import can be read back from the song list and song detail.
 - The same import does not create a second copy.
 - A mismatched lyric file does not save a song or an audio file.
+- Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
 
 The frontend checks are:
 

@@ -5,7 +5,7 @@ Alembic creates and changes the tables. Do not call Base.metadata.create_all.
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import Pool
 
 
@@ -30,3 +30,8 @@ def make_engine(database_url: str, poolclass: type[Pool] | None = None) -> Engin
             cursor.close()
 
     return engine
+
+
+def open_database(database_url: str) -> tuple[Engine, sessionmaker[Session]]:
+    engine = make_engine(database_url)
+    return engine, sessionmaker(bind=engine)

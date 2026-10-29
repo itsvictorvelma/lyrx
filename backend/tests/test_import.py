@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from alembic import command
@@ -6,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
-from app.importer import song_id_from_title
+from app.services.imports import song_id_from_title
 from app.main import create_app
 from app.models import LyricVersion, Track
 from tests.test_app import settings
@@ -152,7 +153,54 @@ def test_stored_line_times_are_not_returned(tmp_path: Path) -> None:
 
 
 def test_missing_song_is_a_safe_error(tmp_path: Path) -> None:
-    response = TestClient(app_for(tmp_path)).get("/api/songs/missing")
+    response = TestClient(app_for(tmp_path)).get("/api/songs/missing", headers={"X-Request-ID": "trace-1"})
 
     assert response.status_code == 404
     assert response.json()["code"] == "song_not_found"
+    assert response.json()["requestId"] == "trace-1"
+    assert response.headers["x-request-id"] == "trace-1"
+
+
+def test_request_id_header_must_be_a_token(tmp_path: Path) -> None:
+    response = TestClient(app_for(tmp_path)).get("/api/songs/missing", headers={"X-Request-ID": "bad id"})
+
+    assert " " not in response.json()["requestId"]
+
+
+def test_invalid_form_uses_the_error_envelope(tmp_path: Path) -> None:
+    response = TestClient(app_for(tmp_path)).post("/api/import", headers={"X-Request-ID": "trace-1"})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["code"] == "validation_error"
+    assert body["message"] == "The request is invalid."
+    assert body["requestId"] == "trace-1"
+    assert "title" in {detail["field"] for detail in body["details"]}
+
+
+def test_unreadable_stored_lyrics_are_a_safe_error(tmp_path: Path, caplog) -> None:
+    application = app_for(tmp_path)
+    client = TestClient(application)
+    created = client.post("/api/import", data=fields(), files=bundle())
+    assert created.status_code == 201
+
+    session = sessionmaker(bind=application.state.engine)()
+    version = session.scalar(select(LyricVersion))
+    assert version is not None
+    version.lines_json = "not-json"
+    session.commit()
+    session.close()
+
+    song_log = logging.getLogger("app.services.songs")
+    song_log.addHandler(caplog.handler)
+    try:
+        with caplog.at_level("WARNING", logger="app.services.songs"):
+            song = client.get("/api/songs/ame")
+    finally:
+        song_log.removeHandler(caplog.handler)
+
+    assert song.status_code == 500
+    assert song.json()["code"] == "invalid_song"
+    assert "not-json" not in song.json()["message"]
+    assert any(getattr(record, "song_id", None) == "ame" for record in caplog.records)
+    assert all("not-json" not in record.getMessage() for record in caplog.records)
