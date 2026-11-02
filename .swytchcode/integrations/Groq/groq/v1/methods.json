@@ -1,0 +1,104 @@
+{
+  "methods": [
+    {
+      "method_uuid": "",
+      "method_name": "Cancel a batch job",
+      "canonical_id": "groq.batche.cancel"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Convert text into natural-sounding speech",
+      "canonical_id": "groq.audio.speech.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Create a chat completion using the OpenAI API",
+      "canonical_id": "groq.chat.completions.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Create a new batch of OpenAI requests",
+      "canonical_id": "groq.batche.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Create a new fine-tuning job",
+      "canonical_id": "groq.fine_tuning.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Delete a fine tuning job by its ID",
+      "canonical_id": "groq.fine_tuning.delete"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Delete a specific file by its ID",
+      "canonical_id": "groq.file.delete"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Download content for a specific file",
+      "canonical_id": "groq.file.content.get"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Generate a text response based on a prompt",
+      "canonical_id": "groq.respons.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Get a specific file by its ID",
+      "canonical_id": "groq.file.get"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Get details for a specific AI model",
+      "canonical_id": "groq.model.get"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Get details for a specific batch",
+      "canonical_id": "groq.batche.get"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "List all available files",
+      "canonical_id": "groq.file.list"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "List all batches",
+      "canonical_id": "groq.batche.list"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "List available AI models",
+      "canonical_id": "groq.model.list"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "List available fine-tuning jobs",
+      "canonical_id": "groq.fine_tuning.list"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Retrieve details for a specific fine tuning job",
+      "canonical_id": "groq.fine_tuning.get"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Transcribe audio into text",
+      "canonical_id": "groq.audio.transcriptions.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Translate audio into English",
+      "canonical_id": "groq.audio.translations.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "Upload a file for use with the OpenAI API",
+      "canonical_id": "groq.file.create"
+    }
+  ]
+}

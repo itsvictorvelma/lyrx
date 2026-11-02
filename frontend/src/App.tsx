@@ -1,4 +1,4 @@
-import { ImportPage } from './import-form.tsx'
+import { NewSong } from './new-song.tsx'
 import { LearnSong } from './learn.tsx'
 import { Library } from './library.tsx'
 import { Link } from './link.tsx'
@@ -16,7 +16,7 @@ export default function App() {
       </header>
       <main>
         {route.name === 'library' ? <Library /> : null}
-        {route.name === 'import' ? <ImportPage /> : null}
+        {route.name === 'new' ? <NewSong /> : null}
         {route.name === 'song' ? <LearnSong key={route.songId} songId={route.songId} /> : null}
         {route.name === 'missing' ? <MissingPage /> : null}
       </main>

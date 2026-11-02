@@ -28,7 +28,7 @@ class SongService:
 
     def get_song(self, song_id: str, media_base_url: str) -> SongDetail:
         found = self._repo.published_song(song_id)
-        if found is None or not found[0].media_key:
+        if found is None:
             raise DomainError("song_not_found", "That song is not available.")
         track, version = found
         try:
@@ -64,7 +64,9 @@ def _detail(
     lines: list[LyricLine],
     media_base_url: str,
 ) -> SongDetail:
-    media_name = Path(track.media_key or "").name
+    audio_url = None
+    if track.media_key:
+        audio_url = f"{media_base_url.rstrip('/')}/{Path(track.media_key).name}"
     return SongDetail(
         id=track.id,
         title=track.title,
@@ -73,7 +75,7 @@ def _detail(
         targetLanguage=track.target_language,
         durationSeconds=track.duration_seconds,
         status="published",
-        audioUrl=f"{media_base_url.rstrip('/')}/{media_name}",
+        audioUrl=audio_url,
         contentVersion=version.content_version,
         lines=lines,
     )

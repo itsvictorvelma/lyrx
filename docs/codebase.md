@@ -2,7 +2,7 @@
 
 This page describes the code that exists today. It is the map for anyone opening the project.
 
-The long-term product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built.
+The product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built. Measured Groq token numbers are in [benchmarks/groq-token-usage.md](../benchmarks/groq-token-usage.md).
 
 ## The short version
 
@@ -11,7 +11,7 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 Today there are two small programs:
 
 - `backend/` is the API. It stores songs and serves the audio.
-- `frontend/` is the web page. It has Song Library, a development import screen, and Learn Song.
+- `frontend/` is the web page. It has Song Library, New song, and Learn Song.
 
 ## Backend
 
@@ -38,12 +38,7 @@ Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 Copy `backend/.env.example` to `backend/.env` before starting the API. The example file lists every setting.
 
-Two rules are enforced in code:
-
-1. Production cannot turn song import on. If `ENVIRONMENT` is `production` and `IMPORT_ENABLED` is `true`, the API refuses to start.
-2. Audio files and temporary uploads must be different folders.
-
-Import stays off unless you are in development and you set `IMPORT_ENABLED=true`.
+One rule is enforced in code: audio files and temporary uploads must be different folders. `GROQ_MODEL` selects the lyric model. The Groq key is not in this file. It stays in the Swytchcode connection.
 
 ### Song and error shapes
 
@@ -61,7 +56,7 @@ A song summary has:
 
 A full song has everything in the summary, plus:
 
-- `audioUrl`
+- `audioUrl`, which is left out until an MP3 is attached
 - `contentVersion`
 - `lines`
 
@@ -70,6 +65,7 @@ Each lyric line has:
 - `id`
 - `index`
 - `originalText` — Japanese
+- `readingHiragana` — full hiragana reading
 - `pronunciationRomaji` — pronunciation, not an English translation
 - `translationEnglish` — direct English meaning
 
@@ -94,16 +90,18 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 
 ### Routes
 
-`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Song reads and import rules live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
+`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Song reads, lyric generation, and MP3 attach live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
 
 | Route | When it exists | What it does now |
 | --- | --- | --- |
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
-| `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
-| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3` |
+| `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
+| `POST /api/generations` | Always | Asks Groq for Original, Hiragana, Romaji, and English. Does not save the song |
+| `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
+| `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
-In production, `/api/import` is not registered. A request gets the error shape with code `not_found`.
+`POST /api/import` is not registered. A request gets the error shape with code `not_found`.
 
 Development requests may come from `http://localhost:5173`. Production does not add that browser permission.
 
@@ -139,17 +137,15 @@ The page has three routes:
 
 | Route | What it shows |
 | --- | --- |
-| `/` | Song Library. Each song is a link to Learn Song. |
-| `/import` | Import Song. The link and the form are included only in a development build. |
-| `/songs/:songId` | Learn Song. Original, romaji, and English, plus the player. |
+| `/` | Song Library. Each song is a link to Learn Song. New song starts a chat. |
+| `/songs/new` | Ask for lyrics, read the four documents, and save. |
+| `/songs/:songId` | Learn Song. Original, Hiragana, Romaji, and English, plus the player and MP3 attach. |
 
-`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
+`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song is a light reading page. It starts with all three documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same three names are tabs, and hiding the text does not move the page.
+Learn Song is a light reading page. It starts with all four documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
 
-The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it.
-
-The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
+The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it. With no MP3, the bar says that no audio is attached.
 
 Colors, type, and spacing live as variables at the top of `frontend/src/index.css`.
 
@@ -166,12 +162,13 @@ The tests check:
 - A valid song is accepted.
 - Timing fields, including `startSeconds`, are rejected. A stored line that still has `startSeconds` is returned without it.
 - Line numbers must start at 0 and have no gaps.
-- Production cannot expose song import.
+- Production does not register `POST /api/import`.
 - The migration creates the two song tables and can remove them again.
 - Starting the API does not create a database file.
-- A valid import can be read back from the song list and song detail.
-- The same import does not create a second copy.
-- A mismatched lyric file does not save a song or an audio file.
+- A saved lyric draft can be read back from the song list and song detail before an MP3 is attached.
+- Saving the same title again creates another song.
+- An unreadable MP3 does not store an audio file.
+- A generation test uses a stand-in client and does not call Groq.
 - Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
 
 The frontend checks are:

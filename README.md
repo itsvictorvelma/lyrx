@@ -1,8 +1,8 @@
 # Lyrx Prototype 1
 
-Lyrx helps a learner rehearse a Japanese song with audio, romaji pronunciation, and direct English meaning.
+Lyrx helps a learner rehearse a Japanese song in one place: Original, Hiragana, Romaji, and English, plus an MP3 the learner attaches.
 
-Read [How the code fits together](docs/codebase.md) for the code that exists today. The [Prototype 1 build plan](AGENTS.md) and [`specs/`](specs/) describe the product that still needs to be built.
+Read [How the code fits together](docs/codebase.md) for the code that exists today. The [Prototype 1 build plan](AGENTS.md) and [`specs/`](specs/) are the product. Measured limits, including Groq token usage, are in [`benchmarks/`](benchmarks/).
 
 ## Local development
 

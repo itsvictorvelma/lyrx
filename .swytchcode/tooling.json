@@ -1,0 +1,97 @@
+{
+  "editor": "cursor",
+  "integrations": {
+    "Groq.groq": {
+      "version": "v1"
+    }
+  },
+  "mode": "production",
+  "tools": {
+    "groq.chat.completions.create": {
+      "desc": "",
+      "inputs": [
+        {
+          "body": {
+            "CONTENT_TYPE": "application/json",
+            "LOCATION": "body",
+            "REQUIRED": true,
+            "TYPE": "OBJECT",
+            "schema": {
+              "properties": {
+                "documents": {
+                  "required": false,
+                  "type": "[]ANY"
+                },
+                "max_completion_tokens": {
+                  "required": false,
+                  "type": "integer"
+                },
+                "messages": {
+                  "required": true,
+                  "type": "[]ANY"
+                },
+                "model": {
+                  "required": true,
+                  "type": "string"
+                },
+                "reasoning_format": {
+                  "required": false,
+                  "type": "string"
+                },
+                "response_format": {
+                  "required": false,
+                  "type": "map[STRING]ANY"
+                },
+                "search_settings": {
+                  "required": false,
+                  "type": "map[STRING]ANY"
+                },
+                "service_tier": {
+                  "required": false,
+                  "type": "string"
+                },
+                "stream": {
+                  "required": false,
+                  "type": "boolean"
+                },
+                "temperature": {
+                  "required": false,
+                  "type": "FLOAT"
+                },
+                "tool_choice": {
+                  "properties": {
+                    "value": {
+                      "required": false,
+                      "type": "any"
+                    }
+                  },
+                  "type": "object"
+                },
+                "tools": {
+                  "required": false,
+                  "type": "[]ANY"
+                }
+              },
+              "required": [
+                "model",
+                "messages"
+              ]
+            }
+          }
+        }
+      ],
+      "integration": "Groq.groq@v1",
+      "method_hash": "3551df7c14e2223404f4549b081cca6620d2e996393656dedca44a3f04abe3af",
+      "output": {
+        "schema": {
+          "type": "map[STRING]ANY"
+        },
+        "status": 200
+      },
+      "summary": "Create chat completion",
+      "type": "method"
+    }
+  },
+  "version": "2.25.1",
+  "workspace": "lyrx"
+}

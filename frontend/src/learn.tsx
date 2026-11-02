@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useState, type KeyboardEvent } from 'react'
+import { AudioAttach } from './audio-form.tsx'
 import { ApiFailure, getSong } from './api.ts'
+import { COLUMNS } from './columns.ts'
 import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
@@ -11,18 +13,6 @@ import {
   type LayerKey,
   type LayerVisibility,
 } from './rehearsal.ts'
-
-const COLUMNS: {
-  key: LayerKey
-  label: string
-  lang: string
-  className: string
-  text: (line: LyricLine) => string
-}[] = [
-  { key: 'japanese', label: 'Original', lang: 'ja', className: 'lyric-original', text: (line) => line.originalText },
-  { key: 'romaji', label: 'Romaji', lang: 'ja-Latn', className: 'lyric-romaji', text: (line) => line.pronunciationRomaji },
-  { key: 'meaning', label: 'English', lang: 'en', className: 'lyric-meaning', text: (line) => line.translationEnglish },
-]
 
 type LoadState =
   | { phase: 'loading' }
@@ -114,6 +104,7 @@ export function LearnSong({ songId }: { songId: string }) {
           <p className="byline">{state.song.artist}</p>
           <div className="learn-tools">
             <Player src={state.song.audioUrl} title={state.song.title} durationHint={state.song.durationSeconds} />
+            <AudioAttach songId={songId} hasAudio={Boolean(state.song.audioUrl)} onAttached={retry} />
             {!wide && !problem ? (
               <div className="lyric-switch">
                 <LyricTabs active={active.key} onSelect={setReading} />

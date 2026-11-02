@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 export type Route =
   | { name: 'library' }
-  | { name: 'import' }
+  | { name: 'new' }
   | { name: 'song'; songId: string }
   | { name: 'missing' }
 
@@ -12,7 +12,7 @@ export function songHref(songId: string): string {
 
 export function parseRoute(path: string): Route {
   if (path === '/') return { name: 'library' }
-  if (path === '/import') return { name: 'import' }
+  if (path === '/songs/new') return { name: 'new' }
   const match = /^\/songs\/([^/]+)$/.exec(path)
   if (match?.[1]) return { name: 'song', songId: decodeURIComponent(match[1]) }
   return { name: 'missing' }

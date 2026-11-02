@@ -69,12 +69,38 @@ class LyricLine(ContractModel):
     id: str = Field(min_length=1)
     index: int = Field(ge=0)
     originalText: str = Field(min_length=1)
+    readingHiragana: str = Field(min_length=1)
     pronunciationRomaji: str = Field(min_length=1)
     translationEnglish: str = Field(min_length=1)
 
 
+class DraftLine(ContractModel):
+    originalText: str = Field(min_length=1)
+    readingHiragana: str = Field(min_length=1)
+    pronunciationRomaji: str = Field(min_length=1)
+    translationEnglish: str = Field(min_length=1)
+
+
+class LyricDraft(ContractModel):
+    title: str = Field(min_length=1)
+    artist: str = Field(min_length=1)
+    sourceLanguage: Literal["ja"] = "ja"
+    targetLanguage: Literal["en"] = "en"
+    lines: list[DraftLine] = Field(min_length=1)
+
+
+class GenerationRequest(ContractModel):
+    message: str = Field(min_length=1, max_length=2_000)
+    draft: LyricDraft | None = None
+
+
+class GenerationResponse(ContractModel):
+    message: str = Field(min_length=1)
+    draft: LyricDraft
+
+
 class SongDetail(SongSummary):
-    audioUrl: str = Field(min_length=1)
+    audioUrl: str | None = None
     contentVersion: str = Field(min_length=1)
     lines: list[LyricLine]
 

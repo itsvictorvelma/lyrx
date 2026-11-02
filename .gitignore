@@ -28,3 +28,5 @@ uploads/
 
 # macOS
 .DS_Store
+
+.swytchcode/workspace.json

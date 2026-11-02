@@ -115,7 +115,8 @@ button:disabled {
   font-weight: 650;
 }
 
-input:not([type='checkbox']):not([type='file']):not([type='range']) {
+input:not([type='checkbox']):not([type='file']):not([type='range']),
+textarea {
   width: 100%;
   min-height: 2.75rem;
   padding: var(--space-2) var(--space-3);
@@ -518,6 +519,7 @@ label:has(input[type='checkbox']) {
 }
 
 .lyric-original,
+.lyric-hiragana,
 .lyric-romaji,
 .lyric-meaning {
   overflow-wrap: break-word;
@@ -527,6 +529,7 @@ label:has(input[type='checkbox']) {
 }
 
 .lyric-original.is-hidden,
+.lyric-hiragana.is-hidden,
 .lyric-romaji.is-hidden,
 .lyric-meaning.is-hidden {
   opacity: 0;
@@ -538,6 +541,7 @@ label:has(input[type='checkbox']) {
 }
 
 .lyric-original p,
+.lyric-hiragana p,
 .lyric-romaji p,
 .lyric-meaning p {
   margin: 0 0 var(--space-5);
@@ -550,6 +554,7 @@ label:has(input[type='checkbox']) {
   line-height: 1.9;
 }
 
+.lyric-hiragana,
 .lyric-romaji,
 .lyric-meaning {
   font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif;
@@ -564,12 +569,14 @@ label:has(input[type='checkbox']) {
 @media (prefers-reduced-motion: reduce) {
   .pane-visibility,
   .lyric-original,
+  .lyric-hiragana,
   .lyric-romaji,
   .lyric-meaning {
     transition: none;
   }
 
   .lyric-original.is-hidden,
+  .lyric-hiragana.is-hidden,
   .lyric-romaji.is-hidden,
   .lyric-meaning.is-hidden {
     filter: none;
@@ -595,6 +602,7 @@ label:has(input[type='checkbox']) {
     font-size: 1.375rem;
   }
 
+  .lyric-hiragana,
   .lyric-romaji,
   .lyric-meaning {
     font-size: 1.125rem;

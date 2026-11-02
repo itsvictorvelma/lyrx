@@ -8,7 +8,7 @@ export function Player({
   title,
   durationHint,
 }: {
-  src: string
+  src?: string | null
   title: string
   durationHint?: number | null
 }) {
@@ -117,6 +117,16 @@ export function Player({
   const shownDuration = duration ?? finiteTime(durationHint ?? Number.NaN)
   const status = mediaError ?? notice
   const audible = muted ? 0 : volume
+
+  if (!src) {
+    return (
+      <section className="player" aria-label={`${title} audio player`}>
+        <p className="player-status" role="status">
+          No audio is attached.
+        </p>
+      </section>
+    )
+  }
 
   return (
     <section className="player" aria-label={`${title} audio player`}>

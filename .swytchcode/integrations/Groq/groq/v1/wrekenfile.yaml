@@ -1,0 +1,1056 @@
+VERSION: 2.0.2
+DEFAULTS:
+  bearer_token: BEARER <TOKEN>
+  w_base_url: https://api.groq.com
+METHODS:
+  groq.chat.completions.create:
+    SUMMARY: Create chat completion
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/chat/completions
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+      BODY:
+        TYPE: STRUCT(ChatRequest)
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(ChatRequest)
+          REQUIRED: true
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_chat_completions_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.chat.completions.create
+  groq.respons.create:
+    SUMMARY: Create a response
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/responses
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+      BODY:
+        TYPE: STRUCT(ResponseRequest)
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(ResponseRequest)
+          REQUIRED: true
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_respons_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.respons.create
+  groq.audio.transcriptions.create:
+    SUMMARY: Transcribe audio
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/audio/transcriptions
+      HEADERS:
+        Content-Type: multipart/form-data
+        Authorization: bearer_token
+      CONTENT_TYPE: multipart/form-data
+      ACCEPT: application/json
+      BODYTYPE: form-data
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file:
+          TYPE: BINARY
+          REQUIRED: false
+          LOCATION: body
+          FORMAT: binary
+      - url:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - model:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - language:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - prompt:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - response_format:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+          ENUM:
+            - json
+            - text
+            - verbose_json
+      - temperature:
+          TYPE: FLOAT
+          REQUIRED: false
+          LOCATION: body
+      - timestamp_granularities:
+          TYPE: "[]STRING"
+          REQUIRED: false
+          LOCATION: body
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_audio_transcriptions_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.audio.transcriptions.create
+  groq.audio.translations.create:
+    SUMMARY: Translate audio to English
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/audio/translations
+      HEADERS:
+        Content-Type: multipart/form-data
+        Authorization: bearer_token
+      CONTENT_TYPE: multipart/form-data
+      ACCEPT: application/json
+      BODYTYPE: form-data
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file:
+          TYPE: BINARY
+          REQUIRED: false
+          LOCATION: body
+          FORMAT: binary
+      - url:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - model:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - language:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - prompt:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+      - response_format:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: body
+          ENUM:
+            - json
+            - text
+            - verbose_json
+      - temperature:
+          TYPE: FLOAT
+          REQUIRED: false
+          LOCATION: body
+      - timestamp_granularities:
+          TYPE: "[]STRING"
+          REQUIRED: false
+          LOCATION: body
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_audio_translations_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.audio.translations.create
+  groq.audio.speech.create:
+    SUMMARY: Generate speech from text
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/audio/speech
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: audio/*
+      BODY:
+        TYPE: STRUCT(post_openai_v1_audio_speech_8b11f859_post_openai_v1_audio_speech_8a5dd8eRequest)
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(post_openai_v1_audio_speech_8b11f859_post_openai_v1_audio_speech_8a5dd8eRequest)
+          REQUIRED: true
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: ANY
+        RETURNVAR: groq_audio_speech_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+    CANONICAL_ID: groq.audio.speech.create
+  groq.model.list:
+    SUMMARY: List models
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/models
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    RETURNS:
+      - RETURNTYPE: STRUCT(get_openai_v1_models_f72850c0_get_openai_v1_models_b21bfa99Response200)
+        RETURNVAR: groq_model_list
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.model.list
+  groq.model.get:
+    SUMMARY: Retrieve model
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/models/{model_id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - model_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: STRUCT(Model)
+        RETURNVAR: groq_model_get
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.model.get
+  groq.batche.create:
+    SUMMARY: Create batch
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/batches
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+      BODY:
+        TYPE: STRUCT(BatchRequest)
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(BatchRequest)
+          REQUIRED: true
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_batche_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.batche.create
+  groq.batche.list:
+    SUMMARY: List batches
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/batches
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - after:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: query
+      - limit:
+          TYPE: STRING
+          REQUIRED: false
+          LOCATION: query
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_batche_list
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.batche.list
+  groq.batche.get:
+    SUMMARY: Retrieve batch
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/batches/{batch_id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - batch_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_batche_get
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.batche.get
+  groq.batche.cancel:
+    SUMMARY: Cancel batch
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/batches/{batch_id}/cancel
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - batch_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_batche_cancel
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.batche.cancel
+  groq.file.create:
+    SUMMARY: Upload file
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /openai/v1/files
+      HEADERS:
+        Content-Type: multipart/form-data
+        Authorization: bearer_token
+      CONTENT_TYPE: multipart/form-data
+      ACCEPT: application/json
+      BODYTYPE: form-data
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file:
+          TYPE: BINARY
+          REQUIRED: true
+          LOCATION: body
+          FORMAT: binary
+      - purpose:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: body
+          ENUM:
+            - batch
+    RETURNS:
+      - RETURNTYPE: STRUCT(File)
+        RETURNVAR: groq_file_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.file.create
+  groq.file.list:
+    SUMMARY: List files
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/files
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    RETURNS:
+      - RETURNTYPE: STRUCT(get_openai_v1_files_358726ef_get_openai_v1_files_b75079a8Response200)
+        RETURNVAR: groq_file_list
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.file.list
+  groq.file.get:
+    SUMMARY: Retrieve file
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/files/{file_id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: STRUCT(File)
+        RETURNVAR: groq_file_get
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.file.get
+  groq.file.delete:
+    SUMMARY: Delete file
+    HTTP:
+      METHOD: DELETE
+      ENDPOINT: /openai/v1/files/{file_id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: STRUCT(delete_openai_v1_files_file_id_ecc20315_delete_openai_v1_files_file_id_dfb20bdbResponse200)
+        RETURNVAR: groq_file_delete
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.file.delete
+  groq.file.content.get:
+    SUMMARY: Download file content
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /openai/v1/files/{file_id}/content
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/octet-stream
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - file_id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: ANY
+        RETURNVAR: groq_file_content_get
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+    CANONICAL_ID: groq.file.content.get
+  groq.fine_tuning.list:
+    SUMMARY: List fine tunings (closed beta)
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /v1/fine_tunings
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_fine_tuning_list
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.fine_tuning.list
+  groq.fine_tuning.create:
+    SUMMARY: Create fine tuning (closed beta)
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /v1/fine_tunings
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+      BODY:
+        TYPE: STRUCT(FineTuningRequest)
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(FineTuningRequest)
+          REQUIRED: false
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_fine_tuning_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.fine_tuning.create
+  groq.fine_tuning.get:
+    SUMMARY: Get fine tuning (closed beta)
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /v1/fine_tunings/{id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_fine_tuning_get
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.fine_tuning.get
+  groq.fine_tuning.delete:
+    SUMMARY: Delete fine tuning (closed beta)
+    HTTP:
+      METHOD: DELETE
+      ENDPOINT: /v1/fine_tunings/{id}
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - BearerAuth:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - id:
+          TYPE: STRING
+          REQUIRED: true
+          LOCATION: path
+    RETURNS:
+      - RETURNTYPE: map[STRING]ANY
+        RETURNVAR: groq_fine_tuning_delete
+        STATUS: 200
+    ERRORS:
+      - TYPE: ANY
+        STATUS: 400
+        WHEN: Bad Request (HTTP 400)
+      - TYPE: ANY
+        STATUS: 401
+        WHEN: Unauthorized (HTTP 401)
+      - TYPE: ANY
+        STATUS: 429
+        WHEN: Rate limited (HTTP 429)
+      - TYPE: ANY
+        STATUS: 500
+        WHEN: Server error (HTTP 500)
+    CANONICAL_ID: groq.fine_tuning.delete
+STRUCTS:
+  ChatRequest_tool_choice:
+    - name: value
+      TYPE: ANY
+      REQUIRED: false
+  ChatRequest:
+    - name: model
+      TYPE: STRING
+      REQUIRED: true
+    - name: messages
+      TYPE: "[]ANY"
+      REQUIRED: true
+    - name: temperature
+      TYPE: FLOAT
+      REQUIRED: false
+      MINIMUM: 0
+      MAXIMUM: 2
+    - name: max_completion_tokens
+      TYPE: INT
+      REQUIRED: false
+    - name: stream
+      TYPE: BOOL
+      REQUIRED: false
+    - name: tools
+      TYPE: "[]ANY"
+      REQUIRED: false
+    - name: tool_choice
+      TYPE: STRUCT(ChatRequest_tool_choice)
+      REQUIRED: false
+    - name: response_format
+      TYPE: map[STRING]ANY
+      REQUIRED: false
+    - name: documents
+      TYPE: "[]ANY"
+      REQUIRED: false
+    - name: search_settings
+      TYPE: map[STRING]ANY
+      REQUIRED: false
+    - name: reasoning_format
+      TYPE: STRING
+      REQUIRED: false
+    - name: service_tier
+      TYPE: STRING
+      REQUIRED: false
+  ResponseRequest_input:
+    - name: value
+      TYPE: ANY
+      REQUIRED: false
+  ResponseRequest:
+    - name: model
+      TYPE: STRING
+      REQUIRED: true
+    - name: input
+      TYPE: STRUCT(ResponseRequest_input)
+      REQUIRED: true
+    - name: instructions
+      TYPE: STRING
+      REQUIRED: false
+    - name: previous_response_id
+      TYPE: STRING
+      REQUIRED: false
+    - name: tools
+      TYPE: "[]ANY"
+      REQUIRED: false
+    - name: stream
+      TYPE: BOOL
+      REQUIRED: false
+  Model:
+    - name: id
+      TYPE: STRING
+      REQUIRED: false
+    - name: object
+      TYPE: STRING
+      REQUIRED: false
+    - name: created
+      TYPE: INT
+      REQUIRED: false
+    - name: owned_by
+      TYPE: STRING
+      REQUIRED: false
+    - name: active
+      TYPE: BOOL
+      REQUIRED: false
+    - name: context_window
+      TYPE: INT
+      REQUIRED: false
+    - name: max_completion_tokens
+      TYPE: INT
+      REQUIRED: false
+  BatchRequest:
+    - name: input_file_id
+      TYPE: STRING
+      REQUIRED: true
+    - name: endpoint
+      TYPE: STRING
+      REQUIRED: true
+      ENUM:
+        - /v1/chat/completions
+    - name: completion_window
+      TYPE: STRING
+      REQUIRED: true
+    - name: metadata
+      TYPE: map[STRING]STRING
+      REQUIRED: false
+  File:
+    - name: id
+      TYPE: STRING
+      REQUIRED: false
+    - name: object
+      TYPE: STRING
+      REQUIRED: false
+      ENUM:
+        - file
+    - name: bytes
+      TYPE: INT
+      REQUIRED: false
+    - name: created_at
+      TYPE: INT
+      REQUIRED: false
+    - name: filename
+      TYPE: STRING
+      REQUIRED: false
+    - name: purpose
+      TYPE: STRING
+      REQUIRED: false
+      ENUM:
+        - batch
+        - batch_output
+  FineTuningRequest:
+    - name: base_model
+      TYPE: STRING
+      REQUIRED: false
+    - name: input_file_id
+      TYPE: STRING
+      REQUIRED: false
+    - name: name
+      TYPE: STRING
+      REQUIRED: false
+    - name: type
+      TYPE: STRING
+      REQUIRED: false
+  post_openai_v1_audio_speech_8b11f859_post_openai_v1_audio_speech_8a5dd8eRequest:
+    - name: model
+      TYPE: STRING
+      REQUIRED: true
+    - name: input
+      TYPE: STRING
+      REQUIRED: true
+    - name: voice
+      TYPE: STRING
+      REQUIRED: true
+    - name: response_format
+      TYPE: STRING
+      REQUIRED: false
+      ENUM:
+        - flac
+        - mp3
+        - mulaw
+        - ogg
+        - wav
+    - name: sample_rate
+      TYPE: INT
+      REQUIRED: false
+      ENUM:
+        - 8000
+        - 16000
+        - 22050
+        - 24000
+        - 32000
+        - 44100
+        - 48000
+    - name: speed
+      TYPE: FLOAT
+      REQUIRED: false
+      MINIMUM: 0.5
+      MAXIMUM: 5
+  get_openai_v1_models_f72850c0_get_openai_v1_models_b21bfa99Response200:
+    - name: object
+      TYPE: STRING
+      REQUIRED: false
+    - name: data
+      TYPE: "[]STRUCT(Model)"
+      REQUIRED: false
+  get_openai_v1_files_358726ef_get_openai_v1_files_b75079a8Response200:
+    - name: object
+      TYPE: STRING
+      REQUIRED: false
+    - name: data
+      TYPE: "[]STRUCT(File)"
+      REQUIRED: false
+  delete_openai_v1_files_file_id_ecc20315_delete_openai_v1_files_file_id_dfb20bdbResponse200:
+    - name: id
+      TYPE: STRING
+      REQUIRED: false
+    - name: object
+      TYPE: STRING
+      REQUIRED: false
+    - name: deleted
+      TYPE: BOOL
+      REQUIRED: false

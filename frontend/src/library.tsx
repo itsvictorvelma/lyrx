@@ -37,11 +37,9 @@ export function Library() {
     <>
       <h1>Song Library</h1>
       <p className="lede">Rehearse a Japanese song with the audio, pronunciation, and direct English meaning.</p>
-      {import.meta.env.DEV ? (
-        <p className="dev-action">
-          <Link href="/import">Import song</Link>
-        </p>
-      ) : null}
+      <p className="dev-action">
+        <Link href="/songs/new">New song</Link>
+      </p>
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {error ? (
         <div className="notice" role="alert">
@@ -52,7 +50,7 @@ export function Library() {
         </div>
       ) : null}
       {songs && songs.length === 0 ? (
-        <p role="status">{import.meta.env.DEV ? 'No songs are imported yet.' : 'No songs are available.'}</p>
+        <p role="status">No songs are saved yet.</p>
       ) : null}
       {songs && songs.length > 0 ? (
         <ul className="song-list">

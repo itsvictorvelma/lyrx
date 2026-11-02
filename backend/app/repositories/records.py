@@ -33,10 +33,10 @@ class TrackWrite:
     artist: str
     source_language: str
     target_language: str
-    duration_seconds: float
+    duration_seconds: float | None
     status: str
-    media_key: str
-    media_checksum: str
+    media_key: str | None
+    media_checksum: str | None
     created_at: datetime
 
 

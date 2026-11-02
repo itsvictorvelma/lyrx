@@ -1,7 +1,7 @@
 """Settings read from backend/.env.
 
-Production cannot enable song import. Audio files and temporary uploads
-must be different directories.
+Audio files and temporary uploads must be different directories.
+GROQ_MODEL selects the lyric model. The Groq key stays in Swytchcode.
 """
 
 from pathlib import Path
@@ -25,16 +25,13 @@ class Settings(BaseSettings):
     media_root: str = Field(min_length=1)
     public_media_base_url: str = Field(min_length=1)
     frontend_api_base_url: str = Field(min_length=1)
-    import_enabled: bool = False
+    groq_model: str = Field(default="openai/gpt-oss-120b", min_length=1)
     max_import_bytes: int = Field(default=20_000_000, gt=0)
     allowed_development_origin: str = "http://localhost:5173"
     import_staging_root: str = "./uploads"
 
     @model_validator(mode="after")
     def validate_runtime_boundaries(self) -> "Settings":
-        if self.environment == "production" and self.import_enabled:
-            raise ValueError("import cannot be enabled when environment is production")
-
         media_root = Path(self.media_root).expanduser().resolve()
         import_staging_root = Path(self.import_staging_root).expanduser().resolve()
         if media_root == import_staging_root:

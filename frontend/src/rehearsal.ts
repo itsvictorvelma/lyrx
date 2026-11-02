@@ -1,8 +1,8 @@
 import type { LyricLine } from './contracts.ts'
 
-export const LAYER_STORAGE_KEY = 'lyrx.layers.v1'
+export const LAYER_STORAGE_KEY = 'lyrx.layers.v2'
 
-export type LayerKey = 'japanese' | 'romaji' | 'meaning'
+export type LayerKey = 'japanese' | 'hiragana' | 'romaji' | 'meaning'
 
 export type LayerVisibility = Record<LayerKey, boolean>
 
@@ -20,6 +20,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 export const ALL_LAYERS: LayerVisibility = {
   japanese: true,
+  hiragana: true,
   romaji: true,
   meaning: true,
 }
@@ -98,7 +99,12 @@ export function lyricProblem(lines: LyricLine[]): LyricProblem | null {
     if (!line || line.index !== index) return 'index'
     if (!line.id || ids.has(line.id)) return 'id'
     ids.add(line.id)
-    if (!line.originalText.trim() || !line.pronunciationRomaji.trim() || !line.translationEnglish.trim()) {
+    if (
+      !line.originalText.trim() ||
+      !line.readingHiragana.trim() ||
+      !line.pronunciationRomaji.trim() ||
+      !line.translationEnglish.trim()
+    ) {
       return 'text'
     }
   }
@@ -109,6 +115,10 @@ function isLayerVisibility(value: unknown): value is LayerVisibility {
   if (!value || typeof value !== 'object') return false
   const record = value as Record<string, unknown>
   const keys = Object.keys(record)
-  if (keys.length !== 3) return false
-  return keys.every((key) => (key === 'japanese' || key === 'romaji' || key === 'meaning') && typeof record[key] === 'boolean')
+  if (keys.length !== 4) return false
+  return keys.every(
+    (key) =>
+      (key === 'japanese' || key === 'hiragana' || key === 'romaji' || key === 'meaning') &&
+      typeof record[key] === 'boolean',
+  )
 }

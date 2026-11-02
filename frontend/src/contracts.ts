@@ -18,12 +18,33 @@ export type LyricLine = {
   id: string
   index: number
   originalText: string
+  readingHiragana: string
   pronunciationRomaji: string
   translationEnglish: string
 }
 
+export type DraftLine = {
+  originalText: string
+  readingHiragana: string
+  pronunciationRomaji: string
+  translationEnglish: string
+}
+
+export type LyricDraft = {
+  title: string
+  artist: string
+  sourceLanguage: 'ja'
+  targetLanguage: 'en'
+  lines: DraftLine[]
+}
+
+export type GenerationResponse = {
+  message: string
+  draft: LyricDraft
+}
+
 export type SongDetail = SongSummary & {
-  audioUrl: string
+  audioUrl?: string | null
   contentVersion: string
   lines: LyricLine[]
 }

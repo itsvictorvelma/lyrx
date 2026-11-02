@@ -19,6 +19,7 @@ Provide a reliable, accessible, responsive player for rehearsal while remaining 
 ## Media contract
 
 - Input is the Song detail `audioUrl`.
+- `audioUrl` may be null. The player then shows that no audio is attached and does not load a source. Seek, skip, and play stay disabled. Lyrics stay on the page. The attach control is specified in [Song creation](../song-creation/spec.md).
 - Prototype media is a validated MP3.
 - Server/reverse proxy supports HTTPS, correct audio MIME, content length when known, and byte-range requests.
 - The player uses `HTMLAudioElement`.
@@ -120,6 +121,7 @@ Do not track:
 
 ## Error states
 
+- No MP3 attached: status says audio is not attached. Transport controls that need a file stay disabled.
 - Metadata loading: play may wait; seek disabled; clear status.
 - Play blocked/rejected: explain interaction is required and allow retry.
 - Unsupported/unreadable source: show Audio unavailable; lyrics remain usable.

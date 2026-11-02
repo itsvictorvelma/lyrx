@@ -20,6 +20,7 @@ def valid_song() -> dict[str, object]:
                 "id": "line-0",
                 "index": 0,
                 "originalText": "歌詞",
+                "readingHiragana": "かし",
                 "pronunciationRomaji": "kashi",
                 "translationEnglish": "lyrics",
             }

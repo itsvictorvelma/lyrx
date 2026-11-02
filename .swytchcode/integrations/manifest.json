@@ -1,0 +1,90 @@
+{
+  "Groq.groq@v1": {
+    "version": "v1",
+    "sandbox_endpoint": "",
+    "production_endpoint": "https://api.groq.com",
+    "methods": 20,
+    "auth": {
+      "provider_slug": "Groq",
+      "type": "api_key"
+    },
+    "init_details": {
+      "VERSION": "2.0.2",
+      "auth_type": "api_key"
+    },
+    "execution_policy": {
+      "max_retries": 3,
+      "base_delay_ms": 500,
+      "max_delay_ms": 30000,
+      "http_timeout_ms": 30000,
+      "connect_timeout_ms": 5000,
+      "total_timeout_ms": 90000,
+      "retry_on": [
+        429,
+        503,
+        504
+      ],
+      "non_retryable": [
+        400,
+        401,
+        403,
+        404,
+        422
+      ],
+      "on_401": "fail",
+      "max_concurrent": 5,
+      "max_response_bytes": 102400,
+      "idempotency": {
+        "mode": "none",
+        "header_name": "Idempotency-Key",
+        "scope": "call"
+      }
+    },
+    "library_uuid": "58ee99cb-647a-42fc-9179-90ae42820247",
+    "private": false
+  },
+  "Jev.jev@0.2.0": {
+    "version": "0.2.0",
+    "sandbox_endpoint": "https://api.typesafe.ai",
+    "production_endpoint": "https://api.typesafe.ai",
+    "methods": 2,
+    "auth": {
+      "provider_slug": "Jev",
+      "type": "api_key"
+    },
+    "init_details": {
+      "VERSION": "2.0.2",
+      "auth_type": "api_key"
+    },
+    "execution_policy": {
+      "max_retries": 3,
+      "base_delay_ms": 500,
+      "max_delay_ms": 30000,
+      "http_timeout_ms": 30000,
+      "connect_timeout_ms": 5000,
+      "total_timeout_ms": 90000,
+      "retry_on": [
+        429,
+        503,
+        504
+      ],
+      "non_retryable": [
+        400,
+        401,
+        403,
+        404,
+        422
+      ],
+      "on_401": "fail",
+      "max_concurrent": 5,
+      "max_response_bytes": 102400,
+      "idempotency": {
+        "mode": "none",
+        "header_name": "Idempotency-Key",
+        "scope": "call"
+      }
+    },
+    "library_uuid": "15d57d0c-a829-4f8e-9b5f-cbab6e58961c",
+    "private": false
+  }
+}

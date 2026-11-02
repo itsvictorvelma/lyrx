@@ -6,8 +6,10 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.config import Settings
+from app.groq_client import SwytchcodeGroq
 from app.repositories.songs import SqlAlchemySongRepository
-from app.services.imports import ImportService
+from app.services.catalog import CatalogService
+from app.services.generation import GenerationService
 from app.services.songs import SongService
 
 
@@ -23,10 +25,15 @@ def get_song_service(session: Session = Depends(get_session)) -> SongService:
     return SongService(SqlAlchemySongRepository(session))
 
 
-def get_import_service(request: Request, session: Session = Depends(get_session)) -> ImportService:
+def get_catalog_service(request: Request, session: Session = Depends(get_session)) -> CatalogService:
     settings: Settings = request.app.state.settings
     repository = SqlAlchemySongRepository(session)
-    return ImportService(repository, SongService(repository), settings)
+    return CatalogService(repository, SongService(repository), settings)
+
+
+def get_generation_service(request: Request) -> GenerationService:
+    settings: Settings = request.app.state.settings
+    return GenerationService(SwytchcodeGroq(), settings.groq_model)
 
 
 def get_media_base_url(request: Request) -> str:
