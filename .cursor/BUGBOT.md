@@ -2,7 +2,7 @@
 
 Flag these in every pull request, in addition to normal bug review:
 
-- **Scope:** any timing field or UI (timestamp, start/end, cue, offset, active line, word or mora timing), new screens or routes beyond AGENTS.md, accounts, learner writes, analytics, autoplay, looping, line seek, or provider/catalog API calls.
+- **Scope:** timing beyond the optional per-line `startSeconds` (end times, word or mora timing, tempo or beats-per-line pacing, sync offsets, timing columns); new screens or routes beyond AGENTS.md and docs/codebase.md; accounts; learner writes other than saving line start times and scanning a saved song; analytics, autoplay, looping, microphone, or runtime provider/catalog API calls.
 - **Plan documents:** any edit to `AGENTS.md` or `specs/`. Only Victor changes these; mark it as blocking.
 - **Contract parity:** `backend/app/contracts.py` changed without the matching change in `frontend/src/contracts.ts`, or the reverse.
 - **Database:** schema change without an Alembic revision and downgrade; raw SQL or SQLite-only behavior; tables created at app startup.

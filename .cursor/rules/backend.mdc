@@ -10,7 +10,7 @@ alwaysApply: false
 - Every schema change gets an Alembic revision with a working downgrade. The API never creates tables at startup.
 - API failures use the error envelope in `app/contracts.py` (`code`, `message`, optional `details`, optional `requestId`). Never return stack traces, paths, SQL, or secrets.
 - `app/contracts.py` and `frontend/src/contracts.ts` change together in the same commit.
-- Lyric line `index` is zero-based with no gaps.
+- Lyric line `index` is zero-based with no gaps. `startSeconds` is the only timing value; it lives inside the lyric JSON, never in its own column.
 - The import mutation is registered only when `environment == "development"` and `import_enabled`. Production must not register it; keep the route-absence tests.
 - Tests use real SQLite in `tmp_path`, never a mock database.
 - `app/` must never import `authoring/` or any LangChain/LangGraph package.
