@@ -19,7 +19,9 @@ STATE_DIR_NAME = ".agent-state"
 # Patterns match the start of each command segment, so text inside a commit
 # message, heredoc, or failure report never trips them.
 SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|\n]")
-LEADING_NOISE = re.compile(r"^[\s(]*(?:\w+=\S*\s+)*")
+LEADING_NOISE = re.compile(
+    r"^[\s(]*(?:(?:\w+=\S*|rtk|sudo|env|time|command|exec|nohup|nice)\s+)*"
+)
 CHECK_SEGMENT = re.compile(
     r"^(?:bash\s+|sh\s+)?\S*check\.sh\b"
     r"|^(?:uv\s+run\s+(?:\S+\s+)*?)?(?:python3?\s+-m\s+)?pytest\b"
