@@ -14,8 +14,35 @@ from pathlib import Path
 
 MAX_FAILURES = 2
 ROOT = Path(__file__).resolve().parents[2]
-CHECK_COMMAND = re.compile(r"check\.sh|pytest|npm (run )?(build|test)|vitest|oxlint|tsc\b")
-TAMPER_COMMAND = re.compile(r"\.agent-state|check\.sh\s+--reset")
+STATE_DIR_NAME = ".agent-state"
+
+# Patterns match the start of each command segment, so text inside a commit
+# message, heredoc, or failure report never trips them.
+SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|\n]")
+LEADING_NOISE = re.compile(r"^[\s(]*(?:\w+=\S*\s+)*")
+CHECK_SEGMENT = re.compile(
+    r"^(?:bash\s+|sh\s+)?\S*check\.sh\b"
+    r"|^(?:uv\s+run\s+(?:\S+\s+)*?)?(?:python3?\s+-m\s+)?pytest\b"
+    r"|^npm\s+(?:run\s+)?(?:build|test|lint)\b"
+    r"|^(?:npx\s+)?(?:oxlint|vitest|tsc)\b"
+)
+RESET_SEGMENT = re.compile(r"^(?:bash\s+|sh\s+)?\S*check\.sh\s+--reset\b")
+MUTATING_SEGMENT = re.compile(
+    r"^(?:sudo\s+)?(?:rm|mv|cp|truncate|tee|touch|echo|printf|git\s+(?:rm|clean|checkout|restore))\b"
+)
+
+
+def segments(command: str) -> list[str]:
+    return [LEADING_NOISE.sub("", part).strip() for part in SEGMENT_SPLIT.split(command)]
+
+
+def is_tampering(segment: str) -> bool:
+    if RESET_SEGMENT.match(segment):
+        return True
+    touches_state = STATE_DIR_NAME in segment
+    return touches_state and (
+        bool(MUTATING_SEGMENT.match(segment)) or bool(re.search(r">\s*\S*" + re.escape(STATE_DIR_NAME), segment))
+    )
 
 
 def respond(permission: str, agent_message: str = "", user_message: str = "") -> None:
@@ -51,7 +78,9 @@ def main() -> None:
     except json.JSONDecodeError:
         respond("allow")
 
-    if TAMPER_COMMAND.search(command):
+    parts = segments(command)
+
+    if any(is_tampering(part) for part in parts):
         respond(
             "deny",
             agent_message=(
@@ -61,7 +90,7 @@ def main() -> None:
             user_message="Blocked an agent from resetting the check guardrail.",
         )
 
-    if not CHECK_COMMAND.search(command):
+    if not any(CHECK_SEGMENT.match(part) for part in parts):
         respond("allow")
 
     branch = current_branch()
