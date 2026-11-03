@@ -8,6 +8,7 @@ may never reset or delete the counter themselves.
 
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -16,34 +17,106 @@ MAX_FAILURES = 2
 ROOT = Path(__file__).resolve().parents[2]
 STATE_DIR_NAME = ".agent-state"
 
-# Patterns match the start of each command segment, so text inside a commit
-# message, heredoc, or failure report never trips them.
-SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|\n]")
-LEADING_NOISE = re.compile(
-    r"^[\s(]*(?:(?:\w+=\S*|rtk|sudo|env|time|command|exec|nohup|nice)\s+)*"
-)
-CHECK_SEGMENT = re.compile(
-    r"^(?:bash\s+|sh\s+)?\S*check\.sh\b"
-    r"|^(?:uv\s+run\s+(?:\S+\s+)*?)?(?:python3?\s+-m\s+)?pytest\b"
-    r"|^npm\s+(?:run\s+)?(?:build|test|lint)\b"
-    r"|^(?:npx\s+)?(?:oxlint|vitest|tsc)\b"
-)
-RESET_SEGMENT = re.compile(r"^(?:bash\s+|sh\s+)?\S*check\.sh\s+--reset\b")
-MUTATING_SEGMENT = re.compile(
-    r"^(?:sudo\s+)?(?:rm|mv|cp|truncate|tee|touch|echo|printf|git\s+(?:rm|clean|checkout|restore))\b"
-)
+SEPARATOR_CHARS = set(";&|()\n")
+WRAPPERS = {"rtk", "sudo", "env", "time", "command", "exec", "nohup", "nice"}
+SHELLS = {"bash", "sh", "zsh"}
+CHECK_TOOLS = {"pytest", "oxlint", "vitest", "tsc"}
+NPM_CHECK_SCRIPTS = {"build", "test", "lint"}
+MUTATING_COMMANDS = {"rm", "mv", "cp", "truncate", "tee", "touch"}
+MUTATING_GIT_SUBCOMMANDS = {"rm", "clean", "checkout", "restore"}
+HEREDOC_START = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_]\w*)\1")
+ASSIGNMENT = re.compile(r"^\w+=")
 
 
-def segments(command: str) -> list[str]:
-    return [LEADING_NOISE.sub("", part).strip() for part in SEGMENT_SPLIT.split(command)]
+def strip_heredoc_bodies(command: str) -> str:
+    kept: list[str] = []
+    pending: list[str] = []
+    for line in command.split("\n"):
+        if pending:
+            if line.strip() == pending[0]:
+                pending.pop(0)
+            continue
+        kept.append(line)
+        pending.extend(match.group(2) for match in HEREDOC_START.finditer(line))
+    return "\n".join(kept)
 
 
-def is_tampering(segment: str) -> bool:
-    if RESET_SEGMENT.match(segment):
+def tokenize(command: str) -> list[str]:
+    """Split like a shell would, so quoted text and heredoc bodies are data, not commands."""
+    text = strip_heredoc_bodies(command)
+    try:
+        lexer = shlex.shlex(text, posix=True, punctuation_chars=";&|()<>\n")
+        lexer.whitespace = " \t\r"
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        return list(lexer)
+    except ValueError:
+        return re.findall(r"[;&|()\n]+|[^\s;&|()]+", text)
+
+
+def is_separator(token: str) -> bool:
+    return bool(token) and set(token) <= SEPARATOR_CHARS
+
+
+def segments(command: str) -> list[list[str]]:
+    result: list[list[str]] = [[]]
+    for token in tokenize(command):
+        if is_separator(token):
+            result.append([])
+        else:
+            result[-1].append(token)
+
+    cleaned = []
+    for words in result:
+        start = 0
+        while start < len(words) and (words[start] in WRAPPERS or ASSIGNMENT.match(words[start])):
+            start += 1
+        if words[start:]:
+            cleaned.append(words[start:])
+    return cleaned
+
+
+def program(words: list[str]) -> list[str]:
+    if words[0] in SHELLS and len(words) > 1:
+        return words[1:]
+    return words
+
+
+def is_check_script(word: str) -> bool:
+    return Path(word).name == "check.sh"
+
+
+def is_check(words: list[str]) -> bool:
+    words = program(words)
+    head, args = words[0], words[1:]
+    if is_check_script(head) or head in CHECK_TOOLS:
         return True
-    touches_state = STATE_DIR_NAME in segment
-    return touches_state and (
-        bool(MUTATING_SEGMENT.match(segment)) or bool(re.search(r">\s*\S*" + re.escape(STATE_DIR_NAME), segment))
+    if head in {"python", "python3"} and args[:2] == ["-m", "pytest"]:
+        return True
+    if head == "uv" and args[:1] == ["run"] and "pytest" in args[1:]:
+        return True
+    if head == "npx" and args[:1] and args[0] in CHECK_TOOLS:
+        return True
+    if head == "npm":
+        script = args[1:2] if args[:1] == ["run"] else args[:1]
+        return bool(script) and script[0] in NPM_CHECK_SCRIPTS
+    return False
+
+
+def is_tampering(words: list[str]) -> bool:
+    words = program(words)
+    head, args = words[0], words[1:]
+    if is_check_script(head) and "--reset" in args:
+        return True
+    if not any(STATE_DIR_NAME in word for word in words):
+        return False
+    if head in MUTATING_COMMANDS:
+        return True
+    if head == "git" and args[:1] and args[0] in MUTATING_GIT_SUBCOMMANDS:
+        return True
+    return any(
+        ">" in word and index + 1 < len(words) and STATE_DIR_NAME in words[index + 1]
+        for index, word in enumerate(words)
     )
 
 
@@ -67,7 +140,7 @@ def current_branch() -> str:
 
 
 def failure_count(branch: str) -> int:
-    state_file = ROOT / ".agent-state" / f"{branch.replace('/', '-')}.failures"
+    state_file = ROOT / STATE_DIR_NAME / f"{branch.replace('/', '-')}.failures"
     try:
         return int(state_file.read_text().strip())
     except (FileNotFoundError, ValueError):
@@ -92,7 +165,7 @@ def main() -> None:
             user_message="Blocked an agent from resetting the check guardrail.",
         )
 
-    if not any(CHECK_SEGMENT.match(part) for part in parts):
+    if not any(is_check(part) for part in parts):
         respond("allow")
 
     branch = current_branch()

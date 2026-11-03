@@ -206,6 +206,7 @@ The tests check:
 - The same import does not create a second copy.
 - A mismatched lyric file does not save a song or an audio file.
 - Starting the API does not load the authoring tool or LangChain.
+- The check guardrail hook spots real check runs and reset attempts, and ignores the same words inside quotes, heredocs, and failure reports.
 - Authoring settings need a `provider:model` value and that provider's key.
 
 To run only the frontend checks, from `frontend/`:
