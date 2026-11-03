@@ -382,7 +382,7 @@ Prototype 1 is complete when:
 - Public uploads, remote administration, moderation, transcoding pipeline
 - Search, playlists, recommendations, sharing, social, payments, analytics
 - YouTube/Spotify playback and provider/catalog/lyrics APIs
-- Machine-generated romaji or translation
+- Machine-generated romaji or translation inside the app (development-only offline drafts are allowed; see Approved changes)
 - PostgreSQL until preparation for public multi-user deployment
 - Additional language pairs until the Japanese→English experience is validated
 
@@ -397,3 +397,24 @@ Any proposed feature outside this plan must identify:
 5. Added tests and acceptance criteria.
 
 Do not silently add deferred fields or inactive UI “for later.” Keep Prototype 1's contracts as small as its approved behavior.
+
+### Approved changes
+
+**Development-only lyric authoring tool (`backend/authoring/`)**
+
+1. Learning supported: faster preparation of the three aligned text files for the working song. Human linguistic review before publication stays mandatory.
+2. Non-goal changed: "Machine-generated romaji or translation" is narrowed. Model-drafted `pronunciation.txt` and `translation.txt` are allowed only as offline development drafts that a human reviews and then imports through the normal four-file bundle. The app never calls a model provider, and no generation UI or endpoint exists.
+3. Legal/security/data: lyrics are sent to the configured model provider (Google Gemini by default; Groq as fallback). Free tiers may use inputs for training. Keys live in the gitignored `backend/.env.authoring`, never in `backend/.env`. Drafts are written to the gitignored `backend/drafts/`.
+4. Contract and migration impact: none. The tool writes plain bundle files only.
+5. Tests: authoring settings validation, deterministic node and graph-routing tests with a fake model, and a test that importing `app.main` loads no authoring or LangChain/LangGraph module.
+
+## Development workflow
+
+Development tooling for agents and humans. It does not change the product.
+
+- `scripts/check.sh` runs every check CI runs. CI runs it on every pull request.
+- Work is tracked as GitHub issues from the agent-task template. Status labels: `agent:proposed`, `agent:ready`, `agent:in-progress`, `agent:review`, `needs-human`. Area labels: `area:backend`, `area:frontend`, `area:import`, `area:library`, `area:learn-song`, `area:player`, `area:tooling`.
+- Tickets list the exact `@`-paths an agent should open first. Agents read more only when they must.
+- Supervisor workflows are on-demand Cursor skills in `.cursor/skills/`: `plan-tickets`, `dispatch-ticket`, `review-pr`.
+- Execution agents get at most two failed `scripts/check.sh` runs per branch, enforced by a project hook. Then they write a failure report and stop. Only Victor resets the guardrail.
+- Only Victor approves tickets, merges pull requests, and edits `AGENTS.md` or `specs/`.
