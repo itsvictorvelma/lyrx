@@ -25,3 +25,11 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Checks
+
+```bash
+scripts/check.sh
+```
+
+Runs the backend tests, frontend build, and frontend lint, the same as CI.
