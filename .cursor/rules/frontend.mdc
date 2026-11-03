@@ -1,0 +1,18 @@
+---
+description: Frontend conventions for the React, TypeScript, Vite, and Tailwind code
+globs: frontend/**
+alwaysApply: false
+---
+
+# Frontend
+
+- Stack: React + TypeScript + Vite, plus Tailwind and React Router. Tailwind and React Router are not installed yet; the first ticket that needs one adds it.
+- Component-local state and focused hooks; no global state package.
+- Each lyric unit stacks, in this order at every width: **Japanese**, **Pronunciation (Romaji)**, **Direct Meaning**. Use those exact labels.
+- Japanese text gets `lang="ja"`. Render imported text as plain React text, never as HTML.
+- Layer visibility lives in `sessionStorage`; at least one layer stays visible; invalid stored values fall back to all visible.
+- The player has only the approved controls. Playback time never drives lyric state.
+- Accessibility: semantic landmarks, headings, and lists; labelled controls with pressed, muted, and value state; visible focus; reduced motion respected; never rely on color alone.
+- Every async boundary has loading, success or empty, recoverable error with retry, and unknown error states.
+- `src/contracts.ts` mirrors `backend/app/contracts.py`; change both together.
+- Run frontend commands from `frontend/`.

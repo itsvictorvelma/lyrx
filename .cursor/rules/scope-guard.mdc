@@ -1,0 +1,14 @@
+---
+description: Prototype 1 scope limits that apply to every change
+alwaysApply: true
+---
+
+# Scope guard
+
+- Build only what AGENTS.md and specs/ approve. If a ticket seems to need more, stop and say so in the pull request instead of building it.
+- Never add lyric timing: no timestamp, start/end, cue, offset, active-line, or word/mora timing fields, UI, or tables.
+- Only three screens (Song Library, Import Song in development only, Learn Song) and only the API routes listed in AGENTS.md.
+- No accounts, learner writes, analytics, provider/catalog APIs, autoplay, looping, or line seek.
+- Never edit AGENTS.md or anything under specs/. Those are Victor's plan documents.
+- Never add inactive fields or UI "for later".
+- If you add a folder, route, setting, or data field, update docs/codebase.md in the same change.
