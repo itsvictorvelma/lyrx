@@ -34,6 +34,17 @@ def test_song_detail_accepts_ordered_lines() -> None:
     assert song.durationSeconds == 222.0
 
 
+def test_song_detail_accepts_line_start_seconds() -> None:
+    payload = valid_song()
+    lines = payload["lines"]
+    assert isinstance(lines, list)
+    lines[0]["startSeconds"] = 5.5
+
+    song = SongDetail.model_validate(payload)
+
+    assert song.lines[0].startSeconds == 5.5
+
+
 def test_song_detail_rejects_line_timing_fields() -> None:
     payload = valid_song()
     lines = payload["lines"]

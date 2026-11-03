@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs every check CI runs: backend tests, frontend build, frontend lint.
+# Runs every check CI runs: backend tests, then frontend tests, lint, and build.
 #
 # Outside CI, failed runs are counted per git branch in .agent-state/.
 # After MAX_FAILURES, .cursor/hooks/check_guardrail.py blocks agents from
@@ -19,7 +19,7 @@ fi
 
 run_checks() {
   (cd "$root/backend" && uv run pytest -q) &&
-    (cd "$root/frontend" && npm run build && npx oxlint src)
+    (cd "$root/frontend" && npm test && npm run lint && npm run build)
 }
 
 if run_checks; then

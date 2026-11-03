@@ -14,9 +14,11 @@ class Base(DeclarativeBase):
 
 
 def make_engine(database_url: str, poolclass: type[Pool] | None = None) -> Engine:
-    options: dict[str, type[Pool]] = {}
+    options: dict[str, object] = {}
     if poolclass is not None:
         options["poolclass"] = poolclass
+    if database_url.startswith("sqlite"):
+        options["connect_args"] = {"check_same_thread": False}
     engine = create_engine(database_url, **options)
     if engine.dialect.name == "sqlite":
 

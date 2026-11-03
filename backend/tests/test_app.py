@@ -14,6 +14,7 @@ def settings(**overrides: object) -> Settings:
         "public_media_base_url": "http://localhost:8000/media",
         "frontend_api_base_url": "http://localhost:8000",
         "import_enabled": False,
+        "align_on_import": False,
     }
     values.update(overrides)
     return Settings(**values)
@@ -54,16 +55,6 @@ def test_development_import_route_requires_explicit_flag() -> None:
 
     assert IMPORT_PATH not in disabled.openapi()["paths"]
     assert "post" in enabled.openapi()["paths"][IMPORT_PATH]
-
-
-def test_development_import_reports_not_implemented() -> None:
-    response = TestClient(create_app(settings(import_enabled=True))).post(IMPORT_PATH)
-
-    assert response.status_code == 501
-    assert response.json() == {
-        "code": "import_not_implemented",
-        "message": "Song import is not implemented.",
-    }
 
 
 def test_settings_reject_shared_storage_roots() -> None:

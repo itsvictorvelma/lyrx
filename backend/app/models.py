@@ -1,7 +1,8 @@
 """Song storage tables.
 
 There are two tables: tracks and lyric_versions.
-Lyric text is stored as JSON text. There are no timing columns.
+Lyric text is stored as JSON text. A line start time lives in that JSON.
+There is no timing column.
 """
 
 from datetime import datetime

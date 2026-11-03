@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     public_media_base_url: str = Field(min_length=1)
     frontend_api_base_url: str = Field(min_length=1)
     import_enabled: bool = False
+    align_on_import: bool = True
+    align_model: str = Field(default="base", min_length=1, max_length=80)
     max_import_bytes: int = Field(default=20_000_000, gt=0)
     allowed_development_origin: str = "http://localhost:5173"
     import_staging_root: str = "./uploads"

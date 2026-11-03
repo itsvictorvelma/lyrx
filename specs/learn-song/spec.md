@@ -45,7 +45,7 @@ Each lyric unit:
 - `pronunciationRomaji`
 - `translationEnglish`
 
-Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. The contract contains no lyric timestamps.
+Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Each line may include `startSeconds`. The screen highlights that line and can scroll to it. There is no tempo control.
 
 ## Layout
 
@@ -90,9 +90,10 @@ Recommended handling when one layer remains:
 
 ## Player relationship
 
-- Player and lyrics are independent.
-- Player actions preserve manual lyric scroll position.
-- No active line, playback-driven highlight, auto-scroll, timestamp, line seek, line loop, or lyric-to-player command.
+- The player reports the playhead. Learn Song chooses the current line from `startSeconds`.
+- Follow scrolls the current line into view. Scrolling by hand turns follow off.
+- A line can be stamped to the playhead, and a saved start can seek the player.
+- There is no tempo, beats-per-line, line loop, or word timing.
 - The player stays reachable while the list scrolls but must not cover focused/currently read lyric content.
 
 ## State and error behavior
@@ -200,7 +201,7 @@ Recommended handling when one layer remains:
 3. Hide/show each layer and enforce at least one.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
-6. Verify no karaoke/timing/loop/line-seek UI exists.
+6. Scan or stamp a line, then confirm follow highlights that line. There is no tempo control.
 
 ## Sequencing
 
@@ -224,7 +225,7 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 - Manual scroll survives player actions.
 - Loading, unavailable, malformed, API, and media failures are understandable/recoverable as applicable.
 - Screen meets keyboard, language, focus, zoom, wrapping, contrast, and sticky-content requirements.
-- No timestamp/karaoke/line seek/loop/automation appears.
+- Line start times highlight and follow the current line. There is no tempo control, word timing, or loop.
 
 ## Risks
 
@@ -238,8 +239,8 @@ Mitigate with exact labels/order, always-stacked contract, offset/zoom tests, at
 
 ## Non-goals and deferred work
 
-- Lyric timing/current-line tracking
-- Auto-scroll, line seek, line/A-B loop
+- Tempo or beats-per-line pacing
+- Word/mora timing, line/A-B loop
 - Word/mora segmentation
 - Editing or reporting content
 - Saved progress/favorites/history
