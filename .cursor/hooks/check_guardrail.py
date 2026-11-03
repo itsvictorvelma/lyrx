@@ -58,7 +58,7 @@ def is_separator(token: str) -> bool:
     return bool(token) and set(token) <= SEPARATOR_CHARS
 
 
-def segments(command: str) -> list[list[str]]:
+def segments(command: str, depth: int = 0) -> list[list[str]]:
     result: list[list[str]] = [[]]
     for token in tokenize(command):
         if is_separator(token):
@@ -73,11 +73,41 @@ def segments(command: str) -> list[list[str]]:
             start += 1
         if words[start:]:
             cleaned.append(words[start:])
-    return cleaned
+
+    if depth >= 4:
+        return cleaned
+    expanded: list[list[str]] = []
+    for words in cleaned:
+        script = inline_script(words)
+        if script is not None:
+            expanded.extend(segments(script, depth + 1))
+        elif Path(words[0]).name in SHELLS and len(words) > 1:
+            expanded.append(words[1:])
+        else:
+            expanded.append(words)
+    return expanded
+
+
+SHELL_OPTIONS_WITH_ARGUMENT = {"o"}
+
+
+def inline_script(words: list[str]) -> str | None:
+    """The script string from `sh -c 'script'`, including combined flags like `-lc`."""
+    if Path(words[0]).name not in SHELLS:
+        return None
+    index = 1
+    while index < len(words) and words[index].startswith("-") and words[index] != "--":
+        letters = words[index].lstrip("-")
+        index += 1
+        if "c" in letters:
+            return words[index] if index < len(words) else ""
+        if letters in SHELL_OPTIONS_WITH_ARGUMENT and index < len(words):
+            index += 1
+    return None
 
 
 def program(words: list[str]) -> list[str]:
-    if words[0] in SHELLS and len(words) > 1:
+    if Path(words[0]).name in SHELLS and len(words) > 1:
         return words[1:]
     return words
 

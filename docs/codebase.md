@@ -186,7 +186,7 @@ scripts/check.sh
 
 It runs the backend tests, then the frontend tests, lint, and build. GitHub runs the same script on every pull request (`.github/workflows/ci.yml`).
 
-Outside GitHub, the script counts failed runs on each branch in `.agent-state/`. After two failures, Cursor agents are blocked from running checks on that branch until you look at the problem and run `scripts/check.sh --reset`. Section "Agent setup" below explains why.
+The script counts failed runs on each branch in `.agent-state/`, and skips the count only on GitHub Actions. Agent terminals also set `CI`, so that variable does not turn the count off. After two failures, Cursor agents are blocked from running checks on that branch until you look at the problem and run `scripts/check.sh --reset`. Section "Agent setup" below explains why.
 
 To run only the backend tests, from `backend/`:
 

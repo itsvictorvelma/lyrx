@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Runs every check CI runs: backend tests, then frontend tests, lint, and build.
 #
-# Outside CI, failed runs are counted per git branch in .agent-state/.
-# After MAX_FAILURES, .cursor/hooks/check_guardrail.py blocks agents from
-# running checks again until a human runs: scripts/check.sh --reset
+# Failed runs are counted per git branch in .agent-state/. After MAX_FAILURES,
+# .cursor/hooks/check_guardrail.py blocks agents from running checks again
+# until a human runs: scripts/check.sh --reset
+# The count is skipped only on GitHub Actions. Agent terminals also set CI,
+# so keying off CI would let agent failures slip past the limit.
 set -uo pipefail
 
 MAX_FAILURES=2
@@ -28,7 +30,7 @@ if run_checks; then
   exit 0
 fi
 
-if [[ -n "${CI:-}" ]]; then
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
   exit 1
 fi
 

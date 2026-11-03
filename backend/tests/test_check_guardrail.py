@@ -40,6 +40,12 @@ def tampers(command: str) -> bool:
         "npx tsc -b",
         "git status; pytest",
         "(cd frontend && npm test)",
+        "bash -c 'pytest -q'",
+        'sh -c "cd backend && uv run pytest -q"',
+        "zsh -lc 'npm test'",
+        "rtk bash -c 'npx oxlint src'",
+        "bash -o pipefail -c 'scripts/check.sh'",
+        "bash -c 'echo hi && pytest'",
     ],
 )
 def test_check_commands_are_recognized(command: str) -> None:
@@ -59,6 +65,8 @@ def test_check_commands_are_recognized(command: str) -> None:
         "uv run python -c 'import pytest'",
         "npm install",
         "gh issue view #12 && gh pr list",
+        "bash -c 'echo \"pytest -q\"'",
+        "bash -c 'cat > report.md <<EOF\npytest -q\nnpm run build\nEOF'",
     ],
 )
 def test_text_that_mentions_checks_is_not_a_check(command: str) -> None:
@@ -82,6 +90,9 @@ def test_command_after_a_heredoc_is_still_checked() -> None:
         f"echo 0 > {STATE}/main.failures",
         f"git clean -fdx {STATE}",
         f"true | tee {STATE}/main.failures",
+        f"bash -c 'rm -rf {STATE}'",
+        "zsh -c 'scripts/check.sh --reset'",
+        f"bash -c 'echo 0 > {STATE}/main.failures'",
     ],
 )
 def test_tampering_is_recognized(command: str) -> None:
@@ -96,6 +107,7 @@ def test_tampering_is_recognized(command: str) -> None:
         'gh pr create --body "Victor resets with scripts/check.sh --reset"',
         f"cat > /tmp/body.md <<'EOF'\nrm -rf {STATE}\nscripts/check.sh --reset\nEOF",
         f'echo "counts live in {STATE}"',
+        f"bash -c 'echo \"rm -rf {STATE}\"'",
     ],
 )
 def test_reading_or_mentioning_state_is_not_tampering(command: str) -> None:
