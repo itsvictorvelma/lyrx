@@ -99,7 +99,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq for hiragana, romaji, and English in groups of 12 lines. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana. Does not save the song |
+| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq only for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana. Does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 

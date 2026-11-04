@@ -1,6 +1,6 @@
 import pytest
 
-from app.reading import ReadingError, hepburn, lock_reading
+from app.reading import ReadingError, assemble_reading, hepburn, lock_reading
 
 
 @pytest.mark.parametrize(
@@ -43,3 +43,22 @@ def test_a_reading_must_keep_the_original_kana() -> None:
 def test_placeholder_hiragana_is_rejected() -> None:
     with pytest.raises(ReadingError):
         lock_reading("雨", "よみ")
+
+
+def test_katakana_in_the_line_cannot_be_rewritten() -> None:
+    hiragana, romaji = assemble_reading("ニガくてせつない香り", ["かおり"])
+
+    assert hiragana == "にがくてせつない かおり"
+    assert romaji == "nigakutesetsunai kaori"
+
+
+def test_common_lyric_readings_replace_the_dictionary_miss() -> None:
+    hiragana, romaji = assemble_reading("私はきっと泣いている", ["わたくし", "ないている"])
+
+    assert hiragana == "わたし は きっと ないている"
+    assert romaji == "watashi wa kitto naiteiru"
+
+    hiragana, romaji = assemble_reading("明日の今頃には", ["あす", "いまごろ"])
+
+    assert hiragana == "あした の いまごろ に は"
+    assert romaji == "ashita no imagoro ni wa"

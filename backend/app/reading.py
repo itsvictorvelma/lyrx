@@ -38,6 +38,121 @@ def to_hiragana(text: str) -> str:
     return "".join(_hiragana_char(char) for char in text)
 
 
+_PARTICLE = set("はをがにへでとものやねよかさな")
+
+
+def units(text: str) -> list[tuple[str, str]]:
+    """Split a line into kanji slots and kana the model must not rewrite.
+
+    A kanji run keeps the hiragana glued to it (okurigana). A one-character
+    particle stays outside the slot. Katakana stays outside, so ニガ cannot
+    come back as にか.
+    """
+
+    raw = _char_runs(text)
+    parts: list[tuple[str, str]] = []
+    index = 0
+    while index < len(raw):
+        is_kanji, surface = raw[index]
+        follower = raw[index + 1][1] if index + 1 < len(raw) else ""
+        if is_kanji and _okurigana(follower) and follower[0] not in _PARTICLE:
+            parts.append(("slot", surface + follower))
+            index += 2
+            continue
+        if is_kanji:
+            parts.append(("slot", surface))
+            index += 1
+            continue
+        # A particle glued to the next word (はきっと, には) is its own keep.
+        # A kana word that merely starts with に or か stays whole.
+        if (
+            parts
+            and parts[-1][0] == "slot"
+            and len(surface) > 1
+            and surface[0] in _PARTICLE
+        ):
+            parts.append(("keep", surface[0]))
+            parts.append(("keep", surface[1:]))
+            index += 1
+            continue
+        parts.append(("keep", surface))
+        index += 1
+    return parts
+
+
+def marked(text: str) -> str:
+    shown: list[str] = []
+    for kind, surface in units(text):
+        shown.append(f"【{surface}】" if kind == "slot" else surface)
+    return "".join(shown)
+
+
+def slot_count(text: str) -> int:
+    return sum(1 for kind, _surface in units(text) if kind == "slot")
+
+
+def needs_model(text: str) -> bool:
+    return has_kanji(text) or bool(_kana_core(text))
+
+
+def assemble_reading(original: str, readings: list[str]) -> tuple[str, str]:
+    """Build hiragana and romaji. Kana comes from the original line."""
+
+    parts = units(original.strip())
+    expected = [surface for kind, surface in parts if kind == "slot"]
+    if len(readings) != len(expected):
+        raise ReadingError("reading does not match the line")
+    spoken: list[str] = []
+    slot = 0
+    for kind, surface in parts:
+        if kind == "keep":
+            spoken.append(_break_particle(to_hiragana(surface)))
+            continue
+        spoken.append(_break_particle(_slot_reading(surface, readings[slot])))
+        slot += 1
+    hiragana = " ".join(part for part in spoken if part.strip())
+    hiragana = re.sub(r" +", " ", hiragana).strip()
+    romaji = hepburn(hiragana)
+    if not romaji:
+        raise ReadingError("reading does not match the line")
+    return hiragana, romaji
+
+
+def _char_runs(text: str) -> list[tuple[bool, str]]:
+    runs: list[tuple[bool, str]] = []
+    for char in text:
+        flag = bool(_KANJI.search(char))
+        if runs and runs[-1][0] == flag:
+            runs[-1] = (flag, runs[-1][1] + char)
+            continue
+        runs.append((flag, char))
+    return runs
+
+
+def _okurigana(surface: str) -> bool:
+    return bool(surface) and all(_is_hiragana(char) for char in surface) and surface not in _PARTICLE
+
+
+def _slot_reading(surface: str, reading: str) -> str:
+    kana = to_hiragana(reading.strip())
+    compact = kana.replace(" ", "")
+    if not compact or has_kanji(compact) or not _keeps_kana(surface, compact):
+        raise ReadingError("reading does not match the line")
+    # ponytail: pop lyrics sing わたし and あした. A song that really sings
+    # わたくし or あす would need this guard removed.
+    if surface == "私" and compact == "わたくし":
+        return "わたし"
+    if surface == "明日" and compact == "あす":
+        return "あした"
+    return reading.strip()
+
+
+def _break_particle(text: str) -> str:
+    if len(text) > 1 and text[-1] in {"は", "へ"}:
+        return f"{text[:-1]} {text[-1]}"
+    return text
+
+
 def lock_reading(original: str, reading: str) -> tuple[str, str]:
     """Return the hiragana and romaji to store for one original line."""
 
