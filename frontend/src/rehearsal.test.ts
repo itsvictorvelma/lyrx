@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import type { LyricLine } from './contracts.ts'
 import { parseRoute, songHref } from './route.ts'
 import {
@@ -8,6 +11,8 @@ import {
   clampTime,
   formatTime,
   languageDirection,
+  lineIndexFromValue,
+  linkedLineIndex,
   lyricProblem,
   playbackRate,
   readLayers,
@@ -76,6 +81,43 @@ test('layer storage falls back when missing or invalid, and keeps an all-hidden 
     { japanese: false, hiragana: true, romaji: true, meaning: true },
   )
 })
+
+test('a lyric mark follows one line and the same index, without stretching the row', () => {
+  assert.equal(lineIndexFromValue('0'), 0)
+  assert.equal(lineIndexFromValue('12'), 12)
+  assert.equal(lineIndexFromValue(null), null)
+  assert.equal(lineIndexFromValue(''), null)
+  assert.equal(lineIndexFromValue('1.5'), null)
+  assert.equal(lineIndexFromValue('-1'), null)
+  assert.equal(linkedLineIndex(2, 0, 4), 2)
+  assert.equal(linkedLineIndex(null, 0, 4), 0)
+  assert.equal(linkedLineIndex(null, null, 4), null)
+  assert.equal(linkedLineIndex(1, 0, 1), null)
+  assert.equal(linkedLineIndex(1, null, 0), null)
+
+  const here = dirname(fileURLToPath(import.meta.url))
+  const css = readFileSync(join(here, 'index.css'), 'utf8')
+  const learn = readFileSync(join(here, 'learn.tsx'), 'utf8')
+  const sheet = ruleBody(css, '.lyric-sheet')
+  const linked = ruleBody(css, '.learn .lyric-line.is-linked')
+  assert.match(sheet, /display:\s*flex/)
+  assert.doesNotMatch(css, /subgrid|lyric-sheet-aligned|grid-template-rows/)
+  assert.match(linked, /background-color:\s*var\(--line\)/)
+  assert.match(linked, /text-decoration-line:\s*underline/)
+  assert.doesNotMatch(linked, /margin|padding|min-height|height|grid|font-size|font-weight|width|transform|letter-spacing|transition/)
+  assert.doesNotMatch(learn, /alignedRowTracks|gridTemplateRows|subgrid|lyric-sheet-aligned/)
+  assert.match(learn, /linkedLineIndex\(/)
+  assert.match(learn, /is-linked/)
+  assert.match(learn, /data-line/)
+  assert.match(learn, /tabIndex=\{shown \? 0 : undefined\}/)
+})
+
+function ruleBody(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+  assert.ok(match, `missing ${selector}`)
+  return match[1] ?? ''
+}
 
 test('any layer can be hidden, including the last one', () => {
   const store = memory()

@@ -641,3 +641,12 @@ label:has(input[type='checkbox']) {
     flex: 1 1 auto;
   }
 }
+
+.learn .lyric-line.is-linked {
+  background-color: var(--line);
+  box-decoration-break: clone;
+  text-decoration-line: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.12em;
+}

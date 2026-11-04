@@ -6,6 +6,8 @@ import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
 import {
+  lineIndexFromValue,
+  linkedLineIndex,
   lyricProblem,
   readLayers,
   toggleLayer,
@@ -141,8 +143,23 @@ function DesktopLyrics({
   layers: LayerVisibility
   onToggle: (key: LayerKey) => void
 }) {
+  const [hoverLine, setHoverLine] = useState<number | null>(null)
+  const [focusLine, setFocusLine] = useState<number | null>(null)
+  const visibleDocuments = COLUMNS.filter((column) => layers[column.key]).length
+  const activeLine = linkedLineIndex(hoverLine, focusLine, visibleDocuments)
+
   return (
-    <div className="lyric-sheet">
+    <div
+      className="lyric-sheet"
+      onPointerOver={(event) => setHoverLine(lineIndexFromValue(datasetLine(event.target)))}
+      onPointerLeave={() => setHoverLine(null)}
+      onFocus={(event) => setFocusLine(lineIndexFromValue(datasetLine(event.target)))}
+      onBlur={(event) => {
+        const next = event.relatedTarget
+        if (next instanceof Node && event.currentTarget.contains(next)) return
+        setFocusLine(null)
+      }}
+    >
       {COLUMNS.map((column) => {
         const shown = layers[column.key]
         return (
@@ -151,7 +168,13 @@ function DesktopLyrics({
               <h2 id={`pane-${column.key}`}>{column.label}</h2>
               <LayerToggle label={column.label} shown={shown} onToggle={() => onToggle(column.key)} />
             </header>
-            <LyricBody column={column} lines={song.lines} shown={shown} />
+            <LyricBody
+              column={column}
+              lines={song.lines}
+              shown={shown}
+              correspond={visibleDocuments >= 2}
+              activeLine={activeLine}
+            />
           </section>
         )
       })}
@@ -233,10 +256,14 @@ function LyricBody({
   column,
   lines,
   shown,
+  correspond = false,
+  activeLine = null,
 }: {
   column: (typeof COLUMNS)[number]
   lines: LyricLine[]
   shown: boolean
+  correspond?: boolean
+  activeLine?: number | null
 }) {
   const empty = lines.every((line) => column.text(line).trim() === '')
   return (
@@ -244,10 +271,31 @@ function LyricBody({
       {empty ? (
         <p className="lyric-empty">Nothing here yet.</p>
       ) : (
-        lines.map((line) => <p key={line.id}>{column.text(line)}</p>)
+        lines.map((line) =>
+          correspond ? (
+            <p key={line.id}>
+              <span
+                className={activeLine === line.index ? 'lyric-line is-linked' : 'lyric-line'}
+                data-line={line.index}
+                tabIndex={shown ? 0 : undefined}
+              >
+                {column.text(line)}
+              </span>
+            </p>
+          ) : (
+            <p key={line.id}>{column.text(line)}</p>
+          ),
+        )
       )}
     </div>
   )
+}
+
+function datasetLine(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null
+  const row = target.closest('[data-line]')
+  if (!(row instanceof HTMLElement)) return null
+  return row.dataset.line ?? null
 }
 
 function useWideLayout(): boolean {

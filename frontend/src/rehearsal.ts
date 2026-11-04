@@ -91,6 +91,21 @@ export function toggleLayer(current: LayerVisibility, key: LayerKey): LayerVisib
   return { ...current, [key]: !current[key] }
 }
 
+export function lineIndexFromValue(value: string | null | undefined): number | null {
+  if (value == null || !/^\d+$/.test(value)) return null
+  return Number(value)
+}
+
+export function linkedLineIndex(
+  hoverIndex: number | null,
+  focusIndex: number | null,
+  visibleDocuments: number,
+): number | null {
+  if (visibleDocuments < 2) return null
+  if (hoverIndex != null) return hoverIndex
+  return focusIndex
+}
+
 export function lyricProblem(lines: LyricLine[]): LyricProblem | null {
   if (lines.length === 0) return 'empty'
   const ids = new Set<string>()
