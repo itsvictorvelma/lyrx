@@ -641,3 +641,41 @@ label:has(input[type='checkbox']) {
     flex: 1 1 auto;
   }
 }
+
+.lyric-sheet.lyric-sheet-aligned {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--space-4);
+  row-gap: 0;
+  align-items: stretch;
+}
+
+.lyric-sheet-aligned .lyric-pane {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: 1 / -1;
+}
+
+.lyric-sheet-aligned .lyric-pane-title {
+  grid-row: 1;
+}
+
+.lyric-sheet-aligned .lyric-original,
+.lyric-sheet-aligned .lyric-hiragana,
+.lyric-sheet-aligned .lyric-romaji,
+.lyric-sheet-aligned .lyric-meaning {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: 2 / -1;
+}
+
+.lyric-sheet-aligned .lyric-line {
+  border-inline-start: 3px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.lyric-sheet-aligned .lyric-line.is-linked {
+  border-inline-start-color: var(--accent);
+  background: var(--line);
+}

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import type { LyricLine } from './contracts.ts'
 import { parseRoute, songHref } from './route.ts'
 import {
@@ -7,7 +10,10 @@ import {
   LAYER_STORAGE_KEY,
   clampTime,
   formatTime,
+  alignedRowTracks,
   languageDirection,
+  lineIndexFromValue,
+  linkedLineIndex,
   lyricProblem,
   playbackRate,
   readLayers,
@@ -76,6 +82,57 @@ test('layer storage falls back when missing or invalid, and keeps an all-hidden 
     { japanese: false, hiragana: true, romaji: true, meaning: true },
   )
 })
+
+test('wide lyric rows share tracks and link the same line on hover or focus', () => {
+  assert.equal(alignedRowTracks(4), 'auto repeat(4, auto)')
+  assert.equal(alignedRowTracks(0), 'auto')
+  assert.equal(alignedRowTracks(1.5), 'auto')
+  assert.equal(lineIndexFromValue('0'), 0)
+  assert.equal(lineIndexFromValue('12'), 12)
+  assert.equal(lineIndexFromValue(null), null)
+  assert.equal(lineIndexFromValue(''), null)
+  assert.equal(lineIndexFromValue('1.5'), null)
+  assert.equal(lineIndexFromValue('-1'), null)
+  assert.equal(linkedLineIndex(2, 0, 4), 2)
+  assert.equal(linkedLineIndex(null, 0, 4), 0)
+  assert.equal(linkedLineIndex(null, null, 4), null)
+  assert.equal(linkedLineIndex(1, 0, 1), null)
+  assert.equal(linkedLineIndex(1, null, 0), null)
+
+  const here = dirname(fileURLToPath(import.meta.url))
+  const css = readFileSync(join(here, 'index.css'), 'utf8')
+  const learn = readFileSync(join(here, 'learn.tsx'), 'utf8')
+  const sheet = ruleBody(css, '.lyric-sheet.lyric-sheet-aligned')
+  const pane = ruleBody(css, '.lyric-sheet-aligned .lyric-pane')
+  const lines = ruleBody(
+    css,
+    '.lyric-sheet-aligned .lyric-original,\n.lyric-sheet-aligned .lyric-hiragana,\n.lyric-sheet-aligned .lyric-romaji,\n.lyric-sheet-aligned .lyric-meaning',
+  )
+  const linked = ruleBody(css, '.lyric-sheet-aligned .lyric-line.is-linked')
+  assert.match(sheet, /display:\s*grid/)
+  assert.match(sheet, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(sheet, /row-gap:\s*0/)
+  assert.match(pane, /grid-template-rows:\s*subgrid/)
+  assert.match(pane, /grid-row:\s*1\s*\/\s*-1/)
+  assert.match(lines, /grid-template-rows:\s*subgrid/)
+  assert.match(lines, /grid-row:\s*2\s*\/\s*-1/)
+  assert.match(linked, /border-inline-start-color:\s*var\(--accent\)/)
+  assert.match(linked, /background:\s*var\(--line\)/)
+  assert.doesNotMatch(linked, /margin|padding|font-size|font-weight|width|height|transform|letter-spacing|transition|top|left/)
+  assert.equal(learn.split('lyric-sheet-aligned').length - 1, 1)
+  assert.match(learn, /alignedRowTracks\(/)
+  assert.match(learn, /linkedLineIndex\(/)
+  assert.match(learn, /is-linked/)
+  assert.match(learn, /data-line/)
+  assert.match(learn, /tabIndex=\{aligned && correspond && shown \? 0 : undefined\}/)
+})
+
+function ruleBody(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+  assert.ok(match, `missing ${selector}`)
+  return match[1] ?? ''
+}
 
 test('any layer can be hidden, including the last one', () => {
   const store = memory()
