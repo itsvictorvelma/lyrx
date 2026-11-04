@@ -93,33 +93,17 @@ def numbered_lines(content: str) -> list[str]:
     return lines
 
 
-def lyric_payload(originals: list[str], reading: str = "あめ", english: str = "rain") -> dict[str, object]:
+def lyric_payload(marked_lines: list[str], reading: str = "あめ", english: str = "rain") -> dict[str, object]:
+    lines: list[dict[str, object]] = []
+    for marked in marked_lines:
+        readings: list[str] = []
+        for slot in re.findall(r"【([^】]*)】", marked):
+            kana = "".join(char for char in slot if "\u3040" <= char <= "\u30ff" or char == "ー")
+            readings.append(f"{reading}{kana}")
+        lines.append({"readings": readings, "translationEnglish": english})
     return {
         "status_code": 200,
-        "data": {
-            "choices": [
-                {
-                    "message": {
-                        "content": json.dumps(
-                            {
-                                "title": "Ignored",
-                                "artist": "Ignored",
-                                "lines": [
-                                    {
-                                        "originalText": original,
-                                        "readingHiragana": reading,
-                                        "pronunciationRomaji": "shitatru",
-                                        "translationEnglish": english,
-                                    }
-                                    for original in originals
-                                ],
-                            },
-                            ensure_ascii=False,
-                        )
-                    }
-                }
-            ]
-        },
+        "data": {"choices": [{"message": {"content": json.dumps({"lines": lines}, ensure_ascii=False)}}]},
     }
 
 
@@ -219,18 +203,18 @@ def test_a_named_fix_does_not_resend_the_other_lines() -> None:
             DraftLine(originalText="雨が降る", readingHiragana="あめ が ふる", pronunciationRomaji="old", translationEnglish="rain falls"),
         ],
     )
-    client = PromptGroq(reading="あめ が ふる", english="rain is falling")
+    client = PromptGroq(reading="あめ", english="rain is falling")
 
     result = GenerationService(client, "openai/gpt-oss-120b").generate("fix 雨が降る", song)
 
     assert len(client.prompts) == 1
-    assert numbered_lines(client.prompts[0]) == ["雨が降る"]
+    assert numbered_lines(client.prompts[0]) == ["【雨】が【降る】"]
     assert "空を見た" not in client.prompts[0]
     assert "saw the sky" not in client.prompts[0]
     assert result.draft.lines[1].translationEnglish == "saw the sky"
+    assert "が" in result.draft.lines[0].readingHiragana
     assert result.draft.lines[0].translationEnglish == "rain is falling"
-    assert result.draft.lines[2].translationEnglish == "rain is falling"
-    assert result.draft.lines[0].pronunciationRomaji == "ame ga furu"
+    assert result.draft.lines[2].readingHiragana == result.draft.lines[0].readingHiragana
 
 
 def test_a_line_number_sends_that_line_only() -> None:
@@ -270,7 +254,7 @@ def test_a_long_revision_is_sent_in_groups() -> None:
         artist="Example",
         lines=[
             DraftLine(
-                originalText=f"L{number:02d}",
+                originalText=f"雨{number:02d}",
                 readingHiragana="あ",
                 pronunciationRomaji="a",
                 translationEnglish=f"line {number}",
@@ -284,8 +268,8 @@ def test_a_long_revision_is_sent_in_groups() -> None:
 
     assert len(client.prompts) == 2
     assert len(numbered_lines(client.prompts[0])) == CHUNK
-    assert numbered_lines(client.prompts[1]) == [f"L{CHUNK:02d}"]
-    assert "L00" not in client.prompts[1]
+    assert numbered_lines(client.prompts[1]) == [f"【雨】{CHUNK:02d}"]
+    assert "雨00" not in client.prompts[1]
     assert len(result.draft.lines) == CHUNK + 1
 
 
@@ -295,14 +279,14 @@ def test_a_repeated_line_is_translated_once(monkeypatch: pytest.MonkeyPatch) -> 
 
     result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
 
-    assert numbered_lines(client.prompts[0]) == ["雨"]
+    assert numbered_lines(client.prompts[0]) == ["【雨】"]
     assert [line.translationEnglish for line in result.draft.lines] == ["rain", "rain"]
 
 
 def test_a_bad_chunk_retries_without_asking_for_the_next(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.services.generation.search_plain",
-        lambda title, artist: "\n".join(f"L{number:02d}" for number in range(CHUNK + 1)),
+        lambda title, artist: "\n".join(f"雨{number:02d}" for number in range(CHUNK + 1)),
     )
 
     class Empty:
@@ -333,8 +317,9 @@ def test_dropped_kana_retries_that_chunk(monkeypatch: pytest.MonkeyPatch) -> Non
             assert isinstance(messages, list)
             content = messages[0]["content"]
             assert isinstance(content, str)
-            reading = "あめ" if self.calls == 1 else "あめ が"
-            return lyric_payload(numbered_lines(content), reading, "rain falls")
+            if self.calls == 1:
+                return lyric_payload([], "あめ", "rain falls")
+            return lyric_payload(numbered_lines(content), "あめ", "rain falls")
 
     client = Flaky()
     result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
