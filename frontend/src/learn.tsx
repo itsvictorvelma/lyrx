@@ -6,7 +6,6 @@ import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
 import {
-  alignedRowTracks,
   lineIndexFromValue,
   linkedLineIndex,
   lyricProblem,
@@ -151,8 +150,7 @@ function DesktopLyrics({
 
   return (
     <div
-      className="lyric-sheet lyric-sheet-aligned"
-      style={{ gridTemplateRows: alignedRowTracks(song.lines.length) }}
+      className="lyric-sheet"
       onPointerOver={(event) => setHoverLine(lineIndexFromValue(datasetLine(event.target)))}
       onPointerLeave={() => setHoverLine(null)}
       onFocus={(event) => setFocusLine(lineIndexFromValue(datasetLine(event.target)))}
@@ -162,15 +160,10 @@ function DesktopLyrics({
         setFocusLine(null)
       }}
     >
-      {COLUMNS.map((column, columnIndex) => {
+      {COLUMNS.map((column) => {
         const shown = layers[column.key]
         return (
-          <section
-            key={column.key}
-            className="lyric-pane"
-            style={{ gridColumn: columnIndex + 1 }}
-            aria-labelledby={`pane-${column.key}`}
-          >
+          <section key={column.key} className="lyric-pane" aria-labelledby={`pane-${column.key}`}>
             <header className="lyric-pane-title">
               <h2 id={`pane-${column.key}`}>{column.label}</h2>
               <LayerToggle label={column.label} shown={shown} onToggle={() => onToggle(column.key)} />
@@ -179,7 +172,6 @@ function DesktopLyrics({
               column={column}
               lines={song.lines}
               shown={shown}
-              aligned
               correspond={visibleDocuments >= 2}
               activeLine={activeLine}
             />
@@ -264,14 +256,12 @@ function LyricBody({
   column,
   lines,
   shown,
-  aligned = false,
   correspond = false,
   activeLine = null,
 }: {
   column: (typeof COLUMNS)[number]
   lines: LyricLine[]
   shown: boolean
-  aligned?: boolean
   correspond?: boolean
   activeLine?: number | null
 }) {
@@ -281,19 +271,21 @@ function LyricBody({
       {empty ? (
         <p className="lyric-empty">Nothing here yet.</p>
       ) : (
-        lines.map((line) => {
-          const linked = aligned && correspond && activeLine === line.index
-          return (
-            <p
-              key={line.id}
-              className={aligned ? (linked ? 'lyric-line is-linked' : 'lyric-line') : undefined}
-              data-line={aligned ? line.index : undefined}
-              tabIndex={aligned && correspond && shown ? 0 : undefined}
-            >
-              {column.text(line)}
+        lines.map((line) =>
+          correspond ? (
+            <p key={line.id}>
+              <span
+                className={activeLine === line.index ? 'lyric-line is-linked' : 'lyric-line'}
+                data-line={line.index}
+                tabIndex={shown ? 0 : undefined}
+              >
+                {column.text(line)}
+              </span>
             </p>
-          )
-        })
+          ) : (
+            <p key={line.id}>{column.text(line)}</p>
+          ),
+        )
       )}
     </div>
   )

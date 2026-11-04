@@ -10,7 +10,6 @@ import {
   LAYER_STORAGE_KEY,
   clampTime,
   formatTime,
-  alignedRowTracks,
   languageDirection,
   lineIndexFromValue,
   linkedLineIndex,
@@ -83,10 +82,7 @@ test('layer storage falls back when missing or invalid, and keeps an all-hidden 
   )
 })
 
-test('wide lyric rows share tracks and link the same line on hover or focus', () => {
-  assert.equal(alignedRowTracks(4), 'auto repeat(4, auto)')
-  assert.equal(alignedRowTracks(0), 'auto')
-  assert.equal(alignedRowTracks(1.5), 'auto')
+test('a lyric mark follows one line and the same index, without stretching the row', () => {
   assert.equal(lineIndexFromValue('0'), 0)
   assert.equal(lineIndexFromValue('12'), 12)
   assert.equal(lineIndexFromValue(null), null)
@@ -102,29 +98,18 @@ test('wide lyric rows share tracks and link the same line on hover or focus', ()
   const here = dirname(fileURLToPath(import.meta.url))
   const css = readFileSync(join(here, 'index.css'), 'utf8')
   const learn = readFileSync(join(here, 'learn.tsx'), 'utf8')
-  const sheet = ruleBody(css, '.lyric-sheet.lyric-sheet-aligned')
-  const pane = ruleBody(css, '.lyric-sheet-aligned .lyric-pane')
-  const lines = ruleBody(
-    css,
-    '.lyric-sheet-aligned .lyric-original,\n.lyric-sheet-aligned .lyric-hiragana,\n.lyric-sheet-aligned .lyric-romaji,\n.lyric-sheet-aligned .lyric-meaning',
-  )
-  const linked = ruleBody(css, '.lyric-sheet-aligned .lyric-line.is-linked')
-  assert.match(sheet, /display:\s*grid/)
-  assert.match(sheet, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/)
-  assert.match(sheet, /row-gap:\s*0/)
-  assert.match(pane, /grid-template-rows:\s*subgrid/)
-  assert.match(pane, /grid-row:\s*1\s*\/\s*-1/)
-  assert.match(lines, /grid-template-rows:\s*subgrid/)
-  assert.match(lines, /grid-row:\s*2\s*\/\s*-1/)
-  assert.match(linked, /border-inline-start-color:\s*var\(--accent\)/)
-  assert.match(linked, /background:\s*var\(--line\)/)
-  assert.doesNotMatch(linked, /margin|padding|font-size|font-weight|width|height|transform|letter-spacing|transition|top|left/)
-  assert.equal(learn.split('lyric-sheet-aligned').length - 1, 1)
-  assert.match(learn, /alignedRowTracks\(/)
+  const sheet = ruleBody(css, '.lyric-sheet')
+  const linked = ruleBody(css, '.learn .lyric-line.is-linked')
+  assert.match(sheet, /display:\s*flex/)
+  assert.doesNotMatch(css, /subgrid|lyric-sheet-aligned|grid-template-rows/)
+  assert.match(linked, /background-color:\s*var\(--line\)/)
+  assert.match(linked, /text-decoration-line:\s*underline/)
+  assert.doesNotMatch(linked, /margin|padding|min-height|height|grid|font-size|font-weight|width|transform|letter-spacing|transition/)
+  assert.doesNotMatch(learn, /alignedRowTracks|gridTemplateRows|subgrid|lyric-sheet-aligned/)
   assert.match(learn, /linkedLineIndex\(/)
   assert.match(learn, /is-linked/)
   assert.match(learn, /data-line/)
-  assert.match(learn, /tabIndex=\{aligned && correspond && shown \? 0 : undefined\}/)
+  assert.match(learn, /tabIndex=\{shown \? 0 : undefined\}/)
 })
 
 function ruleBody(css: string, selector: string): string {
