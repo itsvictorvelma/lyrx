@@ -42,13 +42,13 @@ export function NewSong() {
   }
 
   return (
-    <>
+    <article className="composer-page">
       <Link className="back-link" href="/">
-        Song Library
+        Songs
       </Link>
       <h1>New song</h1>
-      <p className="lede">Ask for a song. The reply is Original, Hiragana, Romaji, and English. Attach the MP3 after you save.</p>
-      <form onSubmit={(event) => void ask(event)}>
+      <p className="lede">Ask for a song. You get Original, Hiragana, Romaji, and English here, then the recording attaches on the song.</p>
+      <form className="composer" onSubmit={(event) => void ask(event)}>
         <label>
           Song
           <textarea name="message" required rows={3} placeholder="Akuma no Ko by Ai Higuchi" />
@@ -65,7 +65,7 @@ export function NewSong() {
         </p>
       ) : null}
       {draft ? (
-        <>
+        <div className="draft-in">
           <h2>
             {draft.title} <span className="byline">{draft.artist}</span>
           </h2>
@@ -84,8 +84,8 @@ export function NewSong() {
           <button type="button" className="button-primary" disabled={pending !== null} onClick={() => void save()}>
             {pending === 'save' ? 'Saving…' : 'Save song'}
           </button>
-        </>
+        </div>
       ) : null}
-    </>
+    </article>
   )
 }

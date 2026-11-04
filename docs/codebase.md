@@ -11,7 +11,7 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 Today there are two small programs:
 
 - `backend/` is the API. It stores songs and serves the audio.
-- `frontend/` is the web page. It has Song Library, New song, and Learn Song.
+- `frontend/` is the web page. Songs, a new song, and Learn Song share one workspace.
 
 There is also a development-only helper, `backend/authoring/`, that will draft romaji and English files for a person to review. The API never uses it.
 
@@ -143,17 +143,19 @@ npm install
 npm run dev
 ```
 
-The page has three routes:
+The page is one workspace:
 
 | Route | What it shows |
 | --- | --- |
-| `/` | Song Library. Each song is a link to Learn Song. New song starts a chat. |
-| `/songs/new` | Ask for lyrics, read the four documents, and save. |
-| `/songs/:songId` | Learn Song. Original, Hiragana, Romaji, and English, plus the player and MP3 attach. |
+| `/` and `/songs` | The saved songs. On a wide window they stay in a side list, with room beside them to open a song. |
+| `/songs/new` | Ask for a song in that same workspace. `/search` opens this too. |
+| `/songs/:songId` | Learn Song, beside the song list on a wide window. Original, Hiragana, Romaji, and English, plus the player and MP3 attach. |
 
-`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
+`/import` is not a page. A narrow window shows either the song list or the open song, with the same header.
 
-Learn Song is a light reading page. It starts with all four documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
+`frontend/src/App.tsx` keeps the song list mounted and swaps the reading area. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
+
+Learn Song starts with all four documents visible. On a wide window they sit side by side and the reading area scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
 
 The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it. With no MP3, the bar says that no audio is attached.
 

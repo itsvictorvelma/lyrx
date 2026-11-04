@@ -5,7 +5,7 @@ import { Link } from './link.tsx'
 import { formatDuration, languageDirection } from './rehearsal.ts'
 import { songHref } from './route.ts'
 
-export function Library() {
+export function Library({ activeId }: { activeId?: string | null }) {
   const [songs, setSongs] = useState<SongSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -34,12 +34,8 @@ export function Library() {
   }
 
   return (
-    <>
-      <h1>Song Library</h1>
-      <p className="lede">Rehearse a Japanese song with the audio, pronunciation, and direct English meaning.</p>
-      <p className="dev-action">
-        <Link href="/songs/new">New song</Link>
-      </p>
+    <div className="library">
+      <h1 className="rail-title">Songs</h1>
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {error ? (
         <div className="notice" role="alert">
@@ -50,21 +46,29 @@ export function Library() {
         </div>
       ) : null}
       {songs && songs.length === 0 ? (
-        <p role="status">No songs are saved yet.</p>
+        <p className="empty-note" role="status">
+          No songs yet.
+        </p>
       ) : null}
       {songs && songs.length > 0 ? (
         <ul className="song-list">
           {songs.map((song) => {
             const duration = formatDuration(song.durationSeconds)
+            const current = song.id === activeId
             return (
               <li key={song.id}>
-                <Link className="song-card" href={songHref(song.id)}>
-                  <span className="song-title">{song.title}</span>
-                  <span className="song-artist">{song.artist}</span>
-                  <span className="song-meta">
-                    {languageDirection(song.sourceLanguage, song.targetLanguage)}
-                    {duration ? ` · ${duration}` : ''}
-                    {song.status === 'draft' ? ' · Draft' : ''}
+                <Link className="song-row" href={songHref(song.id)} current={current}>
+                  <span className="song-mark" aria-hidden="true">
+                    {monogram(song.title)}
+                  </span>
+                  <span className="song-copy">
+                    <span className="song-title">{song.title}</span>
+                    <span className="song-artist">{song.artist}</span>
+                    <span className="song-meta">
+                      {languageDirection(song.sourceLanguage, song.targetLanguage)}
+                      {duration ? ` · ${duration}` : ''}
+                      {song.status === 'draft' ? ' · Draft' : ''}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -72,6 +76,10 @@ export function Library() {
           })}
         </ul>
       ) : null}
-    </>
+    </div>
   )
+}
+
+function monogram(title: string): string {
+  return Array.from(title.trim())[0] ?? '·'
 }

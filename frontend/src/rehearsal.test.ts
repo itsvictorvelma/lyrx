@@ -109,7 +109,7 @@ test('a lyric mark follows one line and the same index, without stretching the r
   assert.match(documents, /font-size:\s*var\(--text-reading\)/)
   assert.match(documents, /line-height:\s*1\.65/)
   assert.match(css, /font-size:\s*1rem;\s*line-height:\s*1\.65/)
-  assert.match(linked, /background-color:\s*var\(--line\)/)
+  assert.match(linked, /background-color:\s*var\(--mark\)/)
   assert.match(linked, /text-decoration-line:\s*underline/)
   assert.doesNotMatch(linked, /margin|padding|min-height|height|grid|font-size|font-weight|width|transform|letter-spacing|transition/)
   assert.doesNotMatch(learn, /alignedRowTracks|gridTemplateRows|subgrid|lyric-sheet-aligned/)
@@ -161,9 +161,11 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('routes stay on the library, a new song, and one saved song', () => {
+test('routes stay in one workspace for the library, a new song, and one saved song', () => {
   assert.deepEqual(parseRoute('/'), { name: 'library' })
-  assert.deepEqual(parseRoute('/songs/new'), { name: 'new' })
+  assert.deepEqual(parseRoute('/songs'), { name: 'library' })
+  assert.deepEqual(parseRoute('/search'), { name: 'compose' })
+  assert.deepEqual(parseRoute('/songs/new'), { name: 'compose' })
   assert.deepEqual(parseRoute('/import'), { name: 'missing' })
   assert.deepEqual(parseRoute('/songs/akuma-no-ko'), { name: 'song', songId: 'akuma-no-ko' })
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
