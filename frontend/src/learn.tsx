@@ -83,8 +83,8 @@ export function LearnSong({ songId }: { songId: string }) {
 
   return (
     <article className="learn">
-      <Link className="back-link" href="/songs">
-        Song Library
+      <Link className="back-link" href="/">
+        Songs
       </Link>
       <h1>{title}</h1>
       {state.phase === 'loading' ? <p role="status">Loading song.</p> : null}
