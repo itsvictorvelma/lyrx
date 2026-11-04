@@ -20,7 +20,7 @@
   --text-sm: 0.875rem;
   --text-md: 1rem;
   --text-lg: 1.25rem;
-  --text-reading: 1.5rem;
+  --text-reading: 1.125rem;
   --text-xl: 2rem;
   --radius: 4px;
   --page-gutter: var(--space-4);
@@ -534,6 +534,9 @@ label:has(input[type='checkbox']) {
 .lyric-romaji,
 .lyric-meaning {
   overflow-wrap: break-word;
+  font-size: var(--text-reading);
+  font-weight: 500;
+  line-height: 1.65;
   opacity: 1;
   filter: blur(0);
   transition: opacity 200ms ease, filter 200ms ease;
@@ -564,23 +567,15 @@ label:has(input[type='checkbox']) {
 
 .lyric-original {
   font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Iowan Old Style', Palatino, serif;
-  font-size: var(--text-reading);
-  font-weight: 500;
-  line-height: 1.9;
 }
 
 .lyric-hiragana {
   font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', sans-serif;
-  font-size: var(--text-lg);
-  line-height: 1.7;
-  letter-spacing: 0.02em;
 }
 
 .lyric-romaji,
 .lyric-meaning {
   font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif;
-  font-size: var(--text-lg);
-  line-height: 1.6;
 }
 
 .lyric-meaning {
@@ -612,21 +607,19 @@ label:has(input[type='checkbox']) {
   }
 
   .lyric-sheet {
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .lyric-pane + .lyric-pane {
-    padding-left: var(--space-4);
+    padding-left: var(--space-3);
   }
 
-  .lyric-original {
-    font-size: 1.375rem;
-  }
-
+  .lyric-original,
   .lyric-hiragana,
   .lyric-romaji,
   .lyric-meaning {
-    font-size: 1.125rem;
+    font-size: 1rem;
+    line-height: 1.65;
   }
 
   .player-main {

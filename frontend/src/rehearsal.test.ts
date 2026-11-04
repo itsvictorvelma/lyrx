@@ -101,7 +101,14 @@ test('a lyric mark follows one line and the same index, without stretching the r
   const sheet = ruleBody(css, '.lyric-sheet')
   const linked = ruleBody(css, '.learn .lyric-line.is-linked')
   assert.match(sheet, /display:\s*flex/)
-  assert.doesNotMatch(css, /subgrid|lyric-sheet-aligned|grid-template-rows/)
+  assert.doesNotMatch(css, /subgrid|lyric-sheet-aligned|grid-template-rows|1\.375rem/)
+  const documents = ruleBody(
+    css,
+    '.lyric-original,\n.lyric-hiragana,\n.lyric-romaji,\n.lyric-meaning',
+  )
+  assert.match(documents, /font-size:\s*var\(--text-reading\)/)
+  assert.match(documents, /line-height:\s*1\.65/)
+  assert.match(css, /font-size:\s*1rem;\s*line-height:\s*1\.65/)
   assert.match(linked, /background-color:\s*var\(--line\)/)
   assert.match(linked, /text-decoration-line:\s*underline/)
   assert.doesNotMatch(linked, /margin|padding|min-height|height|grid|font-size|font-weight|width|transform|letter-spacing|transition/)
