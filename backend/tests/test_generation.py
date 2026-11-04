@@ -1,12 +1,13 @@
 import json
+import re
 
 import pytest
 
-from app.contracts import LyricDraft
+from app.contracts import DraftLine, LyricDraft
 from app.errors import DomainError
-from app.generation import completion_body, completion_limit, user_message
+from app.generation import completion_body, completion_limit, segment_body, user_message
 from app.lyrics import draft_from_model
-from app.services.generation import GenerationService
+from app.services.generation import CHUNK, GenerationService
 
 
 def sample_payload() -> dict[str, object]:
@@ -28,6 +29,7 @@ def test_completion_body_stays_inside_the_token_minute() -> None:
     body = completion_body("openai/gpt-oss-120b", "Akuma no Ko", None)
 
     assert body["model"] == "openai/gpt-oss-120b"
+    assert body["temperature"] == 0.6
     assert body["reasoning_effort"] == "low"
     assert body["include_reasoning"] is False
     assert "Authorization" not in body
@@ -76,29 +78,79 @@ class FakeGroq:
         return self.payload
 
 
+def numbered_lines(content: str) -> list[str]:
+    lines: list[str] = []
+    started = False
+    for raw in content.splitlines():
+        if raw == "Lines:":
+            started = True
+            continue
+        if not started:
+            continue
+        matched = re.match(r"\d+\. (.*)", raw)
+        if matched:
+            lines.append(matched.group(1))
+    return lines
+
+
+def lyric_payload(originals: list[str], reading: str = "あめ", english: str = "rain") -> dict[str, object]:
+    return {
+        "status_code": 200,
+        "data": {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "title": "Ignored",
+                                "artist": "Ignored",
+                                "lines": [
+                                    {
+                                        "originalText": original,
+                                        "readingHiragana": reading,
+                                        "pronunciationRomaji": "shitatru",
+                                        "translationEnglish": english,
+                                    }
+                                    for original in originals
+                                ],
+                            },
+                            ensure_ascii=False,
+                        )
+                    }
+                }
+            ]
+        },
+    }
+
+
+class PromptGroq:
+    def __init__(self, reading: str = "あめ", english: str = "rain") -> None:
+        self.reading = reading
+        self.english = english
+        self.prompts: list[str] = []
+
+    def complete(self, body: dict[str, object]) -> dict[str, object]:
+        messages = body["messages"]
+        assert isinstance(messages, list)
+        content = messages[0]["content"]
+        assert isinstance(content, str)
+        self.prompts.append(content)
+        return lyric_payload(numbered_lines(content), self.reading, self.english)
+
+
 def test_fetched_lines_are_all_filled(monkeypatch: pytest.MonkeyPatch) -> None:
     def search(title: str, artist: str) -> str:
         assert (title, artist) == ("Ame", "Example")
         return "雨\n[Chorus]\n空"
 
     monkeypatch.setattr("app.services.generation.search_plain", search)
+    client = PromptGroq()
 
-    class Echo:
-        def complete(self, body: dict[str, object]) -> dict[str, object]:
-            messages = body["messages"]
-            assert isinstance(messages, list)
-            content = messages[0]["content"]
-            assert isinstance(content, str)
-            payload = json.loads(content.split("Current song: ", 1)[1])
-            for line in payload["lines"]:
-                line["readingHiragana"] = "あめ"
-                line["pronunciationRomaji"] = "ame"
-                line["translationEnglish"] = "rain"
-            return {"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps(payload)}}]}}
-
-    result = GenerationService(Echo(), "openai/gpt-oss-120b").generate("Ame by Example", None)
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
 
     assert [line.originalText for line in result.draft.lines] == ["雨", "空"]
+    assert result.draft.lines[0].pronunciationRomaji == "ame"
+    assert "よみ" not in client.prompts[0]
     assert result.message == "Ame, 2 lines"
 
 
@@ -125,3 +177,182 @@ def test_rate_limit_does_not_parse_a_draft() -> None:
 
     assert error.value.code == "groq_rate_limited"
     assert client.calls == 1
+
+
+def test_romaji_is_spelled_from_the_kana() -> None:
+    payload = sample_payload()
+    line = payload["lines"]
+    assert isinstance(line, list)
+    line[0]["originalText"] = "したたる"
+    line[0]["readingHiragana"] = "かんじ"
+    line[0]["pronunciationRomaji"] = "shitatru"
+    client = FakeGroq({"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps(payload)}}]}})
+
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("rain", None)
+
+    assert result.draft.lines[0].readingHiragana == "したたる"
+    assert result.draft.lines[0].pronunciationRomaji == "shitataru"
+
+
+def test_a_reading_that_drops_kana_is_rejected() -> None:
+    payload = sample_payload()
+    line = payload["lines"]
+    assert isinstance(line, list)
+    line[0]["originalText"] = "雨が"
+    line[0]["readingHiragana"] = "あめ"
+    client = FakeGroq({"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps(payload)}}]}})
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b").generate("rain", None)
+
+    assert error.value.code == "generation_invalid"
+    assert client.calls == 1
+
+
+def test_a_named_fix_does_not_resend_the_other_lines() -> None:
+    song = LyricDraft(
+        title="Ame",
+        artist="Example",
+        lines=[
+            DraftLine(originalText="雨が降る", readingHiragana="あめ が ふる", pronunciationRomaji="old", translationEnglish="rain falls"),
+            DraftLine(originalText="空を見た", readingHiragana="そら を みた", pronunciationRomaji="old", translationEnglish="saw the sky"),
+            DraftLine(originalText="雨が降る", readingHiragana="あめ が ふる", pronunciationRomaji="old", translationEnglish="rain falls"),
+        ],
+    )
+    client = PromptGroq(reading="あめ が ふる", english="rain is falling")
+
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("fix 雨が降る", song)
+
+    assert len(client.prompts) == 1
+    assert numbered_lines(client.prompts[0]) == ["雨が降る"]
+    assert "空を見た" not in client.prompts[0]
+    assert "saw the sky" not in client.prompts[0]
+    assert result.draft.lines[1].translationEnglish == "saw the sky"
+    assert result.draft.lines[0].translationEnglish == "rain is falling"
+    assert result.draft.lines[2].translationEnglish == "rain is falling"
+    assert result.draft.lines[0].pronunciationRomaji == "ame ga furu"
+
+
+def test_a_line_number_sends_that_line_only() -> None:
+    song = LyricDraft(
+        title="Ame",
+        artist="Example",
+        lines=[
+            DraftLine(originalText="alpha", readingHiragana="alpha", pronunciationRomaji="alpha", translationEnglish="first line"),
+            DraftLine(originalText="beta", readingHiragana="beta", pronunciationRomaji="beta", translationEnglish="second line"),
+            DraftLine(originalText="gamma", readingHiragana="gamma", pronunciationRomaji="gamma", translationEnglish="third line"),
+        ],
+    )
+    client = PromptGroq()
+
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("fix line 2", song)
+
+    assert numbered_lines(client.prompts[0]) == ["beta"]
+    assert result.draft.lines[0].translationEnglish == "first line"
+    assert result.draft.lines[1].originalText == "beta"
+    assert result.draft.lines[2].translationEnglish == "third line"
+
+
+def test_a_missing_line_number_does_not_call_groq() -> None:
+    song = LyricDraft.model_validate(sample_payload())
+    client = PromptGroq()
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b").generate("line 9", song)
+
+    assert error.value.code == "generation_invalid"
+    assert client.prompts == []
+
+
+def test_a_long_revision_is_sent_in_groups() -> None:
+    song = LyricDraft(
+        title="Ame",
+        artist="Example",
+        lines=[
+            DraftLine(
+                originalText=f"L{number:02d}",
+                readingHiragana="あ",
+                pronunciationRomaji="a",
+                translationEnglish=f"line {number}",
+            )
+            for number in range(CHUNK + 1)
+        ],
+    )
+    client = PromptGroq()
+
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("more literal", song)
+
+    assert len(client.prompts) == 2
+    assert len(numbered_lines(client.prompts[0])) == CHUNK
+    assert numbered_lines(client.prompts[1]) == [f"L{CHUNK:02d}"]
+    assert "L00" not in client.prompts[1]
+    assert len(result.draft.lines) == CHUNK + 1
+
+
+def test_a_repeated_line_is_translated_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨\n雨")
+    client = PromptGroq(english="rain")
+
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert numbered_lines(client.prompts[0]) == ["雨"]
+    assert [line.translationEnglish for line in result.draft.lines] == ["rain", "rain"]
+
+
+def test_a_bad_chunk_retries_without_asking_for_the_next(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.generation.search_plain",
+        lambda title, artist: "\n".join(f"L{number:02d}" for number in range(CHUNK + 1)),
+    )
+
+    class Empty:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            self.calls += 1
+            return lyric_payload([])
+
+    client = Empty()
+    with pytest.raises(DomainError):
+        GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert client.calls == 2
+
+
+def test_dropped_kana_retries_that_chunk(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨が")
+
+    class Flaky:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            self.calls += 1
+            messages = body["messages"]
+            assert isinstance(messages, list)
+            content = messages[0]["content"]
+            assert isinstance(content, str)
+            reading = "あめ" if self.calls == 1 else "あめ が"
+            return lyric_payload(numbered_lines(content), reading, "rain falls")
+
+    client = Flaky()
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert client.calls == 2
+    assert result.draft.lines[0].readingHiragana == "あめ が"
+
+
+def test_segment_omits_the_placeholder_and_stays_in_budget() -> None:
+    current = [
+        DraftLine(originalText="雨", readingHiragana="よみ", pronunciationRomaji="yomi", translationEnglish="rain")
+    ]
+
+    body = segment_body("openai/gpt-oss-120b", "fill", "Ame", "Example", ["雨"], None, current)
+    prompt = body["messages"][0]["content"]
+
+    assert isinstance(prompt, str)
+    assert "よみ" not in prompt
+    assert "rain" in prompt
+    assert body["temperature"] == 0.6
+    assert body["max_completion_tokens"] + 800 + len(prompt) // 4 <= 8000
