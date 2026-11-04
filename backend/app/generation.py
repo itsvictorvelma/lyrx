@@ -56,13 +56,18 @@ def user_message(instruction: str, draft: LyricDraft | None) -> str:
     text = instruction.strip()
     if draft is None:
         return (
-            "Write the lyric layers for the song the learner named. "
-            "Every line needs original Japanese, hiragana, romaji, and direct English. "
+            "Write the complete song, from the first line through the last, including repeated choruses. "
+            "Do not return a sample, a verse, or a summary. "
+            "Every line needs original Japanese, spaced hiragana, spaced Hepburn romaji, and a literal English meaning. "
+            "Keep the spaces that separate phrases. "
             f"Request: {text}"
         )
     current = json.dumps(draft.model_dump(mode="json"), ensure_ascii=False)
     return (
-        "Replace the lyric lines using the learner's instruction. Return the full song. "
+        "Return every line of the current song, in the same order. "
+        "Keep each originalText exactly, including its spaces. "
+        "readingHiragana is spaced hiragana, pronunciationRomaji is spaced Hepburn, "
+        "and translationEnglish is the literal meaning of that one line. "
         f"Instruction: {text}\nCurrent song: {current}"
     )
 

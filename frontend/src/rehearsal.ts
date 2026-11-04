@@ -99,12 +99,7 @@ export function lyricProblem(lines: LyricLine[]): LyricProblem | null {
     if (!line || line.index !== index) return 'index'
     if (!line.id || ids.has(line.id)) return 'id'
     ids.add(line.id)
-    if (
-      !line.originalText.trim() ||
-      !line.readingHiragana.trim() ||
-      !line.pronunciationRomaji.trim() ||
-      !line.translationEnglish.trim()
-    ) {
+    if (!line.originalText.trim() || !line.pronunciationRomaji.trim() || !line.translationEnglish.trim()) {
       return 'text'
     }
   }

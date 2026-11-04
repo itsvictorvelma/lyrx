@@ -198,6 +198,28 @@ def test_invalid_save_uses_the_error_envelope(tmp_path: Path) -> None:
     assert "title" in {detail["field"] for detail in body["details"]}
 
 
+def test_a_song_saved_without_hiragana_still_opens(tmp_path: Path) -> None:
+    application = app_for(tmp_path)
+    client = TestClient(application)
+    created = client.post("/api/songs", json=draft())
+    assert created.status_code == 201
+
+    session = sessionmaker(bind=application.state.engine)()
+    version = session.scalar(select(LyricVersion))
+    assert version is not None
+    stored = json.loads(version.lines_json)
+    for row in stored:
+        row.pop("readingHiragana")
+    version.lines_json = json.dumps(stored)
+    session.commit()
+    session.close()
+
+    song = client.get("/api/songs/ame")
+
+    assert song.status_code == 200
+    assert [line["readingHiragana"] for line in song.json()["lines"]] == ["", ""]
+
+
 def test_unreadable_stored_lyrics_are_a_safe_error(tmp_path: Path, caplog) -> None:
     application = app_for(tmp_path)
     client = TestClient(application)

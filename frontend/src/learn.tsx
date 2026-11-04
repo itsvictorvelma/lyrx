@@ -238,11 +238,14 @@ function LyricBody({
   lines: LyricLine[]
   shown: boolean
 }) {
+  const empty = lines.every((line) => column.text(line).trim() === '')
   return (
     <div className={shown ? column.className : `${column.className} is-hidden`} lang={column.lang} aria-hidden={shown ? undefined : true}>
-      {lines.map((line) => (
-        <p key={line.id}>{column.text(line)}</p>
-      ))}
+      {empty ? (
+        <p className="lyric-empty">Nothing here yet.</p>
+      ) : (
+        lines.map((line) => <p key={line.id}>{column.text(line)}</p>)
+      )}
     </div>
   )
 }

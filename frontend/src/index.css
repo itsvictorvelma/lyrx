@@ -238,6 +238,17 @@ form {
   margin-top: var(--space-5);
 }
 
+.audio-attach {
+  margin-top: 0;
+  padding: 0 var(--page-gutter) var(--space-2);
+}
+
+.audio-attach summary {
+  color: var(--ink-soft);
+  cursor: pointer;
+  width: fit-content;
+}
+
 label {
   display: grid;
   gap: var(--space-1);
@@ -544,7 +555,11 @@ label:has(input[type='checkbox']) {
 .lyric-hiragana p,
 .lyric-romaji p,
 .lyric-meaning p {
-  margin: 0 0 var(--space-5);
+  margin: 0 0 var(--space-2);
+}
+
+.lyric-empty {
+  color: var(--ink-soft);
 }
 
 .lyric-original {
@@ -554,12 +569,18 @@ label:has(input[type='checkbox']) {
   line-height: 1.9;
 }
 
-.lyric-hiragana,
+.lyric-hiragana {
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', sans-serif;
+  font-size: var(--text-lg);
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+
 .lyric-romaji,
 .lyric-meaning {
   font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif;
   font-size: var(--text-lg);
-  line-height: 1.75;
+  line-height: 1.6;
 }
 
 .lyric-meaning {
