@@ -1,0 +1,14 @@
+{
+  "methods": [
+    {
+      "method_uuid": "",
+      "method_name": "Answer questions about provided content",
+      "canonical_id": "typesafe.systemone.create"
+    },
+    {
+      "method_uuid": "",
+      "method_name": "List available models and aliases for your account",
+      "canonical_id": "typesafe.model.list"
+    }
+  ]
+}

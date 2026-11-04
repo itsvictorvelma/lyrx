@@ -1,48 +1,88 @@
-"""Turn the three lyric files into ordered lines.
+"""Validate ordered lyric lines.
 
-Line numbers start at 0. A blank row is kept only when all three files are blank
-there, and those separator rows are left out of the saved song.
+Line numbers start at 0. Every stored line has original text, hiragana,
+romaji, and English. Timing fields are dropped on read and rejected on write.
 """
 
-from app.errors import ApiError
+import hashlib
+import json
 
-TEXT_FILES = ("original.txt", "pronunciation.txt", "translation.txt")
+from pydantic import ValidationError
 
+from app.contracts import TIMING_FIELDS, LyricDraft, LyricLine
+from app.errors import DomainError
 
-def decode_lyric_file(data: bytes, filename: str) -> str:
-    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
-        raise ApiError(400, "invalid_text", f"{filename} must be UTF-8.")
-    try:
-        return data.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise ApiError(400, "invalid_text", f"{filename} must be UTF-8.") from exc
+SCHEMA_VERSION = 2
 
 
-def align_lyrics(original: str, pronunciation: str, translation: str) -> list[tuple[str, str, str]]:
-    rows = {
-        "original.txt": original.splitlines(),
-        "pronunciation.txt": pronunciation.splitlines(),
-        "translation.txt": translation.splitlines(),
-    }
-    counts = {name: len(lines) for name, lines in rows.items()}
-    if len(set(counts.values())) != 1:
-        counted = ", ".join(f"{name} has {count}" for name, count in counts.items())
-        raise ApiError(400, "line_count_mismatch", f"The lyric files have different line counts: {counted}.")
+def load_lines(raw_lines: object) -> list[LyricLine]:
+    if not isinstance(raw_lines, list):
+        raise ValueError("lyric lines must be a list")
+    lines: list[LyricLine] = []
+    for raw in raw_lines:
+        if isinstance(raw, dict):
+            raw = {key: value for key, value in raw.items() if key not in TIMING_FIELDS}
+        lines.append(LyricLine.model_validate(raw))
+    return lines
 
-    aligned: list[tuple[str, str, str]] = []
-    for row_number, trio in enumerate(zip(*rows.values(), strict=True), start=1):
-        blank_files = [name for name, text in zip(TEXT_FILES, trio, strict=True) if text == ""]
-        if len(blank_files) == 3:
-            continue
-        if blank_files:
-            names = ", ".join(blank_files)
-            raise ApiError(
-                400,
-                "partial_blank_row",
-                f"Row {row_number} is blank in {names} but not in every lyric file.",
+
+def dump_lines(lines: list[LyricLine]) -> str:
+    return json.dumps([line.model_dump(mode="json") for line in lines], ensure_ascii=False)
+
+
+def content_hash(lines_json: str) -> str:
+    return hashlib.sha256(lines_json.encode("utf-8")).hexdigest()
+
+
+def lines_for_song(song_id: str, draft: LyricDraft) -> list[LyricLine]:
+    lines: list[LyricLine] = []
+    for index, row in enumerate(draft.lines):
+        try:
+            lines.append(
+                LyricLine(
+                    id=f"{song_id}-{index}",
+                    index=index,
+                    originalText=row.originalText.strip(),
+                    readingHiragana=row.readingHiragana.strip(),
+                    pronunciationRomaji=row.pronunciationRomaji.strip(),
+                    translationEnglish=row.translationEnglish.strip(),
+                )
             )
-        aligned.append(trio)
+        except ValidationError as exc:
+            raise DomainError("generation_invalid", "A lyric line was empty.") from exc
+    return lines
 
-    if not aligned:
-        raise ApiError(400, "empty_song", "The lyric files do not contain any lines.")
-    return aligned
+
+def draft_from_model(payload: object) -> LyricDraft:
+    if not isinstance(payload, dict):
+        raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+    found = sorted(TIMING_FIELDS.intersection(payload))
+    if found:
+        raise DomainError("generation_invalid", "The lyrics came back with timing fields. Send again.")
+    raw_lines = payload.get("lines")
+    if isinstance(raw_lines, list):
+        for row in raw_lines:
+            if isinstance(row, dict) and TIMING_FIELDS.intersection(row):
+                raise DomainError("generation_invalid", "The lyrics came back with timing fields. Send again.")
+    try:
+        draft = LyricDraft.model_validate(
+            {
+                "title": str(payload.get("title", "")).strip(),
+                "artist": str(payload.get("artist", "")).strip(),
+                "lines": [_clean_row(row) for row in raw_lines] if isinstance(raw_lines, list) else raw_lines,
+            }
+        )
+    except (ValidationError, TypeError) as exc:
+        raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.") from exc
+    return draft
+
+
+def _clean_row(row: object) -> object:
+    if not isinstance(row, dict):
+        return row
+    return {
+        "originalText": str(row.get("originalText", "")).strip(),
+        "readingHiragana": str(row.get("readingHiragana", "")).strip(),
+        "pronunciationRomaji": str(row.get("pronunciationRomaji", "")).strip(),
+        "translationEnglish": str(row.get("translationEnglish", "")).strip(),
+    }

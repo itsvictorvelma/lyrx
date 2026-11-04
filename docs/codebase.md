@@ -2,7 +2,7 @@
 
 This page describes the code that exists today. It is the map for anyone opening the project.
 
-The long-term product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built.
+The product plan is [AGENTS.md](../AGENTS.md). Each screen has a spec in [specs/](../specs/). Those files say what the product should do. This file says what is already built. Measured Groq token numbers are in [benchmarks/groq-token-usage.md](../benchmarks/groq-token-usage.md).
 
 ## The short version
 
@@ -11,7 +11,7 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 Today there are two small programs:
 
 - `backend/` is the API. It stores songs and serves the audio.
-- `frontend/` is the web page. It has Song Library, a development import screen, and Learn Song.
+- `frontend/` is the web page. It has Song Library, New song, and Learn Song.
 
 There is also a development-only helper, `backend/authoring/`, that will draft romaji and English files for a person to review. The API never uses it.
 
@@ -26,6 +26,8 @@ uv run uvicorn app.main:create_app --factory --reload
 
 If startup says `Field required` for `environment` or `database_url`, `backend/.env` is missing. The copy command above fixes it. Run the command from `backend/`, not the repository root.
 
+Use `uv run` so startup uses `backend/.venv`. System Python does not have the project packages and raises `ModuleNotFoundError: No module named 'sqlalchemy'`. `app.main` exposes `create_app`, not an `app` object, so `uvicorn app.main:app` does not start the API. After a dependency change, run `uv sync` in `backend/` before starting.
+
 Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 ```json
@@ -38,12 +40,7 @@ Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 Copy `backend/.env.example` to `backend/.env` before starting the API. The example file lists every setting.
 
-Two rules are enforced in code:
-
-1. Production cannot turn song import on. If `ENVIRONMENT` is `production` and `IMPORT_ENABLED` is `true`, the API refuses to start.
-2. Audio files and temporary uploads must be different folders.
-
-Import stays off unless you are in development and you set `IMPORT_ENABLED=true`.
+One rule is enforced in code: audio files and temporary uploads must be different folders. `GROQ_MODEL` selects the lyric model. The Groq key is not in this file. It stays in the Swytchcode connection.
 
 ### Song and error shapes
 
@@ -61,7 +58,7 @@ A song summary has:
 
 A full song has everything in the summary, plus:
 
-- `audioUrl`
+- `audioUrl`, which is left out until an MP3 is attached
 - `contentVersion`
 - `lines`
 
@@ -70,15 +67,15 @@ Each lyric line has:
 - `id`
 - `index`
 - `originalText` — Japanese
+- `readingHiragana` — full hiragana reading
 - `pronunciationRomaji` — pronunciation, not an English translation
 - `translationEnglish` — direct English meaning
-- `startSeconds` — optional time, in seconds, when that line begins
 
 Line numbers start at 0. They must be `0`, `1`, `2`, and so on, with no gaps or duplicates.
 
-`startSeconds` is the only timing value a line may carry. These names are still not allowed:
+Timing fields are rejected, including a start time stored on an older copy of the line. These names are not allowed:
 
-`activeLine`, `cue`, `end`, `endTime`, `offset`, `start`, `startTime`, `timestamp`, `timestamps`, `timing`
+`activeLine`, `cue`, `end`, `endTime`, `offset`, `start`, `startSeconds`, `startTime`, `timestamp`, `timestamps`, `timing`
 
 Any other unknown field is rejected too.
 
@@ -87,24 +84,26 @@ An error has:
 - `code` — a short stable name for the error
 - `message` — a safe sentence for a person
 - `details` — optional list of `field`, `file`, and `line`
-- `requestId` — optional trace id
+- `requestId` — a trace id on every error response
+
+Invalid form fields and unexpected failures use this same shape. The message does not include a file path or lyric text. When saved lyrics cannot be read, the API logs the song id and content version.
 
 The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a field, change both files in the same commit.
 
 ### Routes
 
-`backend/app/main.py` creates the API.
+`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Song reads, lyric generation, and MP3 attach live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
 
 | Route | When it exists | What it does now |
 | --- | --- | --- |
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
-| `GET /api/songs/{songId}` | Always | Returns one song, its audio address, and its lyric lines in order |
-| `POST /api/songs/{songId}/line-times` | Always | Saves a new start time for one or more lines |
-| `POST /api/songs/{songId}/scan` | Always | Reads the saved audio and sets a start time on every line |
-| `POST /api/import` | Development only, and only when `IMPORT_ENABLED=true` | Saves `original.txt`, `pronunciation.txt`, `translation.txt`, and `audio.mp3`. When `ALIGN_ON_IMPORT=true`, it also scans the audio |
+| `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
+| `POST /api/generations` | Always | Asks Groq for Original, Hiragana, Romaji, and English. Does not save the song |
+| `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
+| `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
-In production, `/api/import` is not registered. A request gets the normal not-found response.
+`POST /api/import` is not registered. A request gets the error shape with code `not_found`.
 
 Development requests may come from `http://localhost:5173`. Production does not add that browser permission.
 
@@ -117,7 +116,7 @@ The database has two tables, created by Alembic. The API does not create them wh
 | `tracks` | Song id, title, artist, languages, duration, draft/published status, and the audio file's storage name and checksum |
 | `lyric_versions` | One saved copy of the aligned lyric lines for a song, stored as JSON text |
 
-A line start time is stored inside the lyric JSON. The tables have no timing column.
+The tables have no timing column. A saved lyric JSON file that still contains `startSeconds` is read without that field.
 
 From the `backend/` directory, create or update the local database with:
 
@@ -140,29 +139,21 @@ The page has three routes:
 
 | Route | What it shows |
 | --- | --- |
-| `/` | Song Library. Each song is a link to Learn Song. |
-| `/import` | Import Song. The link and the form are included only in a development build. |
-| `/songs/:songId` | Learn Song. Stacked Japanese, pronunciation, and direct meaning, plus the player. |
+| `/` | Song Library. Each song is a link to Learn Song. New song starts a chat. |
+| `/songs/new` | Ask for lyrics, read the four documents, and save. |
+| `/songs/:songId` | Learn Song. Original, Hiragana, Romaji, and English, plus the player and MP3 attach. |
 
-`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/player.tsx` plays that song's `audioUrl`. The player state stays inside the player, so the clock does not redraw the lyrics.
+`frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song starts with all three layers visible. The buttons are Japanese, Pronunciation (Romaji), and Direct Meaning. The choice is saved in `sessionStorage` under `lyrx.layers.v1` for this browser tab only. One layer always stays visible.
+Learn Song is a light reading page. It starts with all four documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
 
-The player has play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Learn Song listens to that clock. It highlights the current line and can scroll that line into view.
-
-On a narrow window the player sits at the bottom. On a wide window it stays under the header while the lyrics scroll. The page is wide enough on a desktop that several lines fit. Follow the song is on by default. Scrolling yourself turns follow off for the rest of the browser tab.
-
-Follow uses each line's `startSeconds`. The current line is the latest start at or before the playhead. Before the first start, no line is marked. **Set this line to now** saves the playhead as that line's start. **Stamp next line** does the same and then moves to the following line. **Play from** seeks to a line that already has a time. **Scan line times** reads the saved mp3, matches the Japanese text to the words it hears, and saves a start on every line. The first scan downloads a speech model and can take a few minutes. Sung words over a band are a first pass: an entrance, a rest, or a long phrase can still land early or late. Set that line to now to move it. Scan again replaces the saved times. There is no tempo or beats-per-line control.
-
-`ALIGN_ON_IMPORT=true` runs that same scan while a song is imported. A repeated import of the same text and audio keeps the times already saved, including corrections. `ALIGN_MODEL` chooses the speech model. `base` is the default. `small` is slower and usually closer.
-
-The import form is in `frontend/src/import-form.tsx`. It posts to `http://localhost:8000`. Set `IMPORT_ENABLED=true` in `backend/.env`, then restart the API. The saved song is published immediately. Its address is made from the title, so the form does not ask for a song id. The same files can be imported again without creating a copy. To replace a song, check “Replace the saved song with this title.” After a successful import, the page opens that song.
+The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it. With no MP3, the bar says that no audio is attached.
 
 Colors, type, and spacing live as variables at the top of `frontend/src/index.css`.
 
 ## Authoring tool
 
-`backend/authoring/` is a development-only helper. It will read an `original.txt` and use a language model to draft `pronunciation.txt` and `translation.txt`. A person reviews the drafts, adds `audio.mp3`, and imports the bundle the normal way. Today it only has its settings; the LangGraph workflow is not written yet.
+`backend/authoring/` is a development-only helper. It will read an `original.txt` and use a language model to draft `pronunciation.txt` and `translation.txt`. Today it only has its settings. The LangGraph workflow is not written yet, and the API does not call it. Songs in the app come from the Groq lyric draft.
 
 Its packages (LangChain, LangGraph, and the Gemini and Groq connectors) are in the `authoring` dependency group in `backend/pyproject.toml`. `uv sync` installs them by default. A production install leaves them out with `uv sync --no-default-groups`.
 
@@ -197,14 +188,16 @@ uv run pytest
 The tests check:
 
 - A valid song is accepted.
-- `startSeconds` is accepted. Other timing fields are rejected.
+- Timing fields, including `startSeconds`, are rejected. A stored line that still has `startSeconds` is returned without it.
 - Line numbers must start at 0 and have no gaps.
-- Production cannot expose song import.
+- Production does not register `POST /api/import`.
 - The migration creates the two song tables and can remove them again.
 - Starting the API does not create a database file.
-- A valid import can be read back from the song list and song detail.
-- The same import does not create a second copy.
-- A mismatched lyric file does not save a song or an audio file.
+- A saved lyric draft can be read back from the song list and song detail before an MP3 is attached.
+- Saving the same title again creates another song.
+- An unreadable MP3 does not store an audio file.
+- A generation test uses a stand-in client and does not call Groq.
+- Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
 - Starting the API does not load the authoring tool or LangChain.
 - The check guardrail hook spots real check runs and reset attempts, and ignores the same words inside quotes, heredocs, and failure reports.
 - Authoring settings need a `provider:model` value and that provider's key.
@@ -239,7 +232,7 @@ A local agent that hits the limit writes its report to `.agent-reports/ISSUE-<n>
 
 ## What not to add yet
 
-Do not add accounts, word-by-word timing, looping, or a microphone. Line start times and the current-line highlight are already part of Learn Song. The player still only reports the clock. Learn Song decides which line is current.
+Do not add accounts, line start times, audio scanning, current-line highlight, follow-scroll, word-by-word timing, looping, or a microphone. The player only plays the audio.
 
 ## When you change the code
 

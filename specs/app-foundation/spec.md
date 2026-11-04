@@ -9,14 +9,14 @@ Parent plan: [Prototype 1 build plan](../../AGENTS.md)
 
 Related features:
 
-- [Developer song import](../content-import/spec.md)
+- [Song creation](../song-creation/spec.md)
 - [Song Library](../song-library/spec.md)
 - [Learn Song](../learn-song/spec.md)
 - [Audio player](../audio-player/spec.md)
 
 ## Goal
 
-Create the smallest stable platform on which the three approved screens can be implemented and tested without introducing accounts, public writes, timing data, or production-only complexity.
+Create the smallest stable platform on which Song Library, new-song chat, and Learn Song can be implemented and tested without accounts, timing data, or a public multi-user host.
 
 ## Scope
 
@@ -28,7 +28,7 @@ Create the smallest stable platform on which the three approved screens can be i
 - Alembic migrations
 - Shared request/response/error contracts
 - Local media filesystem and media delivery boundary
-- Environment-safe registration of the development-only import feature
+- Swytchcode call to Groq for lyric generation, with the key kept out of the app
 - Baseline accessibility, test, lint, type-check, and build configuration
 
 ## Architecture
@@ -38,7 +38,7 @@ Create the smallest stable platform on which the three approved screens can be i
 - One application shell owns global layout, navigation, error boundary, and route fallback.
 - Routes:
   - `/` — Song Library
-  - `/import` — Import Song in development only
+  - `/songs/new` — new song
   - `/songs/:songId` — Learn Song
 - Unknown routes show a useful not-found state and a route to Song Library.
 - No authentication provider, account context, global server-state library, or timing engine.
@@ -47,11 +47,11 @@ Create the smallest stable platform on which the three approved screens can be i
 
 - FastAPI application with:
   - Health/readiness endpoint suitable for deployment checks
-  - Read-only song list/detail routers
+  - Song list and detail routers
   - Media URL generation
-  - Development import router only when the server is explicitly in local development mode
+  - Generation, save, lyric replace, and MP3 attach routers from [Song creation](../song-creation/spec.md)
 - Validate configuration at startup and fail clearly on missing/unsafe values.
-- Keep business validation independent of HTTP so import and repository tests do not need a running server.
+- Keep business validation independent of HTTP so generation and repository tests do not need a running server or a Groq call.
 
 ### Persistence
 
@@ -93,7 +93,7 @@ Required fields:
 
 Song summary plus:
 
-- `audioUrl`
+- `audioUrl`, null when no MP3 is stored
 - `contentVersion`
 - ordered `lines`
 
@@ -102,6 +102,7 @@ Song summary plus:
 - `id`
 - `index`
 - `originalText`
+- `readingHiragana`
 - `pronunciationRomaji`
 - `translationEnglish`
 
@@ -125,14 +126,16 @@ Required categories:
 - Media root
 - Public media base URL
 - Frontend API base URL
-- Import-feature flag, default false
-- Maximum import request/file sizes
+- `GROQ_MODEL`, default `openai/gpt-oss-120b`
+- Maximum audio upload size
 - Allowed development origin
+
+The Groq key is not an application environment variable. Swytchcode injects it.
 
 Production invariants:
 
-- Import flag cannot enable the import router.
-- Import mutation is absent from generated routes/OpenAPI.
+- `POST /api/import` is absent.
+- Read routes still start when the Groq credential is missing. Generation returns `groq_unauthorized`.
 - Media root is not the same directory as temporary upload staging.
 - Debug mode and verbose error output are disabled.
 
@@ -157,8 +160,8 @@ Production invariants:
 ## Security
 
 - No users, sessions, tokens, password code, or authorization roles.
-- No learner-facing mutation.
-- Development import router must be excluded server-side in production.
+- Learner-facing writes are generation, save, lyric replace, and one MP3 upload, on this install.
+- `POST /api/import` is not registered.
 - Generated media paths prevent traversal and hide local paths.
 - Imported strings render as text, never raw HTML.
 - CORS is restricted to configured origins; do not use permissive credentials settings.
@@ -177,17 +180,17 @@ Production invariants:
 ### Integration
 
 - Alembic upgrade from empty SQLite
-- Repository CRUD required by the importer and reads
+- Repository CRUD required by save, lyric replace, and reads
 - Constraints for stable IDs and content versions
 - Song list/detail response shape
 - Missing/unpublished song behavior
 - Media URL does not reveal filesystem paths
-- Production app route/OpenAPI excludes import mutation
+- OpenAPI excludes `POST /api/import`
 
 ### Frontend
 
 - Route rendering and route-not-found
-- Development/production Import Song registration
+- `/songs/new` and Learn Song render. `/import` does not.
 - Application error boundary and retry
 - Focus behavior after route changes
 
@@ -208,9 +211,9 @@ This feature blocks every other specification.
 
 ## Acceptance criteria
 
-- All three routes resolve as specified in development.
-- Production has only Song Library and Learn Song routes.
-- Production backend has no import mutation.
+- `/`, `/songs/new`, and `/songs/:songId` resolve.
+- `/import` does not resolve.
+- The backend has no import mutation.
 - Empty-database setup succeeds through Alembic only.
 - All database access goes through SQLAlchemy.
 - Song contracts contain ordered lines and no timing fields.
@@ -221,7 +224,7 @@ This feature blocks every other specification.
 
 ## Risks
 
-- Environment flags accidentally expose import.
+- The Groq key is copied into the frontend or the repository.
 - SQLite-specific behavior leaks into repository code.
 - Contract drift across backend/frontend.
 - An overly broad app shell introduces unapproved screens or state.
@@ -235,4 +238,5 @@ Mitigate with production route tests, PostgreSQL-oriented portability review, ge
 - Background jobs, queues, object storage, CDN, analytics
 - User preferences persisted server-side
 - Karaoke timing, timestamps, synchronization services
-- Third-party music/catalog APIs
+- A public multi-user host
+- Third-party music or lyrics catalog APIs

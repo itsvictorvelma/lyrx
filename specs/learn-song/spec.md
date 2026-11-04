@@ -12,11 +12,11 @@ Dependencies:
 - [Application foundation](../app-foundation/spec.md)
 - [Song Library](../song-library/spec.md)
 - [Audio player](../audio-player/spec.md)
-- [Developer song import](../content-import/spec.md)
+- [Song creation](../song-creation/spec.md)
 
 ## Goal
 
-Let a learner rehearse a Japanese song using one screen that combines audio with line-aligned Japanese, reader-friendly romaji pronunciation, and direct English meaning.
+Let a learner rehearse a Japanese song using one light reading screen that combines audio with four lyric documents: Original, Hiragana, Romaji, and English. Chat on this screen can replace the saved lyrics. That call is specified in [Song creation](../song-creation/spec.md).
 
 ## Route
 
@@ -33,7 +33,7 @@ Required:
 - Title
 - Artist
 - Source/target languages
-- Audio URL
+- `audioUrl`, or null when no MP3 is attached
 - Content version
 - Ordered lyric units
 
@@ -42,66 +42,69 @@ Each lyric unit:
 - Stable ID
 - Monotonic index
 - `originalText`
+- `readingHiragana`
 - `pronunciationRomaji`
 - `translationEnglish`
 
-Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Each line may include `startSeconds`. The screen highlights that line and can scroll to it. There is no tempo control.
+Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Timing fields, including `startSeconds`, are rejected. There is no current-line highlight and no tempo control.
 
 ## Layout
+
+The page uses the warm paper palette even when the system theme is dark. Surfaces stay quiet: no boxed lyric cards, row stripes, or heavy buttons.
 
 Order:
 
 1. Back link to Song Library
-2. Song title/artist and language direction
-3. Layer visibility controls
-4. [Sticky audio player](../audio-player/spec.md)
-5. Ordered lyric units
+2. Song title and artist
+3. [Compact sticky audio player](../audio-player/spec.md)
+4. Ordered lyric documents
 
-Each lyric unit always stacks:
+Each layer is one document, left to right:
 
-1. **Japanese** — visually primary
-2. **Pronunciation (Romaji)** — prominent pronunciation aid
-3. **Direct Meaning** — visually secondary context
+1. **Original** — strongest, Japanese text
+2. **Hiragana** — the reading, same language as the original, quieter than the original
+3. **Romaji** — medium, pronunciation
+4. **English** — same reading size as romaji, slightly muted
 
-The unit remains vertically stacked at all widths. Responsive design may change max width, padding, type scale, and sticky-player placement, but never converts layers to columns or reorders them.
+Lines stay in index order inside each document. There are no cells, row stripes, or per-line labels. A wide window shows the open documents side by side and the page scrolls once. A narrow window shows one document, chosen with Original, Hiragana, Romaji, and English tabs. Responsive design may change max width, padding, and type scale, but it does not reorder the documents.
 
 ## Layer visibility
 
-Controls:
+Wide-window controls live in the column headings:
 
-- Japanese
-- Pronunciation (Romaji)
-- Direct Meaning
+- Original
+- Hiragana
+- Romaji
+- English
+
+Each heading shows Hide when that document's text is visible and Show when it is hidden. Hiding fades the text over about 200ms and leaves the column width, heading, and line positions unchanged. The other columns do not reflow. `prefers-reduced-motion` removes the fade. Hidden text is not selectable and is removed from the accessibility tree.
+
+Narrow-window controls are tabs with those same four names, plus Hide or Show for the selected document. One tab is selected, so one document is on screen. Hiding its text does not change scroll position or layout. Choosing a tab does not erase another layer's visibility.
 
 Rules:
 
-- All three are visible on first visit/default.
-- Toggle choice applies to every lyric unit.
-- At least one layer must remain visible.
+- All four are visible on first visit/default.
+- Layer visibility is stored under `lyrx.layers.v2` as four booleans. An older or invalid value falls back to all visible.
+- The choice applies to every lyric unit.
+- Any layer can be hidden, including the last one.
 - Persist only in browser `sessionStorage`.
 - Storage is namespaced/versioned and validated on read.
 - Invalid/unavailable storage falls back to all visible.
-- Toggling does not alter source data, line order, scroll position, or player state.
-- The UI communicates hidden/visible state without color alone.
-
-Recommended handling when one layer remains:
-
-- Disable the final visible layer's “hide” action or reject it with an immediate accessible explanation.
+- Toggling does not alter source data, line order, scroll position, column geometry, or player state.
+- The button says Hide or Show, exposes `aria-pressed`, and has a visible keyboard focus style.
 
 ## Player relationship
 
-- The player reports the playhead. Learn Song chooses the current line from `startSeconds`.
-- Follow scrolls the current line into view. Scrolling by hand turns follow off.
-- A line can be stamped to the playhead, and a saved start can seek the player.
-- There is no tempo, beats-per-line, line loop, or word timing.
-- The player stays reachable while the list scrolls but must not cover focused/currently read lyric content.
+- The player plays the song. It does not choose, highlight, or scroll a lyric line.
+- There is no tempo, beats-per-line, line loop, line timing, or word timing.
+- The player stays reachable while the lyrics scroll but must not cover focused lyric content.
 
 ## State and error behavior
 
 ### Loading
 
 - Keep route/screen heading structure stable.
-- Show song/player/lyrics loading status without a fake active lyric.
+- Show song/player/lyrics loading status.
 
 ### Success
 
@@ -131,49 +134,49 @@ Recommended handling when one layer remains:
 
 ### Empty lyric set
 
-- Treat as invalid imported content, not a normal public empty state.
+- Treat as invalid stored content, not a normal empty state. A line missing hiragana is malformed.
 
 ## Accessibility
 
 - Main heading includes song title.
-- Lyrics are a semantic ordered list.
-- Each lyric unit is a grouped list item with layer labels available to assistive technology.
-- Japanese text uses Japanese language annotation.
-- English interface/Direct Meaning use English annotation.
-- Romaji is labeled Pronunciation (Romaji), never just “English.”
-- Toggle controls expose pressed/checked state and have visible focus.
-- Sticky player does not obscure focused lyric units at 200%/400% zoom.
-- Reading order follows visual stack.
+- Lyrics are four documents. Visible headings and tabs read Original, Hiragana, Romaji, and English.
+- On a wide window, hiding text does not collapse the column. The four columns keep their width.
+- Japanese text and hiragana use Japanese language annotation.
+- English interface text and the English document use English annotation.
+- Romaji is labeled Romaji. English is the translation document.
+- Hide, Show, and tab controls expose pressed or selected state and have visible focus.
+- Sticky player does not obscure focused lyric text at 200%/400% zoom.
+- Reading order is the first pane from top to bottom, then the next pane.
 - Typography and spacing remain legible for Japanese characters and Latin text.
 - No color-only distinctions.
 
 ## Responsive behavior
 
-- Narrow: safe-area-aware player placement; one stacked unit per row.
-- Medium/wide: centered readable measure; layers remain stacked.
-- Reserve/offset content space for the sticky player.
-- Long Japanese/romaji/meaning strings wrap rather than clip.
-- High zoom does not create horizontal page scroll.
+- Narrow: Original, Hiragana, Romaji, and English tabs. One document is visible. The player stays under the header.
+- Medium/wide: centered readable measure. The open documents share the width and the page scrolls once. There is no nested lyric scrollbar.
+- The sticky player occupies space at the top, so it does not cover the lyrics.
+- Long Japanese, hiragana, romaji, and English strings wrap rather than clip.
+- The page does not gain a horizontal scrollbar.
 - Toggling layers does not produce large unexpected layout/focus jumps.
 
 ## Security and privacy
 
-- No account or learner write.
-- Imported text renders as plain escaped content.
+- No account. Lyric replace and MP3 attach are the writes in [Song creation](../song-creation/spec.md).
+- Generated text renders as plain escaped content.
 - No analytics, recording, microphone, or personal data.
 - No internal paths in the response.
 - Only publishable content resolves in production.
-- Session storage contains only three booleans/schema version, no song text.
+- Session storage contains only four booleans and the schema version, no song text.
 
 ## Tests
 
 ### Unit/component
 
-- Correct stack order and exact labels
+- Correct document order and the labels Original, Hiragana, Romaji, and English
 - API order retained
 - Duplicate/non-monotonic/missing line rejection
 - Toggle each layer
-- At-least-one-visible invariant
+- Any layer, including the last one, can be hidden
 - Session persistence and invalid-storage fallback
 - Player actions do not mutate visibility/scroll state
 - Loading/not-found/API/malformed/media errors
@@ -197,19 +200,19 @@ Recommended handling when one layer remains:
 ### End-to-end
 
 1. Navigate from Song Library to Learn Song.
-2. Confirm all three layers are visible and stacked.
-3. Hide/show each layer and enforce at least one.
+2. Confirm all four documents are visible, in order, without a table grid.
+3. Hide/show each layer's text without moving the columns or the scroll position.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
-6. Scan or stamp a line, then confirm follow highlights that line. There is no tempo control.
+6. Exercise the player and confirm it does not highlight or scroll a line. There is no tempo control.
 
 ## Sequencing
 
 1. Freeze Song detail/line contract.
 2. Build data validation and screen states.
-3. Build stacked LyricUnit and ordered viewport.
+3. Build the four lyric documents.
 4. Add layer controls and session persistence.
-5. Integrate Audio Player without timeline coupling.
+5. Integrate Audio Player without line highlighting or follow-scroll.
 6. Complete accessibility and responsive tests.
 
 Can proceed in parallel with Audio Player once its layout envelope and event contract are frozen.
@@ -217,33 +220,33 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 ## Acceptance criteria
 
 - A publishable song opens directly by URL without login.
-- Every imported line is shown once, in order, as a vertically stacked unit.
-- Labels are exactly Japanese, Pronunciation (Romaji), and Direct Meaning.
-- All three toggles work globally; at least one remains visible.
+- Every saved line is shown once, in order, inside each visible pane.
+- Labels are Original, Hiragana, Romaji, and English.
+- All four toggles hide or show text without reflow, including when every layer is hidden.
 - Toggle state survives within the browser session only.
 - Player remains reachable and independent of lyrics.
 - Manual scroll survives player actions.
 - Loading, unavailable, malformed, API, and media failures are understandable/recoverable as applicable.
 - Screen meets keyboard, language, focus, zoom, wrapping, contrast, and sticky-content requirements.
-- Line start times highlight and follow the current line. There is no tempo control, word timing, or loop.
+- There is no line timing, current-line highlight, follow-scroll, tempo control, word timing, or loop.
 
 ## Risks
 
 - Romaji appears to be an English translation.
-- Responsive design turns aligned units into ambiguous columns.
+- A narrow layout squeezes four documents onto one screen.
 - Sticky player covers content/focus.
-- Session state creates a blank screen if all layers become hidden.
-- Malformed persisted/imported data silently misaligns meaning.
+- Hiding a layer shifts the other columns or the scroll position.
+- Malformed persisted data silently misaligns meaning.
 
-Mitigate with exact labels/order, always-stacked contract, offset/zoom tests, at-least-one invariant, and runtime contract validation.
+Mitigate with the labels Romaji and English, fixed order, tabs on a narrow window, offset/zoom tests, fixed column geometry when text is hidden, and runtime contract validation.
 
 ## Non-goals and deferred work
 
-- Tempo or beats-per-line pacing
+- Line start times, audio scanning, current-line highlight, follow-scroll, or tempo pacing
 - Word/mora timing, line/A-B loop
 - Word/mora segmentation
 - Editing or reporting content
 - Saved progress/favorites/history
 - Authentication/private songs
 - Recording, pitch, microphone, scoring
-- Machine translation/romaji
+- A stored chat transcript

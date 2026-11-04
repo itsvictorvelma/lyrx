@@ -1,0 +1,1 @@
+"""Song database access."""

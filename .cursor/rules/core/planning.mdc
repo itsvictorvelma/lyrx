@@ -1,0 +1,10 @@
+---
+description: Force a planning phase before any code execution.
+globs: ["*"]
+alwaysApply: true
+---
+
+Before writing code or running terminal modifications, you MUST output a 2-step plan:
+1. **Assessment:** Outline what files need modification and why.
+2. **Impact Analysis:** State potential side-effects on existing architecture.
+Wait for user confirmation before executing edits.

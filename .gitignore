@@ -36,3 +36,9 @@ drafts/
 
 # macOS
 .DS_Store
+
+.swytchcode/workspace.json
+.swytchcode/mcp.pid
+
+# Local rehearsal media. Not part of the app.
+test_media/

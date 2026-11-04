@@ -1,0 +1,19 @@
+"""Database operations the song services are allowed to call."""
+
+from typing import Protocol
+
+from app.repositories.records import LyricVersionRecord, TrackRecord, TrackWrite, VersionWrite
+
+
+class SongRepository(Protocol):
+    def list_published(self) -> list[TrackRecord]: ...
+
+    def published_song(self, song_id: str) -> tuple[TrackRecord, LyricVersionRecord] | None: ...
+
+    def get_track(self, song_id: str) -> TrackRecord | None: ...
+
+    def latest_lines_json(self, song_id: str) -> str | None: ...
+
+    def has_content_version(self, song_id: str, content_version: str) -> bool: ...
+
+    def save_import(self, track: TrackWrite, version: VersionWrite | None) -> None: ...

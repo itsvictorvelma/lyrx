@@ -1,30 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
-import { ApiFailure, getSong, saveLineTimes, scanSong } from './api.ts'
-import type { SongDetail } from './contracts.ts'
+import { useEffect, useLayoutEffect, useState, type KeyboardEvent } from 'react'
+import { AudioAttach } from './audio-form.tsx'
+import { ApiFailure, getSong } from './api.ts'
+import { COLUMNS } from './columns.ts'
+import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
 import {
-  activeLineIndex,
-  formatTime,
-  hasLineTime,
-  languageDirection,
   lyricProblem,
-  readFollow,
   readLayers,
-  readLineStarts,
   toggleLayer,
-  visibleLayerCount,
-  writeFollow,
   writeLayers,
   type LayerKey,
   type LayerVisibility,
 } from './rehearsal.ts'
-
-const LAYER_OPTIONS: { key: LayerKey; label: string }[] = [
-  { key: 'japanese', label: 'Japanese' },
-  { key: 'romaji', label: 'Pronunciation (Romaji)' },
-  { key: 'meaning', label: 'Direct Meaning' },
-]
 
 type LoadState =
   | { phase: 'loading' }
@@ -36,17 +24,15 @@ export function LearnSong({ songId }: { songId: string }) {
   const [state, setState] = useState<LoadState>({ phase: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const [layers, setLayers] = useState<LayerVisibility>(() => readLayers(browserLayers()))
-  const [following, setFollowing] = useState(() => readFollow(browserLayers()))
-  const [timingNote, setTimingNote] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [stampIndex, setStampIndex] = useState(0)
-  const [seekRequest, setSeekRequest] = useState<{ time: number; token: number } | null>(null)
-  const followingRef = useRef(following)
-  const startsRef = useRef<(number | null)[]>([])
-  const seekToken = useRef(0)
-  const lyricsRef = useRef<HTMLOListElement>(null)
-  const timeRef = useRef(0)
-  const lastLineRef = useRef(-1)
+  const [reading, setReading] = useState<LayerKey>('japanese')
+  const wide = useWideLayout()
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.reading = 'true'
+    return () => {
+      delete document.documentElement.dataset.reading
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -77,100 +63,8 @@ export function LearnSong({ songId }: { songId: string }) {
     )
   }, [state, problem])
 
-  useEffect(() => {
-    followingRef.current = following
-    startsRef.current = state.phase === 'ready' ? readLineStarts(state.song.lines) : []
-    paintLine(lyricsRef.current, lastLineRef.current)
-  }, [following, state])
-
-  useEffect(() => {
-    function release(event: Event) {
-      if (!followingRef.current) return
-      const target = event.target
-      if (target instanceof Element && target.closest('.player, button, a, input, label')) return
-      followingRef.current = false
-      setFollowing(false)
-      const storage = browserLayers()
-      if (storage) writeFollow(storage, false)
-    }
-
-    function releaseFromKey(event: KeyboardEvent) {
-      if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) return
-      release(event)
-    }
-
-    window.addEventListener('wheel', release, { passive: true })
-    window.addEventListener('touchmove', release, { passive: true })
-    window.addEventListener('keydown', releaseFromKey)
-    return () => {
-      window.removeEventListener('wheel', release)
-      window.removeEventListener('touchmove', release)
-      window.removeEventListener('keydown', releaseFromKey)
-    }
-  }, [])
-
-  function onProgress(current: number, _duration: number) {
-    timeRef.current = current
-    const starts = startsRef.current
-    const index = hasLineTime(starts) ? activeLineIndex(current, starts) : null
-    const lineIndex = index ?? -1
-    if (lineIndex === lastLineRef.current) return
-    lastLineRef.current = lineIndex
-    paintLine(lyricsRef.current, lineIndex)
-    if (!followingRef.current || index == null) return
-    const line = lyricsRef.current?.querySelector(`[data-index="${index}"]`)
-    if (!(line instanceof HTMLElement)) return
-    window.scrollTo(0, Math.max(0, line.getBoundingClientRect().top + window.scrollY - topOffset()))
-  }
-
-  async function stamp(index: number) {
-    if (state.phase !== 'ready' || saving) return
-    setSaving(true)
-    setTimingNote(null)
-    try {
-      const song = await saveLineTimes(songId, [{ index, startSeconds: Math.max(0, timeRef.current) }])
-      lastLineRef.current = -1
-      setState({ phase: 'ready', song })
-      setStampIndex(Math.min(song.lines.length - 1, index + 1))
-    } catch (reason) {
-      setTimingNote(reason instanceof Error ? reason.message : 'The line time could not be saved.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function scan() {
-    if (saving) return
-    setSaving(true)
-    setTimingNote('Scanning the song. The first scan downloads a speech model and can take a few minutes.')
-    try {
-      const song = await scanSong(songId)
-      lastLineRef.current = -1
-      setState({ phase: 'ready', song })
-      setTimingNote('Line times are saved. Move a line if it comes in early or late.')
-    } catch (reason) {
-      setTimingNote(reason instanceof Error ? reason.message : 'The scan failed.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function playFrom(time: number) {
-    seekToken.current += 1
-    setSeekRequest({ time, token: seekToken.current })
-  }
-
-  function changeFollow() {
-    const next = !following
-    followingRef.current = next
-    setFollowing(next)
-    const storage = browserLayers()
-    if (storage) writeFollow(storage, next)
-  }
-
   function changeLayer(key: LayerKey) {
     const next = toggleLayer(layers, key)
-    if (!next) return
     setLayers(next)
     const storage = browserLayers()
     if (storage) writeLayers(storage, next)
@@ -183,6 +77,7 @@ export function LearnSong({ songId }: { songId: string }) {
 
   const title =
     state.phase === 'ready' ? state.song.title : state.phase === 'loading' ? 'Loading song' : 'Song unavailable'
+  const active = COLUMNS.find((column) => column.key === reading) ?? COLUMNS[0]
 
   return (
     <article className="learn">
@@ -207,70 +102,29 @@ export function LearnSong({ songId }: { songId: string }) {
       {state.phase === 'ready' ? (
         <>
           <p className="byline">{state.song.artist}</p>
-          <p className="song-meta">
-            {languageDirection(state.song.sourceLanguage, state.song.targetLanguage)}
-          </p>
-          <LayerToggles layers={layers} onToggle={changeLayer} />
-          <FollowControls
-            timed={hasLineTime(readLineStarts(state.song.lines))}
-            following={following}
-            timingNote={timingNote}
-            saving={saving}
-            stampLabel={state.song.lines[Math.min(stampIndex, state.song.lines.length - 1)]?.originalText ?? ''}
-            onFollow={changeFollow}
-            onStampNext={() => {
-              const index = Math.min(stampIndex, state.song.lines.length - 1)
-              if (index >= 0) void stamp(index)
-            }}
-            onScan={() => void scan()}
-          />
-          <Player
-            src={state.song.audioUrl}
-            durationHint={state.song.durationSeconds}
-            following={following && !problem}
-            seekRequest={seekRequest}
-            onProgress={onProgress}
-          />
+          <div className="learn-tools">
+            <Player src={state.song.audioUrl} title={state.song.title} durationHint={state.song.durationSeconds} />
+            <AudioAttach songId={songId} hasAudio={Boolean(state.song.audioUrl)} onAttached={retry} />
+            {!wide && !problem ? (
+              <div className="lyric-switch">
+                <LyricTabs active={active.key} onSelect={setReading} />
+                <LayerToggle label={active.label} shown={layers[active.key]} onToggle={() => changeLayer(active.key)} />
+              </div>
+            ) : null}
+          </div>
           {problem ? (
             <p className="notice" role="alert">
               These lyrics could not be shown.
             </p>
+          ) : wide ? (
+            <DesktopLyrics song={state.song} layers={layers} onToggle={changeLayer} />
           ) : (
-            <ol className="lyrics" ref={lyricsRef}>
-              {state.song.lines.map((line) => (
-                <li key={line.id} className="lyric" data-index={line.index}>
-                  <p className="lyric-now">Now</p>
-                  {layers.japanese ? (
-                    <p className="lyric-original" lang="ja">
-                      <span className="lyric-label">Japanese</span>
-                      {line.originalText}
-                    </p>
-                  ) : null}
-                  {layers.romaji ? (
-                    <p className="lyric-romaji" lang="ja-Latn">
-                      <span className="lyric-label">Pronunciation (Romaji)</span>
-                      {line.pronunciationRomaji}
-                    </p>
-                  ) : null}
-                  {layers.meaning ? (
-                    <p className="lyric-meaning" lang="en">
-                      <span className="lyric-label">Direct Meaning</span>
-                      {line.translationEnglish}
-                    </p>
-                  ) : null}
-                  <div className="lyric-actions">
-                    <button type="button" disabled={saving} onClick={() => void stamp(line.index)}>
-                      Set this line to now
-                    </button>
-                    {line.startSeconds != null ? (
-                      <button type="button" onClick={() => playFrom(line.startSeconds ?? 0)}>
-                        Play from {formatTime(line.startSeconds)}
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <LyricDocument
+              column={active}
+              lines={state.song.lines}
+              labelledBy={`tab-${active.key}`}
+              shown={layers[active.key]}
+            />
           )}
         </>
       ) : null}
@@ -278,90 +132,77 @@ export function LearnSong({ songId }: { songId: string }) {
   )
 }
 
-function FollowControls({
-  timed,
-  following,
-  timingNote,
-  saving,
-  stampLabel,
-  onFollow,
-  onStampNext,
-  onScan,
+function DesktopLyrics({
+  song,
+  layers,
+  onToggle,
 }: {
-  timed: boolean
-  following: boolean
-  timingNote: string | null
-  saving: boolean
-  stampLabel: string
-  onFollow: () => void
-  onStampNext: () => void
-  onScan: () => void
+  song: SongDetail
+  layers: LayerVisibility
+  onToggle: (key: LayerKey) => void
 }) {
   return (
-    <div className="follow">
-      <button type="button" className="layer-toggle" aria-pressed={following} aria-describedby="follow-note" onClick={onFollow}>
-        Follow the song
-        <span className="toggle-state">{following ? 'On' : 'Off'}</span>
-      </button>
-      <p id="follow-note">
-        {timed
-          ? "Follows each line's saved start time. A scan can miss an entrance or a rest. Set this line to now when one is early or late. Scroll yourself to turn follow off."
-          : 'This song has no line times yet. Scan it, or stamp each line while it plays. Scroll yourself to turn follow off.'}
-      </p>
-      <div className="follow-actions">
-        <button type="button" disabled={saving} onClick={onStampNext}>
-          Stamp next line
-        </button>
-        <p>Next stamp: {stampLabel}</p>
-        <button type="button" disabled={saving} onClick={onScan}>
-          {timed ? 'Scan again' : 'Scan line times'}
-        </button>
-      </div>
-      {timed ? <p>Scan again replaces the saved line times.</p> : null}
-      {timingNote ? <p role="status">{timingNote}</p> : null}
+    <div className="lyric-sheet">
+      {COLUMNS.map((column) => {
+        const shown = layers[column.key]
+        return (
+          <section key={column.key} className="lyric-pane" aria-labelledby={`pane-${column.key}`}>
+            <header className="lyric-pane-title">
+              <h2 id={`pane-${column.key}`}>{column.label}</h2>
+              <LayerToggle label={column.label} shown={shown} onToggle={() => onToggle(column.key)} />
+            </header>
+            <LyricBody column={column} lines={song.lines} shown={shown} />
+          </section>
+        )
+      })}
     </div>
   )
 }
 
-function paintLine(root: HTMLOListElement | null, index: number) {
-  if (!root) return
-  const previous = root.querySelector('.is-current')
-  if (previous instanceof HTMLElement) {
-    previous.classList.remove('is-current')
-    previous.removeAttribute('aria-current')
-  }
-  if (index < 0) return
-  const line = root.querySelector(`[data-index="${index}"]`)
-  if (!(line instanceof HTMLElement)) return
-  line.classList.add('is-current')
-  line.setAttribute('aria-current', 'true')
+function LayerToggle({ label, shown, onToggle }: { label: string; shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="pane-visibility"
+      aria-pressed={shown}
+      aria-label={`${shown ? 'Hide' : 'Show'} ${label}`}
+      onClick={onToggle}
+    >
+      {shown ? 'Hide' : 'Show'}
+    </button>
+  )
 }
 
-function LayerToggles({
-  layers,
-  onToggle,
-}: {
-  layers: LayerVisibility
-  onToggle: (key: LayerKey) => void
-}) {
-  const count = visibleLayerCount(layers)
+function LyricTabs({ active, onSelect }: { active: LayerKey; onSelect: (key: LayerKey) => void }) {
+  function move(event: KeyboardEvent<HTMLButtonElement>, key: LayerKey) {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+    event.preventDefault()
+    const index = COLUMNS.findIndex((column) => column.key === key)
+    const delta = event.key === 'ArrowRight' ? 1 : -1
+    const next = COLUMNS[(index + delta + COLUMNS.length) % COLUMNS.length]
+    if (!next) return
+    onSelect(next.key)
+    const id = `tab-${next.key}`
+    requestAnimationFrame(() => document.getElementById(id)?.focus())
+  }
+
   return (
-    <div className="layers" role="group" aria-label="Lyric layers">
-      <p id="layer-rule">At least one layer stays visible.</p>
-      {LAYER_OPTIONS.map((option) => {
-        const shown = layers[option.key]
+    <div className="lyric-tabs" role="tablist" aria-label="Lyrics">
+      {COLUMNS.map((column) => {
+        const selected = column.key === active
         return (
           <button
-            key={option.key}
+            key={column.key}
             type="button"
-            className="layer-toggle"
-            aria-pressed={shown}
-            aria-describedby="layer-rule"
-            disabled={shown && count === 1}
-            onClick={() => onToggle(option.key)}
+            role="tab"
+            id={`tab-${column.key}`}
+            aria-selected={selected}
+            aria-controls={`panel-${column.key}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onSelect(column.key)}
+            onKeyDown={(event) => move(event, column.key)}
           >
-            {option.label}
-            <span className="toggle-state">{shown ? 'Shown' : 'Hidden'}</span>
+            {column.label}
           </button>
         )
       })}
@@ -369,11 +210,53 @@ function LayerToggles({
   )
 }
 
-function topOffset(): number {
-  const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
-  const player = document.querySelector('.player')
-  if (!player || getComputedStyle(player).position === 'fixed') return header + 16
-  return header + player.getBoundingClientRect().height + 16
+function LyricDocument({
+  column,
+  lines,
+  labelledBy,
+  shown,
+}: {
+  column: (typeof COLUMNS)[number]
+  lines: LyricLine[]
+  labelledBy: string
+  shown: boolean
+}) {
+  return (
+    <section className="lyric-document" role="tabpanel" id={`panel-${column.key}`} aria-labelledby={labelledBy}>
+      <h2 className="sr-only">{column.label}</h2>
+      <LyricBody column={column} lines={lines} shown={shown} />
+    </section>
+  )
+}
+
+function LyricBody({
+  column,
+  lines,
+  shown,
+}: {
+  column: (typeof COLUMNS)[number]
+  lines: LyricLine[]
+  shown: boolean
+}) {
+  return (
+    <div className={shown ? column.className : `${column.className} is-hidden`} lang={column.lang} aria-hidden={shown ? undefined : true}>
+      {lines.map((line) => (
+        <p key={line.id}>{column.text(line)}</p>
+      ))}
+    </div>
+  )
+}
+
+function useWideLayout(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 48rem)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 48rem)')
+    const update = () => setWide(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return wide
 }
 
 function browserLayers(): Storage | null {

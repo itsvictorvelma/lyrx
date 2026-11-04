@@ -1,4 +1,4 @@
-import type { ErrorResponse, SongDetail, SongSummary } from './contracts.ts'
+import type { ErrorResponse, GenerationResponse, LyricDraft, SongDetail, SongSummary } from './contracts.ts'
 
 export const apiBaseUrl = 'http://localhost:8000'
 
@@ -30,21 +30,34 @@ export async function getSong(songId: string): Promise<SongDetail> {
   return (await response.json()) as SongDetail
 }
 
-export async function saveLineTimes(
-  songId: string,
-  lines: { index: number; startSeconds: number }[],
-): Promise<SongDetail> {
-  const response = await fetch(`${apiBaseUrl}/api/songs/${encodeURIComponent(songId)}/line-times`, {
+export async function generateLyrics(message: string): Promise<GenerationResponse> {
+  const response = await fetch(`${apiBaseUrl}/api/generations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lines }),
+    body: JSON.stringify({ message }),
+  })
+  if (!response.ok) throw await readFailure(response)
+  return (await response.json()) as GenerationResponse
+}
+
+export async function saveSong(draft: LyricDraft): Promise<SongDetail> {
+  const response = await fetch(`${apiBaseUrl}/api/songs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(draft),
   })
   if (!response.ok) throw await readFailure(response)
   return (await response.json()) as SongDetail
 }
 
-export async function scanSong(songId: string): Promise<SongDetail> {
-  const response = await fetch(`${apiBaseUrl}/api/songs/${encodeURIComponent(songId)}/scan`, { method: 'POST' })
+export async function attachAudio(songId: string, file: File, replace: boolean): Promise<SongDetail> {
+  const body = new FormData()
+  body.set('audio', file)
+  if (replace) body.set('replace', 'true')
+  const response = await fetch(`${apiBaseUrl}/api/songs/${encodeURIComponent(songId)}/audio`, {
+    method: 'POST',
+    body,
+  })
   if (!response.ok) throw await readFailure(response)
   return (await response.json()) as SongDetail
 }

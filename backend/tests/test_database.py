@@ -15,6 +15,7 @@ FORBIDDEN_COLUMNS = {
     "cue",
     "end_time",
     "offset",
+    "start_seconds",
     "start_time",
     "timestamp",
     "timestamps",

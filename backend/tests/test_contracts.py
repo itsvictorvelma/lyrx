@@ -20,6 +20,7 @@ def valid_song() -> dict[str, object]:
                 "id": "line-0",
                 "index": 0,
                 "originalText": "歌詞",
+                "readingHiragana": "かし",
                 "pronunciationRomaji": "kashi",
                 "translationEnglish": "lyrics",
             }
@@ -34,24 +35,14 @@ def test_song_detail_accepts_ordered_lines() -> None:
     assert song.durationSeconds == 222.0
 
 
-def test_song_detail_accepts_line_start_seconds() -> None:
-    payload = valid_song()
-    lines = payload["lines"]
-    assert isinstance(lines, list)
-    lines[0]["startSeconds"] = 5.5
-
-    song = SongDetail.model_validate(payload)
-
-    assert song.lines[0].startSeconds == 5.5
-
-
 def test_song_detail_rejects_line_timing_fields() -> None:
     payload = valid_song()
     lines = payload["lines"]
     assert isinstance(lines, list)
+    lines[0]["startSeconds"] = 5.5
     lines[0]["startTime"] = 12.5
 
-    with pytest.raises(ValidationError, match="timing fields are not allowed: startTime"):
+    with pytest.raises(ValidationError, match="timing fields are not allowed: startSeconds, startTime"):
         SongDetail.model_validate(payload)
 
 

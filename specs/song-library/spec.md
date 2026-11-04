@@ -10,26 +10,26 @@ Parent plan: [Prototype 1 build plan](../../AGENTS.md)
 Dependencies and destinations:
 
 - [Application foundation](../app-foundation/spec.md)
-- [Developer song import](../content-import/spec.md)
+- [Song creation](../song-creation/spec.md)
 - [Learn Song](../learn-song/spec.md)
 
 ## Goal
 
-Provide the simple landing screen from which a learner can find an available song and open Learn Song. Prototype 1 may contain only one song; the screen establishes the future catalog entry point without implementing catalog features.
+Open on the songs this install has saved. Filter that list by title or artist, and start a new song from here.
+
+The list is not a catalog of music the learner has not saved. A song appears after save.
 
 ## Route and availability
 
 - Route: `/`
-- Available in development and production.
-- No login, account, personalization, or learner-side write.
-- Development may show a link to Import Song.
-- Production must not render an import action or link.
+- Available on the local app.
+- No login, account, or personalization.
+- The primary action opens `/songs/new`.
+- There is no Import Song link.
 
 ## Data contract
 
-Request:
-
-- Read-only song-list operation from the internal FastAPI API.
+The screen reads `GET /api/songs`.
 
 Each item:
 
@@ -38,132 +38,125 @@ Each item:
 - Artist
 - Source language
 - Target language
-- Duration when known
-- Publication/availability state as needed by the client
+- Duration when an MP3 has been measured
+- Publication status
 
-Production response contains publishable songs only. Development may include drafts only if they are clearly marked and the API contract explicitly requests/allows them.
+Saved songs are published. The list is the songs on this install.
+
+The text filter runs in the browser over the loaded list. It matches title and artist, case-insensitive. There is no search query parameter in Prototype 1.
 
 ## Screen content
 
 - Screen heading: Song Library
-- Concise explanation of Lyrx's purpose
-- Ordered or unordered semantic list of song cards
-- One card per available song
-- Each card shows title, artist, Japanese → English language direction, and formatted duration when known
-- Primary action opens `/songs/:songId`
-- Development-only Import Song action
+- A short explanation that songs are requested in chat, then saved here
+- A control that starts a new song
+- A text field labeled Search saved songs
+- A semantic list of song cards
+- Each card shows title, artist, Japanese → English, and formatted duration when known
+- Each card is a link to `/songs/:songId`
 
-A one-card library for “Akuma no Ko” is acceptable.
-
-Do not add search, filters, sorting controls, genres, playlists, recommendations, artwork ingestion, social counts, or pagination in Prototype 1.
+Do not add sort controls, genres, playlists, recommendations, artwork, social counts, or pagination.
 
 ## State behavior
 
 ### Loading
 
-- Show a stable layout/skeleton or concise loading status.
-- Preserve the screen heading and avoid focus jumps.
+- Keep the heading. Show a concise loading status. Do not move focus.
 
 ### Empty
 
-- Production: explain that no songs are available.
-- Development: explain that no songs are imported and offer Import Song.
+- Explain that no songs are saved yet.
+- The new-song action is the way forward.
+- The filter has nothing to match.
 
 ### Success
 
-- Render each API item once with a stable key.
-- Card action is a real link so open-in-new-tab and browser navigation work.
+- Render each song once with a stable key.
+- Card action is a real link.
+- The filter hides non-matching cards and does not refetch.
+
+### No filter match
+
+- Say that no saved song matches. Keep the new-song action.
 
 ### Request failure
 
 - Show a safe message and retry.
-- Preserve any already rendered valid content only if stale-data behavior is deliberately implemented and announced.
-
-### Unavailable selection
-
-- If a selected song becomes unavailable, Learn Song owns the detailed error; returning to Song Library must remain possible.
 
 ## Responsive behavior
 
-- Cards form a readable single-column list at narrow widths.
-- Wider layouts may adjust container width or card grid, but must not introduce additional information hierarchy or hide the primary action.
-- Content remains usable at 200% zoom without horizontal page scrolling.
-- Development import action does not crowd the learner's primary song action.
+- Cards are a single column at narrow widths.
+- Wider layouts may change the container width. They do not hide the new-song action or the filter.
+- Usable at 200% zoom without a horizontal page scrollbar.
 
 ## Accessibility
 
-- Main landmark and one level-one heading.
-- Song collection uses list semantics.
-- Each card has one clear accessible name combining title and artist.
-- Do not use a clickable container with nested conflicting controls.
-- Language direction is text, not color-only.
-- Loading, empty, and error status are announced appropriately.
-- Retry and import actions are keyboard operable with visible focus.
-- Route navigation preserves expected browser behavior.
+- One main landmark and one level-one heading.
+- The filter has a visible label.
+- The song collection uses list semantics.
+- Each card's accessible name includes title and artist.
+- Language direction is text.
+- Loading, empty, no-match, and error status are announced.
+- The filter, new-song action, and retry are keyboard operable with visible focus.
 
 ## Security and privacy
 
-- No user data or account state.
-- Do not show filesystem/media paths, internal status notes, or draft songs in production.
-- Imported title/artist render as escaped text.
-- Development controls depend on the actual environment boundary, not a query parameter or client storage.
+- No account state.
+- Titles and artist names render as text.
+- Do not show filesystem paths or internal notes.
+- The library is the songs on this machine. It is not a shared public catalog.
 
 ## Tests
 
 ### Unit/component
 
-- Loading, one-song, multi-song, empty, and failure states
-- Duration formatting including unknown duration
-- Song card accessible name/link
-- Development import action present; production absent
-- Draft filtering/labeling behavior
+- Loading, empty, one-song, filter match, no match, and failure
+- Duration formatting, including unknown duration
+- Card name and link
+- No import action
 
 ### API integration
 
-- List includes required fields and stable order
-- Production returns published songs only
-- No local paths leak
+- List fields and a stable order
+- No local paths in the payload
 
 ### End-to-end
 
-- App opens at Song Library without login.
-- Selecting “Akuma no Ko” opens the correct Learn Song URL.
-- Browser back returns to the same library state.
-- Production has no navigation path to Import Song.
+- The app opens on Song Library without login.
+- An empty library offers a new song.
+- After a song is saved, the card opens Learn Song.
+- The filter narrows the cards that are already loaded.
+- Browser back returns to the library.
 
 ## Sequencing
 
-1. Freeze Song summary contract.
-2. Implement repository/publication filter and list API.
-3. Build screen states and card link.
-4. Add development import navigation.
-5. Complete accessibility/responsive/E2E coverage.
+1. Freeze the song summary contract.
+2. Keep the list API and card links.
+3. Add the filter and the new-song action.
+4. Remove the import link.
 
-Requires the application foundation and at least one imported development fixture. It may be built in parallel with Learn Song after contracts are frozen.
+Requires the foundation. The new-song action needs [Song creation](../song-creation/spec.md).
 
 ## Acceptance criteria
 
 - `/` renders without authentication.
-- One approved song is understandable and selectable without search.
-- Selection routes to `/songs/:songId`.
-- Loading, empty, failure, and retry states are explicit.
-- Production displays publishable songs only and no import action.
-- Screen is keyboard accessible, responsive, and usable at high zoom.
-- No out-of-scope catalog functionality is present.
+- The list is saved songs only.
+- Search saved songs filters that list in the page.
+- New song opens `/songs/new`.
+- A card opens `/songs/:songId`.
+- Loading, empty, no-match, failure, and retry are explicit.
+- There is no import action.
 
 ## Risks
 
-- Building for hypothetical catalog scale bloats the prototype.
-- Draft songs leak into the production library.
-- Card interactions become inaccessible through nested click targets.
-
-Mitigate with a minimal summary contract, server-side publication filtering, and semantic links/lists.
+- A filter can be mistaken for a search of every song the model knows. The label is Search saved songs, and an empty library points at new song.
+- Nested click targets on a card make it inaccessible.
 
 ## Non-goals and deferred work
 
-- Search, sorting, filters, pagination
-- Playlists, favorites, history, progress
-- Artwork pipeline
+- Server-side search, sorting, and pagination
+- Playlists, favorites, history, and progress
+- Artwork
 - Recommendations or social features
-- Accounts/private libraries
-- Public song submission
+- Accounts
+- A public catalog

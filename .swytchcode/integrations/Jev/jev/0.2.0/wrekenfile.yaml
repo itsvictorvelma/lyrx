@@ -1,0 +1,185 @@
+VERSION: 2.0.2
+DEFAULTS:
+  bearer_token: Bearer <TOKEN>
+  w_base_url: https://api.default.com
+METHODS:
+  typesafe.systemone.create:
+    SUMMARY: Systemone
+    DESC: |-
+      Answer one or more questions about the content supplied in `state`.
+
+      You can mix question types in one request. Answers use the same names as the
+      questions, so you can match each result to its question. The response also includes
+      the model used and token usage.
+    HTTP:
+      METHOD: POST
+      ENDPOINT: /v1/systemone
+      HEADERS:
+        Content-Type: application/json
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+      BODY:
+        TYPE: STRUCT(SystemOneRequest)
+    SECURITY:
+      - HTTPBearer:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    INPUTS:
+      - body:
+          TYPE: STRUCT(SystemOneRequest)
+          REQUIRED: true
+          LOCATION: body
+          CONTENT_TYPE: application/json
+    RETURNS:
+      - RETURNTYPE: STRUCT(SystemOneResponse)
+        RETURNVAR: typesafe_systemone_create
+        STATUS: 200
+    ERRORS:
+      - TYPE: STRUCT(HTTPValidationError)
+        STATUS: 422
+        WHEN: Validation Error (HTTP 422)
+    CANONICAL_ID: typesafe.systemone.create
+  typesafe.model.list:
+    SUMMARY: Models V1
+    DESC: |-
+      List the models and aliases available to the authenticated account.
+
+      Pass a returned model name as `model` in a POST /v1/systemone request.
+    HTTP:
+      METHOD: GET
+      ENDPOINT: /v1/models
+      HEADERS:
+        Authorization: bearer_token
+      CONTENT_TYPE: application/json
+      ACCEPT: application/json
+    SECURITY:
+      - HTTPBearer:
+          type: http
+          scheme: bearer
+    EXECUTION:
+      KIND: http
+      MODE: sync
+    RETURNS:
+      - RETURNTYPE: STRUCT(ModelMetadataList)
+        RETURNVAR: typesafe_model_list
+        STATUS: 200
+    ERRORS:
+      - TYPE: STRUCT(HTTPValidationError)
+        STATUS: 422
+        WHEN: Validation Error (HTTP 422)
+    CANONICAL_ID: typesafe.model.list
+STRUCTS:
+  HTTPValidationError:
+    - name: detail
+      TYPE: "[]STRUCT(ValidationError)"
+      REQUIRED: false
+      comment: Validation errors describing which request values are missing or invalid.
+  ModelMetadata:
+    - name: name
+      TYPE: STRING
+      REQUIRED: true
+      comment: Model name or alias accepted by the request's model field.
+    - name: description
+      TYPE: STRING
+      REQUIRED: true
+      comment: Human-readable description of the model and its capabilities.
+    - name: release_date
+      TYPE: STRING
+      REQUIRED: true
+      comment: Model release date, formatted as YYYY-MM-DD.
+  ModelMetadataList:
+    - name: models
+      TYPE: "[]STRUCT(ModelMetadata)"
+      REQUIRED: true
+      comment: Available models and aliases. Use a model's name in POST /v1/systemone requests.
+  SystemOneRequest_state_variant_2_Item:
+    - name: value
+      TYPE: ANY
+      REQUIRED: false
+  SystemOneRequest_state:
+    - name: _COMPOSITION
+      TYPE: ANY_OF
+      REQUIRED: false
+    - name: variant_0
+      TYPE: STRING
+      REQUIRED: false
+    - name: variant_1
+      TYPE: map[STRING]ANY
+      REQUIRED: false
+    - name: variant_2
+      TYPE: "[]STRUCT(SystemOneRequest_state_variant_2_Item)"
+      REQUIRED: false
+  SystemOneRequest:
+    - name: state
+      TYPE: STRUCT(SystemOneRequest_state)
+      REQUIRED: true
+      comment: The content all questions in this request refer to.
+    - name: model
+      TYPE: STRING
+      REQUIRED: true
+      comment: Name or alias of the model to use. Available names are returned by GET /v1/models.
+    - name: questions
+      TYPE: map[STRING]ANY
+      REQUIRED: true
+      comment: Questions to ask about the content, each with a name you choose. The response uses those names to identify the answers.
+  SystemOneResponse:
+    - name: model
+      TYPE: STRING
+      REQUIRED: true
+      comment: Name of the model that answered the questions. May differ from the alias supplied in the request.
+    - name: answers
+      TYPE: map[STRING]ANY
+      REQUIRED: true
+      comment: Answers keyed by the question names supplied in the request. Each answer's type matches its question's type.
+    - name: usage
+      TYPE: STRUCT(Usage)
+      REQUIRED: true
+      comment: Input and output token counts for this evaluation.
+  Usage:
+    - name: input_tokens
+      TYPE: INT
+      REQUIRED: true
+      comment: Number of billable input tokens used to evaluate the request.
+    - name: output_tokens
+      TYPE: INT
+      REQUIRED: true
+      comment: Number of output tokens used to answer the questions. Output tokens are currently free of charge.
+  ValidationError_loc_Item:
+    - name: _COMPOSITION
+      TYPE: ANY_OF
+      REQUIRED: false
+    - name: variant_0
+      TYPE: STRING
+      REQUIRED: false
+    - name: variant_1
+      TYPE: INT
+      REQUIRED: false
+  ValidationError_ctx:
+    - name: value
+      TYPE: ANY
+      REQUIRED: false
+  ValidationError:
+    - name: loc
+      TYPE: "[]STRUCT(ValidationError_loc_Item)"
+      REQUIRED: true
+      comment: "Path to the invalid value: the request location followed by field names and array indices."
+    - name: msg
+      TYPE: STRING
+      REQUIRED: true
+      comment: Human-readable explanation of the validation failure.
+    - name: type
+      TYPE: STRING
+      REQUIRED: true
+      comment: Machine-readable validation error code.
+    - name: input
+      TYPE: ANY
+      REQUIRED: false
+      comment: The input value that failed validation.
+    - name: ctx
+      TYPE: STRUCT(ValidationError_ctx)
+      REQUIRED: false
+      comment: Additional context used to explain the validation failure.
