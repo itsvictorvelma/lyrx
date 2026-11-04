@@ -34,11 +34,11 @@ export function Library() {
   }
 
   return (
-    <>
+    <article className="library">
       <h1>Song Library</h1>
-      <p className="lede">Rehearse a Japanese song with the audio, pronunciation, and direct English meaning.</p>
+      <p className="lede">Songs saved on this install.</p>
       <p className="dev-action">
-        <Link href="/songs/new">New song</Link>
+        <Link href="/search">Search for a song</Link>
       </p>
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {error ? (
@@ -49,9 +49,7 @@ export function Library() {
           </button>
         </div>
       ) : null}
-      {songs && songs.length === 0 ? (
-        <p role="status">No songs are saved yet.</p>
-      ) : null}
+      {songs && songs.length === 0 ? <p role="status">No songs are saved yet.</p> : null}
       {songs && songs.length > 0 ? (
         <ul className="song-list">
           {songs.map((song) => {
@@ -72,6 +70,6 @@ export function Library() {
           })}
         </ul>
       ) : null}
-    </>
+    </article>
   )
 }

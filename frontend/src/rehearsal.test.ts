@@ -161,9 +161,11 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('routes stay on the library, a new song, and one saved song', () => {
-  assert.deepEqual(parseRoute('/'), { name: 'library' })
-  assert.deepEqual(parseRoute('/songs/new'), { name: 'new' })
+test('routes stay on home, the library, search, and one saved song', () => {
+  assert.deepEqual(parseRoute('/'), { name: 'home' })
+  assert.deepEqual(parseRoute('/songs'), { name: 'library' })
+  assert.deepEqual(parseRoute('/search'), { name: 'search' })
+  assert.deepEqual(parseRoute('/songs/new'), { name: 'search' })
   assert.deepEqual(parseRoute('/import'), { name: 'missing' })
   assert.deepEqual(parseRoute('/songs/akuma-no-ko'), { name: 'song', songId: 'akuma-no-ko' })
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })

@@ -83,7 +83,7 @@ export function LearnSong({ songId }: { songId: string }) {
 
   return (
     <article className="learn">
-      <Link className="back-link" href="/">
+      <Link className="back-link" href="/songs">
         Song Library
       </Link>
       <h1>{title}</h1>

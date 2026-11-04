@@ -5,15 +5,18 @@ export function Link({
   href,
   className,
   children,
+  current = false,
 }: {
   href: string
   className?: string
   children: ReactNode
+  current?: boolean
 }) {
   return (
     <a
       className={className}
       href={href}
+      aria-current={current ? 'page' : undefined}
       onClick={(event) => {
         if (
           event.defaultPrevented ||
