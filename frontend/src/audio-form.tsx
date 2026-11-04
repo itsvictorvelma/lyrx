@@ -35,8 +35,10 @@ export function AudioAttach({
 
   return (
     <form className="audio-attach" onSubmit={(event) => void submit(event)}>
+      <details>
+        <summary>{hasAudio ? 'Replace audio' : 'Attach audio'}</summary>
       <label>
-        {hasAudio ? 'Replace MP3' : 'Attach MP3'}
+        MP3
         <input name="audio" type="file" accept="audio/mpeg,.mp3" required />
       </label>
       {hasAudio ? (
@@ -58,6 +60,7 @@ export function AudioAttach({
       <button type="submit" disabled={pending || (hasAudio && !replace)}>
         {pending ? 'Saving audio…' : hasAudio ? 'Replace audio' : 'Attach audio'}
       </button>
+      </details>
     </form>
   )
 }

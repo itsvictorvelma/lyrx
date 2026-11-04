@@ -72,7 +72,7 @@ export function NewSong() {
           <div className="lyric-sheet">
             {COLUMNS.map((column) => (
               <section key={column.key} className="lyric-pane" aria-labelledby={`draft-${column.key}`}>
-                <h3 id={`draft-${column.key}`}>{column.label}</h3>
+                <h3 className="lyric-pane-title" id={`draft-${column.key}`}>{column.label}</h3>
                 <div className={column.className} lang={column.lang}>
                   {draft.lines.map((line, index) => (
                     <p key={`${column.key}-${index}`}>{column.text(line)}</p>

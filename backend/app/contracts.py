@@ -69,7 +69,7 @@ class LyricLine(ContractModel):
     id: str = Field(min_length=1)
     index: int = Field(ge=0)
     originalText: str = Field(min_length=1)
-    readingHiragana: str = Field(min_length=1)
+    readingHiragana: str = ""
     pronunciationRomaji: str = Field(min_length=1)
     translationEnglish: str = Field(min_length=1)
 

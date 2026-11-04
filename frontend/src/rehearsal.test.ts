@@ -104,8 +104,11 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(1)]), 'index')
   assert.equal(lyricProblem([line(0, 'same'), line(1, 'same')]), 'id')
   const blank = line(0)
-  blank.readingHiragana = '   '
+  blank.originalText = '   '
   assert.equal(lyricProblem([blank]), 'text')
+  const missingHiragana = line(0)
+  missingHiragana.readingHiragana = ''
+  assert.equal(lyricProblem([missingHiragana]), null)
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 

@@ -1,7 +1,7 @@
 """Validate ordered lyric lines.
 
-Line numbers start at 0. Every stored line has original text, hiragana,
-romaji, and English. Timing fields are dropped on read and rejected on write.
+Line numbers start at 0. A stored line may omit hiragana. Timing fields are
+dropped on read and rejected on write.
 """
 
 import hashlib
@@ -22,6 +22,9 @@ def load_lines(raw_lines: object) -> list[LyricLine]:
     for raw in raw_lines:
         if isinstance(raw, dict):
             raw = {key: value for key, value in raw.items() if key not in TIMING_FIELDS}
+            hiragana = raw.get("readingHiragana")
+            if not isinstance(hiragana, str) or not hiragana.strip():
+                raw["readingHiragana"] = ""
         lines.append(LyricLine.model_validate(raw))
     return lines
 
@@ -32,6 +35,20 @@ def dump_lines(lines: list[LyricLine]) -> str:
 
 def content_hash(lines_json: str) -> str:
     return hashlib.sha256(lines_json.encode("utf-8")).hexdigest()
+
+
+def hiragana_for_lines(stored: list[LyricLine], draft: LyricDraft) -> list[str]:
+    if len(draft.lines) != len(stored):
+        raise DomainError("generation_invalid", "The hiragana did not match the saved lines. Send again.")
+    readings: list[str] = []
+    for saved, row in zip(stored, draft.lines, strict=True):
+        if saved.originalText.strip() != row.originalText.strip():
+            raise DomainError("generation_invalid", "The hiragana did not match the saved lines. Send again.")
+        reading = row.readingHiragana.strip()
+        if not reading:
+            raise DomainError("generation_invalid", "A lyric line was empty.")
+        readings.append(reading)
+    return readings
 
 
 def lines_for_song(song_id: str, draft: LyricDraft) -> list[LyricLine]:

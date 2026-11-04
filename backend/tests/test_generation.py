@@ -76,6 +76,32 @@ class FakeGroq:
         return self.payload
 
 
+def test_fetched_lines_are_all_filled(monkeypatch: pytest.MonkeyPatch) -> None:
+    def search(title: str, artist: str) -> str:
+        assert (title, artist) == ("Ame", "Example")
+        return "雨\n[Chorus]\n空"
+
+    monkeypatch.setattr("app.services.generation.search_plain", search)
+
+    class Echo:
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            messages = body["messages"]
+            assert isinstance(messages, list)
+            content = messages[0]["content"]
+            assert isinstance(content, str)
+            payload = json.loads(content.split("Current song: ", 1)[1])
+            for line in payload["lines"]:
+                line["readingHiragana"] = "あめ"
+                line["pronunciationRomaji"] = "ame"
+                line["translationEnglish"] = "rain"
+            return {"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps(payload)}}]}}
+
+    result = GenerationService(Echo(), "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert [line.originalText for line in result.draft.lines] == ["雨", "空"]
+    assert result.message == "Ame, 2 lines"
+
+
 def test_one_completion_returns_the_draft() -> None:
     client = FakeGroq(
         {
