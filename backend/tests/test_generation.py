@@ -76,37 +76,98 @@ class FakeGroq:
         return self.payload
 
 
-def test_fetched_lines_are_all_filled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fetched_lines_keep_local_readings(monkeypatch: pytest.MonkeyPatch) -> None:
     def search(title: str, artist: str) -> str:
         assert (title, artist) == ("Ame", "Example")
-        return "雨\n[Chorus]\n空"
+        return "雨\n[Chorus]\n空\nIt doesn't matter if it's Sunday"
 
     monkeypatch.setattr("app.services.generation.search_plain", search)
 
     class Echo:
         def complete(self, body: dict[str, object]) -> dict[str, object]:
-            messages = body["messages"]
-            assert isinstance(messages, list)
-            content = messages[0]["content"]
-            assert isinstance(content, str)
-            payload = json.loads(content.split("Current song: ", 1)[1])
-            for line in payload["lines"]:
-                line["readingHiragana"] = "あめ"
-                line["pronunciationRomaji"] = "ame"
-                line["translationEnglish"] = "rain"
-            return {"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps(payload)}}]}}
+            assert body["temperature"] == 0
+            schema = body["response_format"]
+            assert isinstance(schema, dict)
+            assert schema["json_schema"]["name"] == "line_meanings"
+            return {
+                "status_code": 200,
+                "data": {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    {"meanings": ["rain", "sky", "It doesn't matter if it's Sunday"]}
+                                )
+                            }
+                        }
+                    ]
+                },
+            }
 
     result = GenerationService(Echo(), "openai/gpt-oss-120b").generate("Ame by Example", None)
 
-    assert [line.originalText for line in result.draft.lines] == ["雨", "空"]
-    assert result.message == "Ame, 2 lines"
+    assert [line.originalText for line in result.draft.lines] == ["雨", "空", "It doesn't matter if it's Sunday"]
+    assert [(line.readingHiragana, line.pronunciationRomaji) for line in result.draft.lines] == [
+        ("あめ", "ame"),
+        ("そら", "sora"),
+        ("It doesn't matter if it's Sunday", "It doesn't matter if it's Sunday"),
+    ]
+    assert result.draft.lines[0].translationEnglish == "rain"
+    assert result.message == "Ame, 3 lines"
+
+
+def test_a_repeated_original_keeps_the_first_meaning(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨\n雨")
+
+    class Echo:
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            return {
+                "status_code": 200,
+                "data": {"choices": [{"message": {"content": json.dumps({"meanings": ["rain", "precipitation"]})}}]},
+            }
+
+    result = GenerationService(Echo(), "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert [line.translationEnglish for line in result.draft.lines] == ["rain", "rain"]
+
+
+def test_a_short_meaning_list_is_sent_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨\n空")
+
+    class Flaky:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            self.calls += 1
+            meanings = ["rain"] if self.calls == 1 else ["rain", "sky"]
+            return {"status_code": 200, "data": {"choices": [{"message": {"content": json.dumps({"meanings": meanings})}}]}}
+
+    client = Flaky()
+    result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert client.calls == 2
+    assert [line.translationEnglish for line in result.draft.lines] == ["rain", "sky"]
+
+
+def test_a_rate_limit_while_translating_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨")
+    client = FakeGroq({"status_code": 429, "data": {"error": {"code": "rate_limit_exceeded"}}})
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
+
+    assert error.value.code == "groq_rate_limited"
+    assert client.calls == 1
 
 
 def test_one_completion_returns_the_draft() -> None:
+    payload = sample_payload()
+    payload["lines"][0]["pronunciationRomaji"] = "xxx"
     client = FakeGroq(
         {
             "status_code": 200,
-            "data": {"choices": [{"message": {"content": json.dumps(sample_payload())}}]},
+            "data": {"choices": [{"message": {"content": json.dumps(payload)}}]},
         }
     )
 
@@ -115,6 +176,8 @@ def test_one_completion_returns_the_draft() -> None:
     assert client.calls == 1
     assert result.message == "Ame, 1 line"
     assert result.draft.lines[0].translationEnglish == "rain"
+    assert result.draft.lines[0].readingHiragana == "あめ"
+    assert result.draft.lines[0].pronunciationRomaji == "ame"
 
 
 def test_rate_limit_does_not_parse_a_draft() -> None:

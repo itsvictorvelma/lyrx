@@ -99,7 +99,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq for hiragana, romaji, and English in groups of 12 lines. Does not save the song |
+| `POST /api/generations` | Always | Looks up a named song's full original text. Hiragana and romaji are read from those lines. Groq translates them into English, 12 lines at a time. Does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
@@ -132,7 +132,7 @@ To fill missing hiragana on one saved song, from `backend/`:
 uv run python scripts/fill_hiragana.py akuma-no-ko
 ```
 
-That asks Groq through the same client and prompt as New song, checks that the original lines still match, and saves only the hiragana. It tries once more if the lengths do not match.
+That reads hiragana from the saved original lines and saves only that column. It does not call Groq. A dictionary reading can miss a sung name or a lyric-specific yomi.
 
 ## Frontend
 

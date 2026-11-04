@@ -10,22 +10,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings
-from app.contracts import DraftLine, LyricDraft, LyricLine
 from app.database import open_database
-from app.errors import DomainError
-from app.groq_client import SwytchcodeGroq
-from app.lyrics import SCHEMA_VERSION, content_hash, dump_lines, hiragana_for_lines
+from app.lyrics import SCHEMA_VERSION, content_hash, dump_lines
+from app.readings import reading_for
 from app.repositories.records import TrackWrite, VersionWrite
 from app.repositories.songs import SqlAlchemySongRepository
-from app.services.generation import GenerationService
 from app.services.songs import SongService
-
-PLACEHOLDER = "よみ"
-INSTRUCTION = (
-    "Fill readingHiragana with spaced hiragana. Keep the same spaces as originalText. "
-    "Do not run the words together. "
-    "Keep originalText, pronunciationRomaji, and translationEnglish unchanged and in the same order."
-)
 
 
 def main() -> None:
@@ -42,39 +32,11 @@ def main() -> None:
         if not replace and all(line.readingHiragana.strip() for line in detail.lines):
             print(f"{song_id} already has hiragana on {len(detail.lines)} lines")
             return
-        readings = _ask(detail.title, detail.artist, detail.lines, settings.groq_model)
+        readings = [reading_for(line.originalText)[0] for line in detail.lines]
         _save(repository, song_id, readings)
         print(f"{song_id} hiragana saved for {len(readings)} lines")
     finally:
         session.close()
-
-
-def _ask(title: str, artist: str, lines: list[LyricLine], model: str) -> list[str]:
-    draft = LyricDraft(
-        title=title,
-        artist=artist,
-        lines=[
-            DraftLine(
-                originalText=line.originalText,
-                readingHiragana=line.readingHiragana.strip() or PLACEHOLDER,
-                pronunciationRomaji=line.pronunciationRomaji,
-                translationEnglish=line.translationEnglish,
-            )
-            for line in lines
-        ],
-    )
-    service = GenerationService(SwytchcodeGroq(), model)
-    failure: DomainError | None = None
-    for _attempt in range(2):
-        try:
-            result = service.generate(INSTRUCTION, draft)
-            readings = hiragana_for_lines(lines, result.draft)
-            if all(reading == PLACEHOLDER for reading in readings):
-                raise DomainError("generation_invalid", "The hiragana did not match the saved lines. Send again.")
-            return readings
-        except DomainError as exc:
-            failure = exc
-    raise SystemExit(failure.message if failure else "The hiragana could not be saved.")
 
 
 def _save(repository: SqlAlchemySongRepository, song_id: str, readings: list[str]) -> None:

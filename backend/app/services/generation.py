@@ -5,10 +5,11 @@ import re
 
 from app.contracts import DraftLine, GenerationResponse, LyricDraft
 from app.errors import DomainError
-from app.generation import completion_body, confirmation
+from app.generation import completion_body, confirmation, meaning_body, meanings_from
 from app.groq_client import GroqClient
 from app.lrclib import lyric_lines, search_plain
 from app.lyrics import draft_from_model
+from app.readings import reading_for
 
 CHUNK = 12
 NAME_SCHEMA = {
@@ -36,7 +37,7 @@ class GenerationService:
             sourced = self._from_recording(instruction)
             if sourced is not None:
                 return sourced
-        parsed = self._once(instruction, draft)
+        parsed = self._with_readings(self._once(instruction, draft))
         return GenerationResponse(message=confirmation(parsed), draft=parsed)
 
     def _from_recording(self, instruction: str) -> GenerationResponse | None:
@@ -58,32 +59,44 @@ class GenerationService:
         for start in range(0, len(originals), CHUNK):
             chunk = originals[start : start + CHUNK]
             lines.extend(self._fill_chunk(title, artist, chunk))
-        draft = LyricDraft(title=title, artist=artist, lines=lines)
+        draft = LyricDraft(title=title, artist=artist, lines=_repeat_meanings(lines))
         return GenerationResponse(message=confirmation(draft), draft=draft)
 
     def _fill_chunk(self, title: str, artist: str, originals: list[str]) -> list[DraftLine]:
-        seed = LyricDraft(
-            title=title,
-            artist=artist,
-            lines=[
+        meanings = self._meanings(title, artist, originals)
+        filled: list[DraftLine] = []
+        for original, meaning in zip(originals, meanings, strict=True):
+            hiragana, romaji = reading_for(original)
+            filled.append(
                 DraftLine(
-                    originalText=line,
-                    readingHiragana="よみ",
-                    pronunciationRomaji="yomi",
-                    translationEnglish="line",
+                    originalText=original,
+                    readingHiragana=hiragana,
+                    pronunciationRomaji=romaji,
+                    translationEnglish=meaning,
                 )
-                for line in originals
-            ],
-        )
-        instruction = "Fill the hiragana, romaji, and English. Keep every original line."
+            )
+        return filled
+
+    def _meanings(self, title: str, artist: str, originals: list[str]) -> list[str]:
+        note = ""
         failure: DomainError | None = None
         for _attempt in range(2):
+            body = meaning_body(self._model, title, artist, originals, note)
             try:
-                parsed = self._once(instruction, seed)
-                return _locked_lines(originals, parsed)
+                return meanings_from(_content(self._client.complete(body)), len(originals))
             except DomainError as exc:
+                if exc.code != "generation_invalid":
+                    raise
                 failure = exc
+                note = f"The last reply did not contain exactly {len(originals)} meanings."
         raise failure or DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+
+    def _with_readings(self, draft: LyricDraft) -> LyricDraft:
+        lines = []
+        for row in draft.lines:
+            hiragana, romaji = reading_for(row.originalText)
+            lines.append(row.model_copy(update={"readingHiragana": hiragana, "pronunciationRomaji": romaji}))
+        return draft.model_copy(update={"lines": lines})
 
     def _identify(self, instruction: str) -> tuple[str, str]:
         body = completion_body(self._model, instruction, None)
@@ -109,6 +122,17 @@ class GenerationService:
         return draft_from_model(_content(self._client.complete(body)))
 
 
+def _repeat_meanings(lines: list[DraftLine]) -> list[DraftLine]:
+    seen: dict[str, str] = {}
+    aligned: list[DraftLine] = []
+    for line in lines:
+        meaning = seen.setdefault(line.originalText, line.translationEnglish)
+        if meaning != line.translationEnglish:
+            line = line.model_copy(update={"translationEnglish": meaning})
+        aligned.append(line)
+    return aligned
+
+
 def _song_name(instruction: str) -> tuple[str, str] | None:
     match = re.search(r"(.+?)\s+by\s+(.+)", instruction, re.IGNORECASE)
     if match is None:
@@ -118,17 +142,6 @@ def _song_name(instruction: str) -> tuple[str, str] | None:
     if not title or not artist:
         return None
     return title, artist
-
-
-def _locked_lines(originals: list[str], draft: LyricDraft) -> list[DraftLine]:
-    if len(draft.lines) != len(originals):
-        raise DomainError("generation_invalid", "The lyrics did not include every line. Send again.")
-    locked: list[DraftLine] = []
-    for original, row in zip(originals, draft.lines, strict=True):
-        if original.strip() != row.originalText.strip():
-            raise DomainError("generation_invalid", "The lyrics did not include every line. Send again.")
-        locked.append(row.model_copy(update={"originalText": original.strip()}))
-    return locked
 
 
 def _content(payload: dict[str, object]) -> object:

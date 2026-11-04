@@ -126,7 +126,8 @@ def test_lyric_file_import_is_gone(tmp_path: Path) -> None:
     assert response.json()["code"] == "not_found"
 
 
-def test_generation_uses_one_injected_call(tmp_path: Path) -> None:
+def test_generation_uses_one_injected_call(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: None)
     application = app_for(tmp_path)
     calls = {"count": 0}
 
