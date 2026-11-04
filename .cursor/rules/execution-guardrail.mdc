@@ -1,0 +1,29 @@
+---
+description: Two-attempt limit for test-and-fix cycles, and what to do when it trips
+alwaysApply: true
+---
+
+# Execution guardrail
+
+- Verify work with `scripts/check.sh`. One run is one cycle. You get at most two failed runs per branch.
+- Between runs, make one focused fix. Never weaken, skip, or delete tests, and never loosen lint or type settings, to get a pass.
+- Never reset or delete the guardrail state, which lives under the agent state folder at the repo root. A hook blocks it, and only Victor resets it.
+- When the script prints `GUARDRAIL` or a hook blocks a check, stop working on the code and write a failure report:
+
+```markdown
+# ISSUE-<n> FAILED
+
+- Ticket: #<n> <title>
+- Branch: <branch>
+- Goal: <one sentence>
+- What I tried: <one bullet per attempt>
+- Failing command: <command>
+- Error output: <last ~60 lines, fenced>
+- Likely cause: <best guess>
+- Files touched: <paths>
+- Suggested next step: <what a human should look at first>
+```
+
+- Local agent: save it as `.agent-reports/ISSUE-<n>-FAILED.md`. It is gitignored.
+- Cloud agent: push the work, open the pull request as a draft, post the report as a pull request comment, and add the `needs-human` label to the issue.
+- Then stop and wait. Do not start another fix.

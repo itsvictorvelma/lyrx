@@ -1,0 +1,68 @@
+name: Agent task
+description: One pull request's worth of work, sized for a single agent or developer.
+title: "[area] short imperative summary"
+labels: ["agent:proposed"]
+body:
+  - type: input
+    id: spec
+    attributes:
+      label: Spec and build phase
+      description: Spec file and the AGENTS.md build-sequence phase this belongs to.
+      placeholder: specs/song-library/spec.md, phase 3 (Read path)
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One or two sentences on what changes for the learner or developer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkboxes a reviewer can verify one by one.
+      placeholder: |
+        - [ ] GET /api/songs returns only published songs
+        - [ ] Error responses use the documented envelope
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: >-
+        The only paths the agent should open first, as @-mentions. The agent may
+        read more if it must and says why in the pull request.
+      placeholder: "@specs/song-library/spec.md @backend/app/contracts.py @frontend/src/contracts.ts"
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Nearby work this ticket must not do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test plan
+      description: Tests to add or update. scripts/check.sh must pass.
+    validations:
+      required: true
+
+  - type: input
+    id: depends_on
+    attributes:
+      label: Depends on
+      description: Issues that must be closed first, or "none".
+      placeholder: "#3, #4"
+    validations:
+      required: true

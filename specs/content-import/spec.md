@@ -225,7 +225,7 @@ Mitigate with deterministic normalization, ignore rules and storage separation, 
 - Authentication or remote admin
 - Arbitrary filenames/archive ingestion
 - In-browser lyric editing
-- Automatic romaji/translation generation
+- Automatic romaji/translation generation in the import flow (the separate development-only authoring tool may draft files offline; see AGENTS.md Approved changes)
 - Transcoding/object storage/moderation
 - Waveform display, word timing, and a tempo control. Line start times from the audio scan are in scope.
 - Catalog/provider API import

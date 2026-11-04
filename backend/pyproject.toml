@@ -15,6 +15,13 @@ dependencies = [
 ]
 
 [dependency-groups]
+authoring = [
+    "langchain>=1.4.8",
+    "langchain-google-genai>=4.4.2",
+    "langchain-groq>=1.1.3",
+    "langgraph>=1.2.19",
+    "langgraph-checkpoint-sqlite>=3.1.3",
+]
 dev = [
     "httpx>=0.27",
     "pytest>=8",
@@ -24,9 +31,12 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.uv]
+default-groups = ["dev", "authoring"]
+# cryptography 49+ ships no Intel macOS wheels and would need a Rust toolchain to build.
+constraint-dependencies = ["cryptography<49"]
 # onnxruntime has no Intel macOS wheel. The scan does not use its voice filter,
 # so faster-whisper is installed without that package.
-[tool.uv]
 dependency-metadata = [
     { name = "faster-whisper", requires-dist = [
         "ctranslate2<5,>=4.0",
