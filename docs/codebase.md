@@ -99,7 +99,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq for hiragana, romaji, and English in groups of 12 lines. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana. Does not save the song |
+| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq only for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana. Does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
@@ -153,7 +153,7 @@ The page has three routes:
 
 `frontend/src/App.tsx` chooses the route from the browser address. `frontend/src/library.tsx` reads `GET /api/songs`. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song is a light reading page. It starts with all four documents visible. On a wide window they sit side by side and the page scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
+Learn Song is a light reading page. It starts with all four documents visible. On a wide window they sit side by side, each lyric line is one row, and the page scrolls once. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no cells or per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page.
 
 The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it. With no MP3, the bar says that no audio is attached.
 

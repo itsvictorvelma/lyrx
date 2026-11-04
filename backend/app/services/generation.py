@@ -14,7 +14,7 @@ from app.generation import completion_body, confirmation, segment_body
 from app.groq_client import GroqClient
 from app.lrclib import lyric_lines, search_plain
 from app.lyrics import draft_from_model
-from app.reading import ReadingError, lock_reading
+from app.reading import ReadingError, assemble_reading, lock_reading, needs_model
 
 CHUNK = 12
 _LINE_RANGE = re.compile(r"\blines?\s+(\d+)\s*(?:-|–|—|to)\s*(\d+)\b", re.IGNORECASE)
@@ -139,12 +139,19 @@ class GenerationService:
         previous: str | None,
         current: list[DraftLine] | None,
     ) -> list[DraftLine]:
+        asked = [line for line in originals if current is not None or needs_model(line)]
+        asked_current = None
+        if current is not None:
+            asked_current = [row for row, line in zip(current, originals, strict=True) if line in asked]
+        if not asked:
+            return [_local_line(line) for line in originals]
         failure: DomainError | None = None
         for _attempt in range(2):
             try:
-                body = segment_body(self._model, instruction, title, artist, originals, previous, current)
-                parsed = draft_from_model(_content(self._client.complete(body)))
-                return _accept(originals, parsed)
+                body = segment_body(self._model, instruction, title, artist, asked, previous, asked_current)
+                filled = _accept_slots(asked, _slot_rows(_content(self._client.complete(body))))
+                by_original = dict(zip(asked, filled, strict=True))
+                return [by_original.get(line) or _local_line(line) for line in originals]
             except DomainError as exc:
                 failure = exc
         raise failure or DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
@@ -213,17 +220,45 @@ def _song_name(instruction: str) -> tuple[str, str] | None:
     return title, artist
 
 
-def _accept(originals: list[str], draft: LyricDraft) -> list[DraftLine]:
-    if len(draft.lines) != len(originals):
+def _local_line(original: str) -> DraftLine:
+    text = original.strip()
+    return DraftLine(
+        originalText=text,
+        readingHiragana=text,
+        pronunciationRomaji=text,
+        translationEnglish=text,
+    )
+
+
+def _slot_rows(payload: object) -> list[tuple[list[str], str]]:
+    if not isinstance(payload, dict):
+        raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+    rows = payload.get("lines")
+    if not isinstance(rows, list):
+        raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+    parsed: list[tuple[list[str], str]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+        readings = row.get("readings")
+        english = row.get("translationEnglish")
+        if not isinstance(readings, list) or not all(isinstance(item, str) for item in readings):
+            raise DomainError("generation_invalid", "The lyrics came back in a shape that could not be used. Send again.")
+        if not isinstance(english, str) or not english.strip():
+            raise DomainError("generation_invalid", "A lyric line was empty.")
+        parsed.append((readings, english.strip()))
+    return parsed
+
+
+def _accept_slots(originals: list[str], rows: list[tuple[list[str], str]]) -> list[DraftLine]:
+    if len(rows) != len(originals):
         raise DomainError("generation_invalid", "The lyrics did not include every line. Send again.")
     locked: list[DraftLine] = []
-    for original, row in zip(originals, draft.lines, strict=True):
-        if original.strip() != row.originalText.strip():
-            raise DomainError("generation_invalid", "The lyrics did not include every line. Send again.")
-        hiragana, romaji = _checked(original, row.readingHiragana)
-        english = row.translationEnglish.strip()
-        if not english:
-            raise DomainError("generation_invalid", "A lyric line was empty.")
+    for original, (readings, english) in zip(originals, rows, strict=True):
+        try:
+            hiragana, romaji = assemble_reading(original, readings)
+        except ReadingError as exc:
+            raise DomainError("generation_invalid", "The lyrics did not include every line. Send again.") from exc
         locked.append(
             DraftLine(
                 originalText=original.strip(),

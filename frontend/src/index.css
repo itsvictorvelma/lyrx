@@ -461,20 +461,21 @@ label:has(input[type='checkbox']) {
 }
 
 .lyric-sheet {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
   margin-top: var(--space-5);
 }
 
-.lyric-pane {
-  flex: 1 1 0;
-  min-width: 0;
+.lyric-sheet > :not(:nth-child(4n)) {
+  padding-right: var(--space-4);
 }
 
-.lyric-pane + .lyric-pane {
+.lyric-sheet > :nth-child(4n + 2),
+.lyric-sheet > :nth-child(4n + 3),
+.lyric-sheet > :nth-child(4n) {
   border-left: 1px solid var(--line);
-  padding-left: var(--space-6);
+  padding-left: var(--space-4);
 }
 
 .lyric-pane-title {
@@ -497,7 +498,8 @@ label:has(input[type='checkbox']) {
   line-height: 1.4;
 }
 
-.lyric-pane-title h2 {
+.lyric-pane-title h2,
+.lyric-pane-title h3 {
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
@@ -609,14 +611,6 @@ label:has(input[type='checkbox']) {
     --measure: 100rem;
     --page-gutter: clamp(1.25rem, 1.5vw, 2.5rem);
     --tools-height: 3.6875rem;
-  }
-
-  .lyric-sheet {
-    gap: var(--space-4);
-  }
-
-  .lyric-pane + .lyric-pane {
-    padding-left: var(--space-4);
   }
 
   .lyric-original {

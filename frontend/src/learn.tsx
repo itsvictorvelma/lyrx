@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState, type KeyboardEvent } from 'react'
 import { AudioAttach } from './audio-form.tsx'
 import { ApiFailure, getSong } from './api.ts'
 import { COLUMNS } from './columns.ts'
+import { LyricSheet } from './lyric-sheet.tsx'
 import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
@@ -142,20 +143,13 @@ function DesktopLyrics({
   onToggle: (key: LayerKey) => void
 }) {
   return (
-    <div className="lyric-sheet">
-      {COLUMNS.map((column) => {
-        const shown = layers[column.key]
-        return (
-          <section key={column.key} className="lyric-pane" aria-labelledby={`pane-${column.key}`}>
-            <header className="lyric-pane-title">
-              <h2 id={`pane-${column.key}`}>{column.label}</h2>
-              <LayerToggle label={column.label} shown={shown} onToggle={() => onToggle(column.key)} />
-            </header>
-            <LyricBody column={column} lines={song.lines} shown={shown} />
-          </section>
-        )
-      })}
-    </div>
+    <LyricSheet
+      lines={song.lines}
+      layers={layers}
+      heading="h2"
+      idPrefix="pane"
+      toggle={(label, shown, key) => <LayerToggle label={label} shown={shown} onToggle={() => onToggle(key)} />}
+    />
   )
 }
 

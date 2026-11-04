@@ -11,6 +11,7 @@ import json
 
 from app.contracts import DraftLine, LyricDraft
 from app.errors import DomainError
+from app.reading import marked
 
 TOKEN_MINUTE = 8_000
 SCHEMA_OVERHEAD = 800
@@ -62,6 +63,42 @@ RULES = (
     "Do not add a subject, merge lines, or return the previous line."
 )
 
+SLOT_RULES = (
+    "readings is one hiragana string for each 【bracket】, in order. "
+    "Read the whole bracket, including the kana inside it, and leave every character outside the brackets out of readings. "
+    "A line with no brackets has an empty readings list. "
+    "私 is わたし. 明日 is あした. Keep rendaku. "
+    "translationEnglish is the literal meaning of that one line. "
+    "Do not add a subject or return the previous line."
+)
+
+SLOT_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "lyric_slots",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["lines"],
+            "properties": {
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["readings", "translationEnglish"],
+                        "properties": {
+                            "readings": {"type": "array", "items": {"type": "string"}},
+                            "translationEnglish": {"type": "string"},
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
+
 
 def user_message(instruction: str, draft: LyricDraft | None) -> str:
     text = instruction.strip()
@@ -88,19 +125,15 @@ def segment_message(
 ) -> str:
     blocks: list[str] = []
     for number, original in enumerate(originals, 1):
-        block = [f"{number}. {original}"]
+        block = [f"{number}. {marked(original)}"]
         if current is not None:
-            row = current[number - 1]
-            reading = row.readingHiragana.strip()
-            if reading and reading != "よみ":
-                block.append(f"   hiragana: {reading}")
-            english = row.translationEnglish.strip()
+            english = current[number - 1].translationEnglish.strip()
             if english:
                 block.append(f"   english: {english}")
         blocks.append("\n".join(block))
     context = f"Previous line, do not return it: {previous}\n" if previous else ""
     shown = "\n".join(blocks)
-    return f"Song: {title} / {artist}\n{RULES}\nInstruction: {instruction.strip()}\n{context}Lines:\n{shown}"
+    return f"Song: {title} / {artist}\n{SLOT_RULES}\nInstruction: {instruction.strip()}\n{context}Lines:\n{shown}"
 
 
 def completion_limit(prompt: str) -> int:
@@ -127,10 +160,10 @@ def segment_body(
     previous: str | None,
     current: list[DraftLine] | None,
 ) -> dict[str, object]:
-    return _request(model, segment_message(title, artist, instruction, originals, previous, current))
+    return _request(model, segment_message(title, artist, instruction, originals, previous, current), SLOT_SCHEMA)
 
 
-def _request(model: str, prompt: str) -> dict[str, object]:
+def _request(model: str, prompt: str, schema: dict[str, object] = LYRIC_SCHEMA) -> dict[str, object]:
     return {
         "model": model,
         "temperature": 0.6,
@@ -138,7 +171,7 @@ def _request(model: str, prompt: str) -> dict[str, object]:
         "reasoning_effort": "low",
         "include_reasoning": False,
         "messages": [{"role": "user", "content": prompt}],
-        "response_format": LYRIC_SCHEMA,
+        "response_format": schema,
     }
 
 

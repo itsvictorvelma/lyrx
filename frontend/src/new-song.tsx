@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { generateLyrics, saveSong } from './api.ts'
 import type { LyricDraft } from './contracts.ts'
-import { COLUMNS } from './columns.ts'
+import { LyricSheet } from './lyric-sheet.tsx'
 import { Link } from './link.tsx'
 import { navigate, songHref } from './route.ts'
 
@@ -69,18 +69,7 @@ export function NewSong() {
           <h2>
             {draft.title} <span className="byline">{draft.artist}</span>
           </h2>
-          <div className="lyric-sheet">
-            {COLUMNS.map((column) => (
-              <section key={column.key} className="lyric-pane" aria-labelledby={`draft-${column.key}`}>
-                <h3 className="lyric-pane-title" id={`draft-${column.key}`}>{column.label}</h3>
-                <div className={column.className} lang={column.lang}>
-                  {draft.lines.map((line, index) => (
-                    <p key={`${column.key}-${index}`}>{column.text(line)}</p>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          <LyricSheet lines={draft.lines} heading="h3" idPrefix="draft" />
           <button type="button" className="button-primary" disabled={pending !== null} onClick={() => void save()}>
             {pending === 'save' ? 'Saving…' : 'Save song'}
           </button>
