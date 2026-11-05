@@ -1,13 +1,13 @@
 /* One studio theme. Chrome is sans. Lyric documents keep their own faces. */
 :root {
   color-scheme: dark;
-  --paper: #0e0e11;
-  --surface: #17171c;
-  --surface-2: #23232a;
-  --ink: #f6f3ee;
-  --ink-soft: #a8a29a;
-  --line: rgba(255, 255, 255, 0.1);
-  --mark: rgba(255, 106, 74, 0.28);
+  --paper: #141311;
+  --surface: #1e1c1a;
+  --surface-2: #2c2926;
+  --ink: #f7f4ef;
+  --ink-soft: #c4beb6;
+  --line: rgba(247, 244, 239, 0.12);
+  --mark: rgba(255, 106, 74, 0.32);
   --accent: #ff6a4a;
   --accent-ink: #1c0b07;
   --focus: #ffc2b3;
@@ -23,7 +23,9 @@
   --text-sm: 0.875rem;
   --text-md: 1rem;
   --text-lg: 1.125rem;
-  --text-reading: 1.125rem;
+  --text-reading: 1.25rem;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion: 240ms;
   --text-xl: 2rem;
   --radius: 16px;
   --page-gutter: var(--space-4);
@@ -50,9 +52,7 @@ html {
 body {
   margin: 0;
   overflow: hidden;
-  background:
-    radial-gradient(900px 420px at 10% -10%, rgba(255, 106, 74, 0.16), transparent 55%),
-    var(--paper);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--ui);
   font-size: 1rem;
@@ -101,6 +101,16 @@ button {
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
+  transition:
+    background-color var(--motion) var(--ease),
+    color var(--motion) var(--ease),
+    border-color var(--motion) var(--ease),
+    transform 120ms var(--ease),
+    filter var(--motion) var(--ease);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 button:disabled {
@@ -141,6 +151,12 @@ textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
+  color: var(--ink);
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--ink-soft);
 }
 
 textarea {
@@ -214,7 +230,6 @@ input[type='range'] {
   scroll-padding-top: calc(var(--tools-height) + var(--space-4));
 }
 
-.shell[data-screen='library'] .stage,
 .shell[data-screen='compose'] .rail,
 .shell[data-screen='song'] .rail,
 .shell[data-screen='missing'] .rail {
@@ -237,9 +252,19 @@ input[type='range'] {
 
 .stage-home h1,
 .composer-page h1,
+.library-page h1 {
+  font-size: clamp(2.1rem, 4vw, 3.4rem);
+  letter-spacing: -0.045em;
+}
+
 .learn h1 {
   font-size: clamp(2.1rem, 4vw, 3.4rem);
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
+}
+
+.learn .byline {
+  display: block;
+  margin-top: var(--space-2);
 }
 
 .kicker,
@@ -276,6 +301,25 @@ input[type='range'] {
   list-style: none;
 }
 
+.library-page {
+  max-width: 44rem;
+  padding: var(--space-6) var(--page-gutter) var(--space-7);
+}
+
+.library-page .lede {
+  max-width: 38rem;
+  margin-top: var(--space-3);
+}
+
+.library-search {
+  max-width: 24rem;
+  margin-top: var(--space-5);
+}
+
+.library-page .empty-note + .button-primary {
+  margin-top: var(--space-4);
+}
+
 .song-row {
   display: grid;
   grid-template-columns: 2.75rem minmax(0, 1fr);
@@ -284,7 +328,7 @@ input[type='range'] {
   padding: 0.7rem 0.75rem;
   border-radius: 14px;
   text-decoration: none;
-  transition: background-color 160ms ease;
+  transition: background-color var(--motion) var(--ease);
 }
 
 .song-row:hover,
@@ -300,6 +344,9 @@ input[type='range'] {
   border-radius: 12px;
   background: var(--surface);
   font-weight: 650;
+  transition:
+    background-color var(--motion) var(--ease),
+    color var(--motion) var(--ease);
 }
 
 .song-row[aria-current='page'] .song-mark {
@@ -502,7 +549,11 @@ label:has(input[type='checkbox']) {
   background: var(--surface-2);
 }
 
-.player .icon-button.is-play,
+.player .icon-button.is-play {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
 .player .text-button,
 .rate[aria-pressed='true'] {
   color: var(--accent);
@@ -530,6 +581,43 @@ label:has(input[type='checkbox']) {
 
 .player input[type='range'] {
   height: 2.75rem;
+  appearance: none;
+  background: transparent;
+}
+
+.player input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.player input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: -0.32rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.player input[type='range']::-moz-range-track {
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.player input[type='range']::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.player input[type='range']:disabled {
+  opacity: 0.4;
 }
 
 .player-status {
@@ -570,14 +658,15 @@ label:has(input[type='checkbox']) {
 }
 
 .lyric-tabs button {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 2.5rem;
-  padding: var(--space-2) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--ink-soft);
   font-size: var(--text-sm);
+  white-space: nowrap;
 }
 
 .lyric-tabs button[aria-selected='true'] {
@@ -587,48 +676,71 @@ label:has(input[type='checkbox']) {
 
 .lyric-document {
   margin-top: var(--space-5);
-  padding: var(--space-4);
+  padding: var(--space-5) var(--space-4);
   border-radius: var(--radius);
   background: var(--surface);
+  animation: fade var(--motion) var(--ease) both;
 }
 
 .lyric-sheet {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--line-rows), auto);
+  column-gap: 0;
+  row-gap: 0.85rem;
   margin-top: var(--space-5);
-}
-
-.lyric-pane {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: var(--space-4);
-  border-radius: 18px;
+  padding: var(--space-4) 0 var(--space-5);
+  border-radius: 20px;
   background: var(--surface);
 }
 
+.lyric-pane {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: 1 / -1;
+  min-width: 0;
+  padding-inline: var(--space-4);
+  background: transparent;
+}
+
 .lyric-pane + .lyric-pane {
-  padding-left: var(--space-4);
+  box-shadow: inset 1px 0 0 var(--line);
+}
+
+.lyric-sheet .lyric-body {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: 2 / -1;
+  min-width: 0;
+}
+
+.lyric-sheet p {
+  min-width: 0;
+  margin: 0;
 }
 
 .lyric-pane-title {
   position: sticky;
-  top: var(--tools-height);
+  top: 0;
   z-index: 1;
   display: flex;
   gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 var(--space-4);
-  padding-bottom: var(--space-2);
+  margin: 0;
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
-  color: var(--ink-soft);
+  color: var(--ink);
   font-size: var(--text-sm);
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   line-height: 1.4;
-  text-transform: uppercase;
+  text-transform: none;
+}
+
+.learn .lyric-pane-title {
+  top: var(--tools-height);
 }
 
 .lyric-pane-title h2 {
@@ -688,7 +800,7 @@ label:has(input[type='checkbox']) {
 .lyric-hiragana p,
 .lyric-romaji p,
 .lyric-meaning p {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-4);
 }
 
 .lyric-empty {
@@ -697,19 +809,29 @@ label:has(input[type='checkbox']) {
 
 .lyric-original {
   font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Iowan Old Style', Palatino, serif;
+  color: var(--ink);
 }
 
 .lyric-hiragana {
   font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', sans-serif;
+  color: color-mix(in srgb, var(--ink) 86%, var(--ink-soft));
 }
 
-.lyric-romaji,
+.lyric-romaji {
+  font-family: var(--ui);
+  color: var(--ink);
+}
+
 .lyric-meaning {
   font-family: 'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif;
+  color: var(--ink-soft);
 }
 
-.lyric-meaning {
-  color: var(--ink-soft);
+.lyric-line {
+  border-radius: 0.2em;
+  transition:
+    background-color 140ms var(--ease),
+    text-decoration-color 140ms var(--ease);
 }
 
 .learn .lyric-line.is-linked {
@@ -725,7 +847,7 @@ label:has(input[type='checkbox']) {
 @keyframes enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
 
   to {
@@ -734,10 +856,36 @@ label:has(input[type='checkbox']) {
   }
 }
 
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .stage > *,
 .draft-in,
 .song-list > li {
-  animation: enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: enter 300ms var(--ease) both;
+}
+
+.lyric-pane {
+  animation: fade 280ms var(--ease) both;
+}
+
+.lyric-pane:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.lyric-pane:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.lyric-pane:nth-child(4) {
+  animation-delay: 100ms;
 }
 
 .song-list > li:nth-child(2) {
@@ -765,13 +913,22 @@ label:has(input[type='checkbox']) {
   .draft-in,
   .song-list > li,
   .song-row,
+  .song-mark,
   .pane-visibility,
+  .lyric-pane,
+  .lyric-document,
+  .lyric-line,
   .lyric-original,
   .lyric-hiragana,
   .lyric-romaji,
-  .lyric-meaning {
+  .lyric-meaning,
+  button {
     animation: none;
     transition: none;
+  }
+
+  button:active:not(:disabled) {
+    transform: none;
   }
 
   .site-header,
@@ -784,7 +941,7 @@ label:has(input[type='checkbox']) {
 @media (min-width: 48rem) {
   :root {
     --page-gutter: clamp(1.25rem, 1.5vw, 2.5rem);
-    --tools-height: 4.25rem;
+    --tools-height: 5rem;
   }
 
   .lyric-original,
@@ -815,7 +972,11 @@ label:has(input[type='checkbox']) {
     overflow: hidden;
   }
 
-  .shell[data-screen='library'] .stage,
+  .shell[data-screen='library'] .workspace,
+  .shell[data-screen='missing'] .workspace {
+    display: block;
+  }
+
   .shell[data-screen='compose'] .rail,
   .shell[data-screen='song'] .rail {
     display: block;

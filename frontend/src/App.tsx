@@ -8,6 +8,7 @@ export default function App() {
   const route = useRoute()
   const screen = route.name === 'song' ? 'song' : route.name
   const stageKey = route.name === 'song' ? route.songId : screen
+  const showRail = screen === 'compose' || screen === 'song'
 
   return (
     <div className="shell" data-screen={screen}>
@@ -20,32 +21,19 @@ export default function App() {
         </Link>
       </header>
       <div className="workspace">
-        {screen === 'missing' ? null : (
+        {showRail ? (
           <aside className="rail" aria-label="Saved songs">
             <Library activeId={route.name === 'song' ? route.songId : null} />
           </aside>
-        )}
+        ) : null}
         <main className="stage" key={stageKey}>
-          {screen === 'library' ? <StageHome /> : null}
+          {screen === 'library' ? <Library variant="page" /> : null}
           {screen === 'compose' ? <NewSong /> : null}
           {route.name === 'song' ? <LearnSong key={route.songId} songId={route.songId} /> : null}
           {screen === 'missing' ? <MissingPage /> : null}
         </main>
       </div>
     </div>
-  )
-}
-
-function StageHome() {
-  return (
-    <article className="stage-home">
-      <p className="kicker">Lyrx</p>
-      <h1>Pick a song, or start one.</h1>
-      <p className="lede">The original, the reading, the romaji, and the English stay open together.</p>
-      <Link className="button-primary" href="/songs/new">
-        New song
-      </Link>
-    </article>
   )
 }
 

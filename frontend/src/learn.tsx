@@ -5,6 +5,7 @@ import { COLUMNS } from './columns.ts'
 import type { LyricLine, SongDetail } from './contracts.ts'
 import { Link } from './link.tsx'
 import { Player } from './player.tsx'
+import { lineRowStyle, useWideLayout } from './reading.ts'
 import {
   lineIndexFromValue,
   linkedLineIndex,
@@ -151,6 +152,7 @@ function DesktopLyrics({
   return (
     <div
       className="lyric-sheet"
+      style={lineRowStyle(song.lines.length)}
       onPointerOver={(event) => setHoverLine(lineIndexFromValue(datasetLine(event.target)))}
       onPointerLeave={() => setHoverLine(null)}
       onFocus={(event) => setFocusLine(lineIndexFromValue(datasetLine(event.target)))}
@@ -196,7 +198,7 @@ function LayerToggle({ label, shown, onToggle }: { label: string; shown: boolean
   )
 }
 
-function LyricTabs({ active, onSelect }: { active: LayerKey; onSelect: (key: LayerKey) => void }) {
+export function LyricTabs({ active, onSelect }: { active: LayerKey; onSelect: (key: LayerKey) => void }) {
   function move(event: KeyboardEvent<HTMLButtonElement>, key: LayerKey) {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
     event.preventDefault()
@@ -266,27 +268,41 @@ function LyricBody({
   activeLine?: number | null
 }) {
   const empty = lines.every((line) => column.text(line).trim() === '')
-  return (
-    <div className={shown ? column.className : `${column.className} is-hidden`} lang={column.lang} aria-hidden={shown ? undefined : true}>
-      {empty ? (
+  if (empty && !correspond) {
+    const hidden = shown ? '' : ' is-hidden'
+    return (
+      <div className={`lyric-body ${column.className}${hidden}`} lang={column.lang} aria-hidden={shown ? undefined : true}>
         <p className="lyric-empty">Nothing here yet.</p>
-      ) : (
-        lines.map((line) =>
-          correspond ? (
-            <p key={line.id}>
-              <span
-                className={activeLine === line.index ? 'lyric-line is-linked' : 'lyric-line'}
-                data-line={line.index}
-                tabIndex={shown ? 0 : undefined}
-              >
-                {column.text(line)}
-              </span>
+      </div>
+    )
+  }
+  return (
+    <div
+      className={shown ? `lyric-body ${column.className}` : `lyric-body ${column.className} is-hidden`}
+      lang={column.lang}
+      aria-hidden={shown ? undefined : true}
+    >
+      {lines.map((line) => {
+        if (empty) {
+          return (
+            <p key={line.id} className={line.index === 0 ? 'lyric-empty' : undefined}>
+              {line.index === 0 ? 'Nothing here yet.' : ''}
             </p>
-          ) : (
-            <p key={line.id}>{column.text(line)}</p>
-          ),
+          )
+        }
+        if (!correspond) return <p key={line.id}>{column.text(line)}</p>
+        return (
+          <p key={line.id}>
+            <span
+              className={activeLine === line.index ? 'lyric-line is-linked' : 'lyric-line'}
+              data-line={line.index}
+              tabIndex={shown ? 0 : undefined}
+            >
+              {column.text(line)}
+            </span>
+          </p>
         )
-      )}
+      })}
     </div>
   )
 }
@@ -296,18 +312,6 @@ function datasetLine(target: EventTarget | null): string | null {
   const row = target.closest('[data-line]')
   if (!(row instanceof HTMLElement)) return null
   return row.dataset.line ?? null
-}
-
-function useWideLayout(): boolean {
-  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 48rem)').matches)
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 48rem)')
-    const update = () => setWide(query.matches)
-    update()
-    query.addEventListener('change', update)
-    return () => query.removeEventListener('change', update)
-  }, [])
-  return wide
 }
 
 function browserLayers(): Storage | null {
