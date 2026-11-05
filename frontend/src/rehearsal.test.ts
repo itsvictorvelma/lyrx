@@ -12,6 +12,7 @@ import {
   formatTime,
   languageDirection,
   lineIndexFromValue,
+  filterSongs,
   linkedLineIndex,
   lyricProblem,
   playbackRate,
@@ -82,7 +83,7 @@ test('layer storage falls back when missing or invalid, and keeps an all-hidden 
   )
 })
 
-test('a lyric mark follows one line and the same index, without stretching the row', () => {
+test('a lyric mark follows one index without changing its own box, and sheet rows line up', () => {
   assert.equal(lineIndexFromValue('0'), 0)
   assert.equal(lineIndexFromValue('12'), 12)
   assert.equal(lineIndexFromValue(null), null)
@@ -100,8 +101,9 @@ test('a lyric mark follows one line and the same index, without stretching the r
   const learn = readFileSync(join(here, 'learn.tsx'), 'utf8')
   const sheet = ruleBody(css, '.lyric-sheet')
   const linked = ruleBody(css, '.learn .lyric-line.is-linked')
-  assert.match(sheet, /display:\s*flex/)
-  assert.doesNotMatch(css, /subgrid|lyric-sheet-aligned|grid-template-rows|1\.375rem/)
+  assert.match(sheet, /display:\s*grid/)
+  assert.match(css, /grid-template-rows:\s*subgrid/)
+  assert.doesNotMatch(css, /lyric-sheet-aligned|1\.375rem/)
   const documents = ruleBody(
     css,
     '.lyric-original,\n.lyric-hiragana,\n.lyric-romaji,\n.lyric-meaning',
@@ -171,6 +173,17 @@ test('routes stay in one workspace for the library, a new song, and one saved so
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
   assert.deepEqual(parseRoute('/missing'), { name: 'missing' })
   assert.equal(songHref('akuma-no-ko'), '/songs/akuma-no-ko')
+})
+
+test('saved song search matches title or artist only', () => {
+  const songs = [
+    { title: 'First Love', artist: 'Utada Hikaru' },
+    { title: 'Akuma no Ko', artist: 'Ai Higuchi' },
+  ]
+  assert.deepEqual(filterSongs(songs, '  '), songs)
+  assert.deepEqual(filterSongs(songs, '  love '), [songs[0]])
+  assert.deepEqual(filterSongs(songs, 'HIGUCHI'), [songs[1]])
+  assert.deepEqual(filterSongs(songs, 'Japanese'), [])
 })
 
 test('language direction names Japanese and English', () => {

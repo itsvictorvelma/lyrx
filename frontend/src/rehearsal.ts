@@ -33,6 +33,12 @@ export function languageDirection(source: string, target: string): string {
   return `${languageName(source)} → ${languageName(target)}`
 }
 
+export function filterSongs<T extends { title: string; artist: string }>(songs: readonly T[], query: string): T[] {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return [...songs]
+  return songs.filter((song) => `${song.title} ${song.artist}`.toLowerCase().includes(needle))
+}
+
 export function formatTime(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '--:--'
   const total = Math.floor(seconds)
