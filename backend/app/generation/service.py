@@ -15,7 +15,7 @@ from app.errors import DomainError
 from app.generation.groq import GroqClient
 from app.generation.lrclib import Recording, lyric_lines, search_recording
 from app.generation.prompts import confirmation, segment_body
-from app.reading import ReadingError, assemble_reading, units
+from app.reading import ReadingError, line_reading
 
 Search = Callable[[str, str], Recording | None]
 _BY = re.compile(r"(.+?)\s+by\s+(.+)", re.IGNORECASE)
@@ -50,7 +50,8 @@ class GenerationService:
         if not originals:
             raise DomainError("generation_invalid", _MISS)
         body = segment_body(self._model, title, artist, originals)
-        return _accept(originals, _slot_rows(_content(self._client.complete(body))))
+        payload = _content(self._client.complete(body), len(originals))
+        return _accept(originals, _slot_rows(payload))
 
 
 def song_name(instruction: str) -> tuple[str, str]:
@@ -95,7 +96,7 @@ def _accept(originals: list[str], rows: list[tuple[object, str]]) -> list[DraftL
     locked: list[DraftLine] = []
     for original, (raw_readings, english) in zip(originals, rows, strict=True):
         try:
-            hiragana, romaji = assemble_reading(original, _align_readings(original, raw_readings))
+            hiragana, romaji = line_reading(original, raw_readings)
         except ReadingError as exc:
             raise DomainError("generation_invalid", _INCOMPLETE) from exc
         locked.append(
@@ -109,33 +110,7 @@ def _accept(originals: list[str], rows: list[tuple[object, str]]) -> list[DraftL
     return locked
 
 
-def _align_readings(original: str, raw: object) -> list[str]:
-    expected = sum(1 for kind, _surface in units(original.strip()) if kind == "slot")
-    if isinstance(raw, list):
-        readings = [item for item in raw if isinstance(item, str)]
-        if len(readings) != len(raw):
-            raise DomainError("generation_invalid", _BAD)
-        return readings
-    if not isinstance(raw, str):
-        raise DomainError("generation_invalid", _BAD)
-    text = raw.strip()
-    if expected == 0:
-        if text:
-            raise DomainError("generation_invalid", _INCOMPLETE)
-        return []
-    for separator in ("|", "\n"):
-        parts = [part.strip() for part in text.split(separator) if part.strip()]
-        if len(parts) == expected:
-            return parts
-    if expected == 1:
-        return [text]
-    parts = text.split()
-    if len(parts) == expected:
-        return parts
-    raise DomainError("generation_invalid", _INCOMPLETE)
-
-
-def _content(payload: dict[str, object]) -> object:
+def _content(payload: dict[str, object], expected: int) -> object:
     status = payload.get("status_code", 200)
     data = payload.get("data")
     error = data.get("error") if isinstance(data, dict) else None
@@ -148,17 +123,17 @@ def _content(payload: dict[str, object]) -> object:
     if failed:
         # json_validate_failed still carries the generated lines. That text is
         # this completion, so it is the draft. Nothing is asked again.
-        found = _lines_from(error, ("failed_generation",))
+        found = _lines_from(error, ("failed_generation",), expected)
         if found is None:
-            found = _lines_from(data, ("failed_generation",))
+            found = _lines_from(data, ("failed_generation",), expected)
         if found is None:
-            found = _lines_from(_message(data), ("content", "reasoning"))
+            found = _lines_from(_message(data), ("content", "reasoning"), expected)
         if found is None:
             raise DomainError("generation_invalid", _BAD)
         return found
     if status != 200:
         raise DomainError("groq_unavailable", "The lyric request failed. Send again.")
-    found = _lines_from(_message(data), ("content", "reasoning"))
+    found = _lines_from(_message(data), ("content", "reasoning"), expected)
     if found is None:
         raise DomainError("generation_invalid", _BAD)
     return found
@@ -172,28 +147,28 @@ def _message(data: object) -> object:
     return message
 
 
-def _lines_from(source: object, keys: tuple[str, ...]) -> object | None:
+def _lines_from(source: object, keys: tuple[str, ...], expected: int) -> object | None:
     if not isinstance(source, dict):
         return None
     for key in keys:
-        found = _json_lines(source.get(key))
+        found = _json_lines(source.get(key), expected)
         if found is not None:
             return found
     return None
 
 
-def _json_lines(value: object) -> object | None:
+def _json_lines(value: object, expected: int) -> object | None:
     if isinstance(value, dict):
         return value if isinstance(value.get("lines"), list) else None
     if not isinstance(value, str) or not value.strip():
         return None
-    parsed = _loads_lines(value.strip())
+    parsed = _loads_lines(value.strip(), expected)
     if isinstance(parsed, dict) and isinstance(parsed.get("lines"), list):
         return parsed
     return None
 
 
-def _loads_lines(text: str) -> object | None:
+def _loads_lines(text: str, expected: int) -> dict[str, object] | None:
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
@@ -201,17 +176,29 @@ def _loads_lines(text: str) -> object | None:
     if isinstance(parsed, dict) and isinstance(parsed.get("lines"), list):
         return parsed
     decoder = json.JSONDecoder()
-    found: dict[str, object] | None = None
+    found: list[dict[str, object]] = []
     start = 0
     while True:
         index = text.find("{", start)
         if index < 0:
-            return found
+            break
         try:
             parsed, _end = decoder.raw_decode(text, index)
         except json.JSONDecodeError:
             start = index + 1
             continue
         if isinstance(parsed, dict) and isinstance(parsed.get("lines"), list):
-            found = parsed
+            found.append(parsed)
         start = index + 1
+    if not found:
+        return None
+    # A later one-line object is not the song. Keep the object that has
+    # every lyric line. A shorter object is still rejected downstream.
+    complete = [item for item in found if len(item["lines"]) == expected]
+    if complete:
+        return complete[-1]
+    best = found[0]
+    for item in found[1:]:
+        if len(item["lines"]) >= len(best["lines"]):
+            best = item
+    return best

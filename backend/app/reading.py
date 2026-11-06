@@ -114,6 +114,31 @@ def assemble_reading(original: str, readings: list[str]) -> tuple[str, str]:
     return hiragana, romaji
 
 
+def line_reading(original: str, raw: object) -> tuple[str, str]:
+    """Hiragana and romaji for one original line that came back in the completion.
+
+    A line with no kanji is copied. A reading that already contains the line's
+    kana is split across the brackets. Otherwise each bracket is read on its
+    own, and kana the model left out of that bracket is copied from the line.
+    """
+
+    source = original.strip()
+    expected = sum(1 for kind, _surface in units(source) if kind == "slot")
+    if expected == 0:
+        return assemble_reading(source, [])
+    pieces = _reading_pieces(raw, expected)
+    joined = "".join(pieces)
+    fitted = _fit_slots(source, joined)
+    if fitted is not None:
+        try:
+            return assemble_reading(source, fitted)
+        except ReadingError:
+            pass
+    if len(pieces) == expected:
+        return assemble_reading(source, pieces)
+    return lock_reading(source, joined)
+
+
 def _char_runs(text: str) -> list[tuple[bool, str]]:
     runs: list[tuple[bool, str]] = []
     for char in text:
@@ -129,10 +154,63 @@ def _okurigana(surface: str) -> bool:
     return bool(surface) and all(_is_hiragana(char) for char in surface) and surface not in _PARTICLE
 
 
+def _reading_pieces(raw: object, expected: int) -> list[str]:
+    if isinstance(raw, list):
+        if not all(isinstance(item, str) for item in raw):
+            raise ReadingError("reading does not match the line")
+        return [item.strip() for item in raw]
+    if not isinstance(raw, str):
+        raise ReadingError("reading does not match the line")
+    text = raw.strip()
+    if not text:
+        return []
+    for separator in ("|", "\n"):
+        parts = [part.strip() for part in text.split(separator) if part.strip()]
+        if len(parts) == expected:
+            return parts
+    parts = [part for part in text.split() if part]
+    if len(parts) == expected:
+        return parts
+    return [text]
+
+
+def _fit_slots(original: str, reading: str) -> list[str] | None:
+    """Split one hiragana reading across the kanji, using the original kana as anchors."""
+
+    compact = _kana_core(to_hiragana(reading))
+    if not compact or not _keeps_kana(original, compact):
+        return None
+    slots: list[str] = []
+    cursor = 0
+    for kind, surface in units(original.strip()):
+        if kind == "slot":
+            slots.append("")
+            continue
+        anchor = _kana_core(surface)
+        if not anchor:
+            continue
+        found = compact.find(anchor, cursor)
+        if found < 0:
+            return None
+        gap = compact[cursor:found]
+        if gap:
+            if not slots:
+                return None
+            slots[-1] += gap
+        cursor = found + len(anchor)
+    if cursor < len(compact):
+        if not slots:
+            return None
+        slots[-1] += compact[cursor:]
+    if not slots or any(not item for item in slots):
+        return None
+    return slots
+
+
 def _slot_reading(surface: str, reading: str) -> str:
     kana = to_hiragana(reading.strip())
     compact = kana.replace(" ", "")
-    if not compact or has_kanji(compact) or not _keeps_kana(surface, compact):
+    if not compact or has_kanji(compact):
         raise ReadingError("reading does not match the line")
     # ponytail: pop lyrics sing わたし and あした. A song that really sings
     # わたくし or あす would need this guard removed.
@@ -140,7 +218,21 @@ def _slot_reading(surface: str, reading: str) -> str:
         return "わたし"
     if surface == "明日" and compact == "あす":
         return "あした"
-    return reading.strip()
+    if _keeps_kana(surface, compact):
+        return reading.strip()
+    # The bracket can hold kana after the kanji. That kana is still the
+    # original line, so a reading of the kanji does not drop it.
+    return _with_slot_kana(compact, surface)
+
+
+def _with_slot_kana(reading: str, surface: str) -> str:
+    kana = _kana_core(surface)
+    if not kana:
+        return reading
+    for size in range(len(kana), 0, -1):
+        if reading.endswith(kana[:size]):
+            return reading + kana[size:]
+    return reading + kana
 
 
 def _break_particle(text: str) -> str:

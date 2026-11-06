@@ -43,9 +43,12 @@ def test_one_completion_stays_inside_the_token_minute() -> None:
     assert "Current song" not in prompt
     assert "よみ" not in prompt
     assert "【雨】" in prompt
+    assert "every numbered line" in prompt
+    assert "return the previous line" not in prompt
     schema = body["response_format"]
     assert isinstance(schema, dict)
     assert schema["json_schema"]["name"] == "lyric_slots"
+    assert "Exactly 2 objects" in json.dumps(schema)
     assert "pronunciationRomaji" not in json.dumps(schema)
     room = 8_000 - prompt_tokens(prompt)
     assert body["max_completion_tokens"] == room
@@ -398,6 +401,117 @@ def test_lyrics_after_a_preamble_or_in_reasoning_are_kept() -> None:
     assert reasoned.calls == 1
     assert fenced_draft.draft.lines[0].readingHiragana == "あめ"
     assert reasoned_draft.draft.lines[1].readingHiragana == "そら"
+
+
+def _envelope(content: str) -> dict[str, object]:
+    return {"status_code": 200, "data": {"choices": [{"message": {"content": content}}]}}
+
+
+def test_a_later_one_line_object_does_not_drop_the_song() -> None:
+    """The completion can end with a one-line object after the song.
+
+    Keeping that last object makes every song look like a missing line.
+    The object that has every lyric line is the draft. One call.
+    """
+
+    song = _ame_lines([["あめ"], ["そら"]])
+    short = json.dumps(
+        {"lines": [{"readings": ["よみ"], "translationEnglish": "wrong"}]},
+        ensure_ascii=False,
+    )
+    client = FakeGroq(_envelope(f"{song}\n{short}"))
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert client.calls == 1
+    assert [line.readingHiragana for line in result.draft.lines] == ["あめ", "そら"]
+    assert [line.pronunciationRomaji for line in result.draft.lines] == ["ame", "sora"]
+
+
+def test_a_short_lines_array_is_still_rejected() -> None:
+    client = FakeGroq(
+        _envelope(json.dumps({"lines": [{"readings": ["あめ"], "translationEnglish": "rain"}]}, ensure_ascii=False))
+    )
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert client.calls == 1
+    assert error.value.message == "The lyrics did not include every line. Send again."
+
+
+def test_a_present_line_is_not_reported_as_missing() -> None:
+    """Plastic Love's shape: a bracket that holds the rest of the phrase, a kana line, an English hook.
+
+    The readings name the kanji and leave the bracket's kana. Those lines came
+    back. The missing-line sentence stays for a line that was not returned.
+    """
+
+    lyrics = "突然のキスや 熱いまなざしで\nしたたる\nI'm just playing games"
+
+    def search(_title: str, _artist: str) -> Recording:
+        return Recording(title="Plastic Love", artist="Mariya Takeuchi", text=lyrics)
+
+    content = json.dumps(
+        {
+            "lines": [
+                {"readings": ["とつぜん", "あつい"], "translationEnglish": "a sudden hot gaze"},
+                {"readings": ["かんじ"], "translationEnglish": "dripping"},
+                {"readings": ["games"], "translationEnglish": "I'm just playing games"},
+            ]
+        },
+        ensure_ascii=False,
+    )
+    client = FakeGroq(_envelope(content))
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search).generate("Plastic Love by Mariya Takeuchi", None)
+
+    assert client.calls == 1
+    assert [line.originalText for line in result.draft.lines] == [
+        "突然のキスや 熱いまなざしで",
+        "したたる",
+        "I'm just playing games",
+    ]
+    assert result.draft.lines[0].readingHiragana == "とつぜん の きすや あついまなざしで"
+    assert result.draft.lines[0].pronunciationRomaji == "totsuzen no kisuya atsuimanazashide"
+    assert result.draft.lines[1].readingHiragana == "したたる"
+    assert result.draft.lines[1].pronunciationRomaji == "shitataru"
+    assert result.draft.lines[2].readingHiragana == "I'm just playing games"
+    assert result.draft.lines[2].pronunciationRomaji == "I'm just playing games"
+
+
+def test_one_hiragana_string_for_the_line_keeps_every_kana() -> None:
+    def search(_title: str, _artist: str) -> Recording:
+        return Recording(title="Ame", artist="Example", text="鉄の弾")
+
+    content = json.dumps(
+        {"lines": [{"readings": "てつのたま", "translationEnglish": "an iron bullet"}]},
+        ensure_ascii=False,
+    )
+    client = FakeGroq(_envelope(content))
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search).generate("Ame", None)
+
+    assert client.calls == 1
+    assert result.draft.lines[0].readingHiragana == "てつ の たま"
+    assert result.draft.lines[0].pronunciationRomaji == "tetsu no tama"
+
+
+def test_a_reading_that_drops_kana_is_still_rejected() -> None:
+    def search(_title: str, _artist: str) -> Recording:
+        return Recording(title="Ame", artist="Example", text="鉄の弾")
+
+    content = json.dumps(
+        {"lines": [{"readings": "てつ", "translationEnglish": "iron"}]},
+        ensure_ascii=False,
+    )
+    client = FakeGroq(_envelope(content))
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b", search).generate("Ame", None)
+
+    assert client.calls == 1
+    assert error.value.message == "The lyrics did not include every line. Send again."
 
 
 def test_a_saved_draft_does_not_start_another_completion() -> None:

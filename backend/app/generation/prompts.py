@@ -9,6 +9,8 @@ lower values start repeating. The measured call is recorded in
 benchmarks/groq-token-usage.md.
 """
 
+import copy
+
 from app.contracts import LyricDraft
 from app.errors import DomainError
 from app.reading import marked
@@ -18,12 +20,13 @@ SCHEMA_OVERHEAD = 800
 COMPLETION_FLOOR = 400
 
 SLOT_RULES = (
+    "Return one lines object for every numbered line, in that order, including a line that repeats. "
     "readings is a list of one hiragana string for each 【bracket】, in order. "
     "Read the whole bracket, including the kana inside it, and leave every character outside the brackets out of readings. "
     "A line with no brackets has an empty readings list. "
     "私 is わたし. 明日 is あした. Keep rendaku. "
     "translationEnglish is the literal meaning of that one line. "
-    "Do not add a subject or return the previous line."
+    "Do not add a subject or merge lines."
 )
 
 SLOT_SCHEMA = {
@@ -87,6 +90,22 @@ def completion_limit(prompt: str) -> int:
     return room
 
 
+def slot_schema(count: int) -> dict[str, object]:
+    """The lyric schema. The lines description states this song's line count."""
+
+    schema = copy.deepcopy(SLOT_SCHEMA)
+    json_schema = schema["json_schema"]
+    assert isinstance(json_schema, dict)
+    inner = json_schema["schema"]
+    assert isinstance(inner, dict)
+    properties = inner["properties"]
+    assert isinstance(properties, dict)
+    lines = properties["lines"]
+    assert isinstance(lines, dict)
+    lines["description"] = f"Exactly {count} objects, one for each numbered line, in that order."
+    return schema
+
+
 def segment_body(model: str, title: str, artist: str, originals: list[str]) -> dict[str, object]:
     prompt = segment_message(title, artist, originals)
     return {
@@ -96,7 +115,7 @@ def segment_body(model: str, title: str, artist: str, originals: list[str]) -> d
         "reasoning_effort": "low",
         "include_reasoning": False,
         "messages": [{"role": "user", "content": prompt}],
-        "response_format": SLOT_SCHEMA,
+        "response_format": slot_schema(len(originals)),
     }
 
 
