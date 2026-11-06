@@ -1,9 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 
 export function useWideLayout(): boolean {
-  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 48rem)').matches)
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 64rem)').matches)
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 48rem)')
+    const query = window.matchMedia('(min-width: 64rem)')
     const update = () => setWide(query.matches)
     update()
     query.addEventListener('change', update)

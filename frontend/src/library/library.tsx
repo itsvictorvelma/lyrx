@@ -39,15 +39,10 @@ export function Library() {
 
   return (
     <div className="library library-page">
-      <div className="library-intro">
-        <div className="library-copy">
-          <h1>Song Library</h1>
-          <p className="lede">Ask for a song, then save it here. Original, hiragana, romaji, and English stay together.</p>
-        </div>
-        <Link className="button-primary" href="/songs/new">
-          New song
-        </Link>
-      </div>
+      <header className="library-intro">
+        <h1>Song Library</h1>
+        <p className="lede">Saved songs. Open one to read Original, Hiragana, Romaji, and English.</p>
+      </header>
       {error ? (
         <div className="notice" role="alert">
           <p>{error}</p>
@@ -68,9 +63,14 @@ export function Library() {
       )}
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {songs && songs.length === 0 ? (
-        <p className="empty-note" role="status">
-          No songs yet. Search for one, then save it here.
-        </p>
+        <>
+          <p className="empty-note" role="status">
+            No songs yet. Ask for one, then save it here.
+          </p>
+          <Link className="button-primary" href="/songs/new">
+            New song
+          </Link>
+        </>
       ) : null}
       {songs && songs.length > 0 && visible.length === 0 ? (
         <p className="empty-note" role="status">

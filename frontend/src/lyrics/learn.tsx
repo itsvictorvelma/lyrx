@@ -74,9 +74,16 @@ export function LearnSong({ songId }: { songId: string }) {
     state.phase === 'ready' ? state.song.title : state.phase === 'loading' ? 'Loading song' : 'Song unavailable'
   const active = COLUMNS.find((column) => column.key === reading) ?? COLUMNS[0]
 
+  const ready = state.phase === 'ready'
+
   return (
     <article className="learn">
-      <h1>{title}</h1>
+      <header className="learn-mast">
+        <h1 className={ready ? 'song-name' : undefined} lang={ready ? 'ja' : undefined}>
+          {title}
+        </h1>
+        {ready ? <p className="byline">{state.song.artist}</p> : null}
+      </header>
       {state.phase === 'loading' ? <p role="status">Loading song.</p> : null}
       {state.phase === 'missing' ? (
         <div className="notice" role="alert">
@@ -99,9 +106,8 @@ export function LearnSong({ songId }: { songId: string }) {
           </button>
         </div>
       ) : null}
-      {state.phase === 'ready' ? (
+      {ready ? (
         <>
-          <p className="byline">{state.song.artist}</p>
           <div className="learn-tools">
             <Player src={state.song.audioUrl} title={state.song.title} durationHint={state.song.durationSeconds} />
             <AudioAttach songId={songId} hasAudio={Boolean(state.song.audioUrl)} onAttached={retry} />
@@ -112,20 +118,22 @@ export function LearnSong({ songId }: { songId: string }) {
               </div>
             ) : null}
           </div>
-          {problem ? (
-            <p className="notice" role="alert">
-              These lyrics could not be shown.
-            </p>
-          ) : wide ? (
-            <DesktopLyrics lines={state.song.lines} layers={layers} onToggle={changeLayer} />
-          ) : (
-            <LyricDocument
-              column={active}
-              lines={state.song.lines}
-              labelledBy={`tab-${active.key}`}
-              shown={layers[active.key]}
-            />
-          )}
+          <div className="learn-reading">
+            {problem ? (
+              <p className="notice" role="alert">
+                These lyrics could not be shown.
+              </p>
+            ) : wide ? (
+              <DesktopLyrics lines={state.song.lines} layers={layers} onToggle={changeLayer} />
+            ) : (
+              <LyricDocument
+                column={active}
+                lines={state.song.lines}
+                labelledBy={`tab-${active.key}`}
+                shown={layers[active.key]}
+              />
+            )}
+          </div>
         </>
       ) : null}
     </article>
