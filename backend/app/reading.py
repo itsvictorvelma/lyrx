@@ -87,10 +87,6 @@ def marked(text: str) -> str:
     return "".join(shown)
 
 
-def slot_count(text: str) -> int:
-    return sum(1 for kind, _surface in units(text) if kind == "slot")
-
-
 def needs_model(text: str) -> bool:
     return has_kanji(text) or bool(_kana_core(text))
 

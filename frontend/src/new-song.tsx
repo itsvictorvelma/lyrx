@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { generateLyrics, saveSong } from './api.ts'
 import type { DraftLine, LyricDraft } from './contracts.ts'
-import { COLUMNS } from './columns.ts'
-import { LyricTabs } from './learn.tsx'
-import { lineRowStyle, useWideLayout } from './reading.ts'
-import { Link } from './link.tsx'
-import { navigate, songHref } from './route.ts'
-import type { LayerKey } from './rehearsal.ts'
+import { COLUMNS } from './lyrics/columns.ts'
+import { lineRowStyle, useWideLayout } from './lyrics/layout.ts'
+import { LyricTabs } from './lyrics/learn.tsx'
+import type { LayerKey } from './lyrics/layers.ts'
+import { Link } from './routes/link.tsx'
+import { navigate, songHref } from './routes/route.ts'
 
 export function NewSong() {
   const [draft, setDraft] = useState<LyricDraft | null>(null)

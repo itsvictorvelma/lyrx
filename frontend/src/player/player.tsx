@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { clampTime, finiteTime, formatTime, playbackRate } from './rehearsal.ts'
+import { clampTime, finiteTime, formatTime, playbackRate } from './time.ts'
 
 const RATES = [0.75, 1, 1.25] as const
 

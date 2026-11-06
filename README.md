@@ -1,35 +1,47 @@
-# Lyrx Prototype 1
+# Lyrx
 
-Lyrx helps a learner rehearse a Japanese song in one place: Original, Hiragana, Romaji, and English, plus an MP3 the learner attaches.
+Lyrx is a local page for rehearsing a Japanese song: Original, Hiragana, Romaji, and English, plus one MP3 you attach. There is no login.
 
-Read [How the code fits together](docs/codebase.md) for the code that exists today. The [Prototype 1 build plan](AGENTS.md) and [`specs/`](specs/) are the product. Measured limits, including Groq token usage, are in [`benchmarks/`](benchmarks/).
+[How the code fits together](docs/codebase.md) describes the code. [AGENTS.md](AGENTS.md) is the plan. Measured Groq limits are in [benchmarks/](benchmarks/).
 
-## Local development
+You need Python 3.12 or newer (CI uses 3.14), [uv](https://docs.astral.sh/uv/), and Node 24. Lyric generation also needs the Swytchcode CLI, with Groq connected. The library, the reading page, and the player run without that.
 
-### Backend
+## API
+
+From `backend/`:
 
 ```bash
-cd backend
 cp .env.example .env
+uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:create_app --factory --reload
 ```
 
-If startup says `Field required`, `backend/.env` is missing. Copy the example file and run this from `backend/`. Use `uv run`, not system Python. System Python raises `ModuleNotFoundError: No module named 'sqlalchemy'`. The server target is `app.main:create_app --factory`, not `app.main:app`. After a dependency change, run `uv sync` in `backend/`.
+If startup says `Field required`, `backend/.env` is missing. Copy the example and run the command from `backend/`. Use `uv run`. System Python does not have the project packages. The server target is `app.main:create_app --factory`, not `app.main:app`.
 
-Health check: `GET /api/health`
+`backend/.env.example` lists every setting. `MEDIA_ROOT` and `AUDIO_STAGING_ROOT` must be different folders. If an older `.env` still has `MAX_IMPORT_BYTES` or `IMPORT_STAGING_ROOT`, rename them to `MAX_AUDIO_BYTES` and `AUDIO_STAGING_ROOT`. `FRONTEND_API_BASE_URL` is unused.
 
-### Frontend
+Check `GET http://localhost:8000/api/health`. A healthy API returns `{"status": "ok"}`.
+
+The Groq key is not in `.env`. Connect it once with `swytchcode auth connect Groq`. Asking for a named song also reads the original lines from LRCLIB.
+
+## Page
+
+From `frontend/`:
 
 ```bash
-cd frontend
 npm install
 npm run dev
 ```
 
-### Checks
+Open `http://localhost:5173`. The page calls `http://localhost:8000`.
+
+## Checks
+
+From the repository root:
 
 ```bash
 scripts/check.sh
 ```
 
-Runs the backend tests, frontend build, and frontend lint, the same as CI.
+That runs the backend tests, then the frontend tests, lint, and build. CI runs the same script.

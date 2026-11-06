@@ -24,18 +24,17 @@ class Settings(BaseSettings):
     database_url: str = Field(min_length=1)
     media_root: str = Field(min_length=1)
     public_media_base_url: str = Field(min_length=1)
-    frontend_api_base_url: str = Field(min_length=1)
     groq_model: str = Field(default="openai/gpt-oss-120b", min_length=1)
-    max_import_bytes: int = Field(default=20_000_000, gt=0)
+    max_audio_bytes: int = Field(default=20_000_000, gt=0)
     allowed_development_origin: str = "http://localhost:5173"
-    import_staging_root: str = "./uploads"
+    audio_staging_root: str = "./uploads"
 
     @model_validator(mode="after")
     def validate_runtime_boundaries(self) -> "Settings":
         media_root = Path(self.media_root).expanduser().resolve()
-        import_staging_root = Path(self.import_staging_root).expanduser().resolve()
-        if media_root == import_staging_root:
-            raise ValueError("media_root and import_staging_root must be different directories")
+        audio_staging_root = Path(self.audio_staging_root).expanduser().resolve()
+        if media_root == audio_staging_root:
+            raise ValueError("media_root and audio_staging_root must be different directories")
         return self
 
 

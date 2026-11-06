@@ -14,10 +14,6 @@ export class ApiFailure extends Error {
   }
 }
 
-export async function errorMessage(response: Response): Promise<string> {
-  return (await readFailure(response)).message
-}
-
 export async function listSongs(): Promise<SongSummary[]> {
   const response = await fetch(`${apiBaseUrl}/api/songs`)
   if (!response.ok) throw await readFailure(response)

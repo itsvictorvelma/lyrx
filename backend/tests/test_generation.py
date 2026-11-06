@@ -5,9 +5,9 @@ import pytest
 
 from app.contracts import DraftLine, LyricDraft
 from app.errors import DomainError
-from app.generation import completion_body, completion_limit, segment_body, user_message
+from app.generation.prompts import completion_body, completion_limit, segment_body, user_message
+from app.generation.service import CHUNK, GenerationService
 from app.lyrics import draft_from_model
-from app.services.generation import CHUNK, GenerationService
 
 
 def sample_payload() -> dict[str, object]:
@@ -127,7 +127,7 @@ def test_fetched_lines_are_all_filled(monkeypatch: pytest.MonkeyPatch) -> None:
         assert (title, artist) == ("Ame", "Example")
         return "雨\n[Chorus]\n空"
 
-    monkeypatch.setattr("app.services.generation.search_plain", search)
+    monkeypatch.setattr("app.generation.service.search_plain", search)
     client = PromptGroq()
 
     result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
@@ -274,7 +274,7 @@ def test_a_long_revision_is_sent_in_groups() -> None:
 
 
 def test_a_repeated_line_is_translated_once(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨\n雨")
+    monkeypatch.setattr("app.generation.service.search_plain", lambda title, artist: "雨\n雨")
     client = PromptGroq(english="rain")
 
     result = GenerationService(client, "openai/gpt-oss-120b").generate("Ame by Example", None)
@@ -285,7 +285,7 @@ def test_a_repeated_line_is_translated_once(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_a_bad_chunk_retries_without_asking_for_the_next(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "app.services.generation.search_plain",
+        "app.generation.service.search_plain",
         lambda title, artist: "\n".join(f"雨{number:02d}" for number in range(CHUNK + 1)),
     )
 
@@ -305,7 +305,7 @@ def test_a_bad_chunk_retries_without_asking_for_the_next(monkeypatch: pytest.Mon
 
 
 def test_dropped_kana_retries_that_chunk(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.services.generation.search_plain", lambda title, artist: "雨が")
+    monkeypatch.setattr("app.generation.service.search_plain", lambda title, artist: "雨が")
 
     class Flaky:
         def __init__(self) -> None:

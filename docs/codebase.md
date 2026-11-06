@@ -10,8 +10,28 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 
 Today there are two small programs:
 
-- `backend/` is the API. It stores songs and serves the audio.
+- `backend/` is the API. It stores songs, asks Groq for a lyric draft, and serves the audio.
 - `frontend/` is the web page. Songs, a new song, and Learn Song share one workspace.
+
+The page is grouped by what it does:
+
+| Folder | What it holds |
+| --- | --- |
+| `frontend/src/routes/` | The address bar and in-app links |
+| `frontend/src/library/` | The saved-song list and its text filter |
+| `frontend/src/lyrics/` | Original, Hiragana, Romaji, and English |
+| `frontend/src/player/` | The player and the MP3 form |
+| `frontend/src/new-song.tsx` | The chat that asks for a new song |
+
+The API is grouped the same way:
+
+| Folder | What it holds |
+| --- | --- |
+| `backend/app/routers/` | HTTP routes |
+| `backend/app/generation/` | The Groq draft, the LRCLIB lookup, and the prompt |
+| `backend/app/reading.py` | Hiragana and romaji |
+| `backend/app/services/` | Reading a saved song, and saving a song with its MP3 |
+| `backend/app/repositories/` | The database queries |
 
 ## Backend
 
@@ -38,9 +58,9 @@ Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
 `backend/app/config.py` reads `backend/.env`.
 
-Copy `backend/.env.example` to `backend/.env` before starting the API. The example file lists every setting.
+Copy `backend/.env.example` to `backend/.env` before starting the API. The example file lists every setting: `ENVIRONMENT`, `DATABASE_URL`, `MEDIA_ROOT`, `PUBLIC_MEDIA_BASE_URL`, `GROQ_MODEL`, `MAX_AUDIO_BYTES`, `ALLOWED_DEVELOPMENT_ORIGIN`, and `AUDIO_STAGING_ROOT`.
 
-One rule is enforced in code: audio files and temporary uploads must be different folders. `GROQ_MODEL` selects the lyric model. The Groq key is not in this file. It stays in the Swytchcode connection.
+Audio files and temporary uploads must be different folders. `GROQ_MODEL` selects the lyric model. The Groq key is not in this file. It stays in the Swytchcode connection. The page calls `http://localhost:8000` from `frontend/src/api.ts`. That address is not a setting.
 
 ### Song and error shapes
 
@@ -92,14 +112,14 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 
 ### Routes
 
-`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Song reads, lyric generation, and MP3 attach live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
+`backend/app/main.py` creates the API, assigns a request id, and turns failures into the error shape. Routes live in `backend/app/routers/`. Lyric generation lives in `backend/app/generation/`. Reading a saved song and saving one with its MP3 live in `backend/app/services/`. Database queries live in `backend/app/repositories/`. `backend/app/core/deps.py` opens the database session and builds those services.
 
 | Route | When it exists | What it does now |
 | --- | --- | --- |
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | Looks up a named song's full original text, then asks Groq only for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana. Does not save the song |
+| `POST /api/generations` | Always | For a named song, reads the original lines from LRCLIB, then asks Groq for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana in `backend/app/reading.py`. A request that does not match a recording asks Groq for the whole draft. Does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
@@ -153,7 +173,7 @@ The page is one workspace:
 
 `/import` is not a page. A narrow window shows either the song list or the open song, with the same header.
 
-`frontend/src/App.tsx` shows the library on its own and, on a wide window, keeps the song list beside a new song or Learn Song. `frontend/src/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/learn.tsx` reads one song. `frontend/src/audio-form.tsx` posts the MP3. `frontend/src/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
+`frontend/src/App.tsx` shows the library on its own and, on a wide window, keeps the song list beside a new song or Learn Song. `frontend/src/library/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/lyrics/learn.tsx` reads one song. `frontend/src/player/audio-form.tsx` posts the MP3. `frontend/src/player/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
 Learn Song starts with all four documents visible. On a wide window they sit side by side and the reading area scrolls once. The same lyric index shares one row, so a wrapped English line stays with its Japanese line. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page. A narrow draft uses those tabs too.
 
@@ -213,8 +233,8 @@ These files tell Cursor agents how to work in this repository. They do not chang
 | --- | --- |
 | `.cursor/rules/scope-guard.mdc` | Always on. The short list of things Prototype 1 must not add. |
 | `.cursor/rules/execution-guardrail.mdc` | Always on. Two failed check runs, then write a failure report and stop. |
-| `.cursor/rules/backend.mdc` | Only for files in `backend/`. Database, error, and contract rules. |
-| `.cursor/rules/frontend.mdc` | Only for files in `frontend/`. Layer order, labels, and accessibility rules. |
+| `.cursor/rules/backend.mdc` | Only for files in `backend/`. Database, error, contract, and folder rules. |
+| `.cursor/rules/frontend.mdc` | Only for files in `frontend/`. Folder layout, labels, and accessibility rules. |
 | `.cursor/hooks.json` and `.cursor/hooks/check_guardrail.py` | Blocks an agent's third check run on a branch, and blocks agents from resetting the count. |
 | `.cursor/skills/` | `plan-tickets`, `dispatch-ticket`, and `review-pr`. They load only when you ask for them by name. |
 | `.cursor/BUGBOT.md` | Project checks Bugbot adds to its pull request reviews. |

@@ -11,7 +11,7 @@ from typing import Protocol
 
 from app.errors import DomainError
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class GroqClient(Protocol):

@@ -13,11 +13,11 @@ from app.config import get_settings
 from app.contracts import DraftLine, LyricDraft, LyricLine
 from app.database import open_database
 from app.errors import DomainError
-from app.groq_client import SwytchcodeGroq
+from app.generation.groq import SwytchcodeGroq
+from app.generation.service import GenerationService
 from app.lyrics import SCHEMA_VERSION, content_hash, dump_lines, hiragana_for_lines
 from app.repositories.records import TrackWrite, VersionWrite
 from app.repositories.songs import SqlAlchemySongRepository
-from app.services.generation import GenerationService
 from app.services.songs import SongService
 
 PLACEHOLDER = "よみ"
@@ -88,7 +88,7 @@ def _save(repository: SqlAlchemySongRepository, song_id: str, readings: list[str
     ]
     lines_json = dump_lines(lines)
     now = datetime.now(UTC)
-    repository.save_import(
+    repository.save_song(
         TrackWrite(
             id=track.id,
             title=track.title,

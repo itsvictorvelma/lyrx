@@ -22,7 +22,7 @@ from app.services.songs import SongReader
 SONG_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-class CatalogService:
+class LibraryService:
     def __init__(self, repo: SongRepository, songs: SongReader, settings: Settings) -> None:
         self._repo = repo
         self._songs = songs
@@ -37,7 +37,7 @@ class CatalogService:
         lines = lines_for_song(song_id, draft)
         lines_json = dump_lines(lines)
         now = datetime.now(UTC)
-        self._repo.save_import(
+        self._repo.save_song(
             TrackWrite(
                 id=song_id,
                 title=title,
@@ -64,7 +64,7 @@ class CatalogService:
         return self._songs.get_song(song_id, self._settings.public_media_base_url)
 
     def attach_audio(self, song_id: str, audio: bytes, replace: bool) -> SongDetail:
-        if len(audio) > self._settings.max_import_bytes:
+        if len(audio) > self._settings.max_audio_bytes:
             raise DomainError("file_too_large", "The audio file is larger than the upload limit.")
         track = self._repo.get_track(song_id)
         if track is None or track.status != "published":
@@ -74,7 +74,7 @@ class CatalogService:
                 "song_conflict",
                 "This song already has audio. Check replace to update it.",
             )
-        staging = Path(self._settings.import_staging_root)
+        staging = Path(self._settings.audio_staging_root)
         staging.mkdir(parents=True, exist_ok=True)
         temporary = staging / f"{uuid4().hex}.mp3"
         temporary.write_bytes(audio)
@@ -92,7 +92,7 @@ class CatalogService:
         destination.write_bytes(audio)
         previous_key = track.media_key
         try:
-            self._repo.save_import(
+            self._repo.save_song(
                 TrackWrite(
                     id=track.id,
                     title=track.title,
