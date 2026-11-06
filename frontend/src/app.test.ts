@@ -158,8 +158,8 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('routes stay in one workspace for the library, a new song, and one saved song', () => {
-  assert.deepEqual(parseRoute('/'), { name: 'library' })
+test('routes open a new song, the library section, or one saved song', () => {
+  assert.deepEqual(parseRoute('/'), { name: 'compose' })
   assert.deepEqual(parseRoute('/songs'), { name: 'library' })
   assert.deepEqual(parseRoute('/search'), { name: 'compose' })
   assert.deepEqual(parseRoute('/songs/new'), { name: 'compose' })
@@ -168,6 +168,23 @@ test('routes stay in one workspace for the library, a new song, and one saved so
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
   assert.deepEqual(parseRoute('/missing'), { name: 'missing' })
   assert.equal(songHref('akuma-no-ko'), '/songs/akuma-no-ko')
+})
+
+test('lyrics fill the screen and saved songs are not a side column', () => {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const app = readFileSync(join(here, 'App.tsx'), 'utf8')
+  const css = readFileSync(join(here, 'index.css'), 'utf8')
+  const learn = readFileSync(join(here, 'lyrics/learn.tsx'), 'utf8')
+  const player = readFileSync(join(here, 'player/player.tsx'), 'utf8')
+  assert.doesNotMatch(app, /<aside|className="rail"|showRail/)
+  assert.match(app, /aria-expanded/)
+  assert.match(app, /href="\/songs"/)
+  assert.match(app, /href="\/songs\/new"/)
+  assert.doesNotMatch(css, /18\.5rem|\.rail\b/)
+  assert.match(learn, /linkedLineIndex\(/)
+  assert.match(learn, /is-linked/)
+  assert.doesNotMatch(learn, /currentTime|scrollIntoView/)
+  assert.doesNotMatch(player, /scrollIntoView|is-linked|data-line/)
 })
 
 test('saved song search matches title or artist only', () => {

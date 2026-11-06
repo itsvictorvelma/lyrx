@@ -5,7 +5,6 @@ import { COLUMNS } from './lyrics/columns.ts'
 import { lineRowStyle, useWideLayout } from './lyrics/layout.ts'
 import { LyricTabs } from './lyrics/learn.tsx'
 import type { LayerKey } from './lyrics/layers.ts'
-import { Link } from './routes/link.tsx'
 import { navigate, songHref } from './routes/route.ts'
 
 export function NewSong() {
@@ -48,9 +47,6 @@ export function NewSong() {
 
   return (
     <article className="composer-page">
-      <Link className="back-link" href="/">
-        Songs
-      </Link>
       <h1>New song</h1>
       <p className="lede">Ask for a song. You get Original, Hiragana, Romaji, and English here, then the recording attaches on the song.</p>
       <form className="composer" onSubmit={(event) => void ask(event)}>
