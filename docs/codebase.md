@@ -13,8 +13,6 @@ Today there are two small programs:
 - `backend/` is the API. It stores songs and serves the audio.
 - `frontend/` is the web page. Songs, a new song, and Learn Song share one workspace.
 
-There is also a development-only helper, `backend/authoring/`, that will draft romaji and English files for a person to review. The API never uses it.
-
 ## Backend
 
 Start the API from the `backend/` directory:
@@ -27,6 +25,8 @@ uv run uvicorn app.main:create_app --factory --reload
 If startup says `Field required` for `environment` or `database_url`, `backend/.env` is missing. The copy command above fixes it. Run the command from `backend/`, not the repository root.
 
 Use `uv run` so startup uses `backend/.venv`. System Python does not have the project packages and raises `ModuleNotFoundError: No module named 'sqlalchemy'`. `app.main` exposes `create_app`, not an `app` object, so `uvicorn app.main:app` does not start the API. After a dependency change, run `uv sync` in `backend/` before starting.
+
+`pyproject.toml` caps `cryptography` below version 49. Version 49 and later have no ready-made build for Intel Macs, so installing them would need a Rust compiler.
 
 Check it with `GET http://localhost:8000/api/health`. A healthy API returns:
 
@@ -161,22 +161,6 @@ The player is a compact bar under the header. It shows the song title, play/paus
 
 Colors, type, and spacing live as variables at the top of `frontend/src/index.css`.
 
-## Authoring tool
-
-`backend/authoring/` is a development-only helper. It will read an `original.txt` and use a language model to draft `pronunciation.txt` and `translation.txt`. Today it only has its settings. The LangGraph workflow is not written yet, and the API does not call it. Songs in the app come from the Groq lyric draft.
-
-Its packages (LangChain, LangGraph, and the Gemini and Groq connectors) are in the `authoring` dependency group in `backend/pyproject.toml`. `uv sync` installs them by default. A production install leaves them out with `uv sync --no-default-groups`.
-
-Its settings come from `backend/.env.authoring`, not `backend/.env`, so the API never needs a model key. Copy `backend/.env.authoring.example` and fill in:
-
-- `AUTHORING_MODEL` — provider and model, for example `google_genai:<model id>` or `groq:<model id>`
-- `GOOGLE_API_KEY` or `GROQ_API_KEY` — the key for that provider
-- `AUTHORING_OUTPUT_DIR` — where drafts go; `./drafts` by default
-
-`backend/.env.authoring` and `backend/drafts/` stay on your machine and are not committed.
-
-`pyproject.toml` caps `cryptography` below version 49. Version 49 and later have no ready-made build for Intel Macs, so installing them would need a Rust compiler.
-
 ## Tests
 
 Run every check at once from the repository root:
@@ -208,9 +192,8 @@ The tests check:
 - An unreadable MP3 does not store an audio file.
 - A generation test uses a stand-in client and does not call Groq.
 - Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
-- Starting the API does not load the authoring tool or LangChain.
+- Starting the API does not load an authoring, LangChain, or LangGraph module.
 - The check guardrail hook spots real check runs and reset attempts, and ignores the same words inside quotes, heredocs, and failure reports.
-- Authoring settings need a `provider:model` value and that provider's key.
 
 To run only the frontend checks, from `frontend/`:
 
