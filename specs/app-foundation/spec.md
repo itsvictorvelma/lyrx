@@ -21,8 +21,8 @@ Create the smallest stable platform on which Song Library, new-song chat, and Le
 ## Scope
 
 - React + TypeScript + Vite frontend
-- Tailwind CSS
-- React Router
+- Plain CSS in `frontend/src/index.css`
+- The app's own links in `frontend/src/routes/`
 - FastAPI backend
 - SQLite accessed only through SQLAlchemy
 - Alembic migrations
@@ -35,21 +35,21 @@ Create the smallest stable platform on which Song Library, new-song chat, and Le
 
 ### Frontend shell
 
-- One application shell owns global layout, navigation, error boundary, and route fallback.
-- Routes:
-  - `/` — Song Library
-  - `/songs/new` — new song
+- One application shell owns the header, the workspace, and the screen for the current address.
+- Addresses are read and changed by the app's own links.
+- Addresses:
+  - `/` and `/songs` — Song Library
+  - `/songs/new` and `/search` — new song
   - `/songs/:songId` — Learn Song
-- Unknown routes show a useful not-found state and a route to Song Library.
+- An unknown address shows a not-found state and a link to Song Library.
 - No authentication provider, account context, global server-state library, or timing engine.
 
 ### Backend shell
 
 - FastAPI application with:
   - Health/readiness endpoint suitable for deployment checks
-  - Song list and detail routers
+  - Song list, song detail, generation, save, and MP3 attach from [Song creation](../song-creation/spec.md)
   - Media URL generation
-  - Generation, save, lyric replace, and MP3 attach routers from [Song creation](../song-creation/spec.md)
 - Validate configuration at startup and fail clearly on missing/unsafe values.
 - Keep business validation independent of HTTP so generation and repository tests do not need a running server or a Groq call.
 
@@ -154,13 +154,13 @@ Production invariants:
 - Route changes move focus to the screen heading or an announced route target.
 - Global errors use an accessible alert/status pattern.
 - Not-found and failure screens contain keyboard-operable recovery actions.
-- Tailwind tokens preserve visible focus and sufficient contrast.
+- Plain CSS preserves visible focus and sufficient contrast.
 - Responsive behavior does not reorder semantic reading order.
 
 ## Security
 
 - No users, sessions, tokens, password code, or authorization roles.
-- Learner-facing writes are generation, save, lyric replace, and one MP3 upload, on this install.
+- Learner-facing writes are generation, save, and one MP3 upload, on this install. A saved song is not rewritten from chat.
 - `POST /api/import` is not registered.
 - Generated media paths prevent traversal and hide local paths.
 - Imported strings render as text, never raw HTML.
@@ -180,7 +180,7 @@ Production invariants:
 ### Integration
 
 - Alembic upgrade from empty SQLite
-- Repository CRUD required by save, lyric replace, and reads
+- Repository behavior required by save, audio attach, and reads
 - Constraints for stable IDs and content versions
 - Song list/detail response shape
 - Missing/unpublished song behavior
@@ -189,10 +189,9 @@ Production invariants:
 
 ### Frontend
 
-- Route rendering and route-not-found
+- Address rendering and the not-found page
 - `/songs/new` and Learn Song render. `/import` does not.
-- Application error boundary and retry
-- Focus behavior after route changes
+- A failed song list or a failed song can be retried
 
 ### Build
 
@@ -204,7 +203,7 @@ Production invariants:
 2. Configure frontend/backend workspace and environment validation.
 3. Create SQLAlchemy models and first Alembic revision.
 4. Implement repository and read API skeletons.
-5. Create React shell/routes and development feature boundary.
+5. Create the React shell, the app's own links, and the development feature boundary.
 6. Add baseline tests and CI gates.
 
 This feature blocks every other specification.
@@ -239,4 +238,3 @@ Mitigate with production route tests, PostgreSQL-oriented portability review, ge
 - User preferences persisted server-side
 - Karaoke timing, timestamps, synchronization services
 - A public multi-user host
-- Third-party music or lyrics catalog APIs
