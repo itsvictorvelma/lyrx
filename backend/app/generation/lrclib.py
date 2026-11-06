@@ -1,8 +1,9 @@
 """Read plain lyrics from LRCLIB.
 
 The model was returning a short excerpt. The original lines come from the
-search result, and Groq only fills the other columns. An exact title and
-artist match wins, and among those the longest lyric wins.
+search result, and Groq only fills the other columns. A Japanese lyric wins
+over a translation. An exact title and artist match wins, and among those
+the longest lyric wins.
 """
 
 import re
@@ -49,7 +50,7 @@ def choose_plain(rows: object, title: str, artist: str) -> str | None:
         if not isinstance(row, dict) or row.get("instrumental") is True:
             continue
         text = row.get("plainLyrics")
-        if not isinstance(text, str) or not text.strip():
+        if not isinstance(text, str) or not text.strip() or not _japanese_lyric(text):
             continue
         key = (
             _same(row.get("trackName"), title),
@@ -60,6 +61,21 @@ def choose_plain(rows: object, title: str, artist: str) -> str | None:
             best_key = key
             best_text = text
     return best_text
+
+
+def _japanese_lyric(text: str) -> bool:
+    lines = lyric_lines(text)
+    if not lines:
+        return False
+    japanese = sum(1 for line in lines if _japanese_line(line))
+    return japanese * 2 >= len(lines)
+
+
+def _japanese_line(text: str) -> bool:
+    return any(
+        0x3040 <= ord(char) <= 0x30FF or 0x3400 <= ord(char) <= 0x4DBF or 0x4E00 <= ord(char) <= 0x9FFF
+        for char in text
+    )
 
 
 def _same(left: object, right: str) -> bool:

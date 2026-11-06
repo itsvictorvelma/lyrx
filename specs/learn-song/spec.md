@@ -16,14 +16,14 @@ Dependencies:
 
 ## Goal
 
-Let a learner rehearse a Japanese song using one light reading screen that combines audio with four lyric documents: Original, Hiragana, Romaji, and English. Chat on this screen can replace the saved lyrics. That call is specified in [Song creation](../song-creation/spec.md).
+Let a learner rehearse a Japanese song using one light reading screen that combines audio with four lyric documents: Original, Hiragana, Romaji, and English. This screen reads the saved song. Chat does not rewrite it. Saving a new song is specified in [Song creation](../song-creation/spec.md).
 
 ## Route
 
 - `/songs/:songId`
 - Available without authentication.
-- Reads one publishable Song detail from FastAPI.
-- Development may preview a draft only through an explicit development-safe mechanism; production never fetches unpublished content.
+- Reads one published Song detail from FastAPI.
+- A saved song is not rewritten from chat.
 
 ## Song detail contract
 
@@ -46,11 +46,11 @@ Each lyric unit:
 - `pronunciationRomaji`
 - `translationEnglish`
 
-Reject or fail safely when line IDs/indexes are duplicate/non-monotonic or required text is absent. Timing fields, including `startSeconds`, are rejected. There is no current-line highlight and no tempo control.
+Reject or fail safely when line IDs/indexes are duplicate/non-monotonic, or when original, romaji, or English text is absent. A missing hiragana reading does not fail the song. When every line lacks hiragana, that column says nothing is there yet. Timing fields, including `startSeconds`, are rejected. Playback does not highlight or scroll a line. There is no tempo control. On a wide window, when at least two documents are open, hover or focus marks the same line across them.
 
 ## Layout
 
-The page uses the warm paper palette even when the system theme is dark. Surfaces stay quiet: no boxed lyric cards, row stripes, or heavy buttons.
+Colors, type, and spacing come from `frontend/src/index.css`. Surfaces stay quiet: no boxed lyric cards, row stripes, or heavy buttons.
 
 Order:
 
@@ -134,7 +134,8 @@ Rules:
 
 ### Empty lyric set
 
-- Treat as invalid stored content, not a normal empty state. A line missing hiragana is malformed.
+- Treat an empty line list as invalid stored content, not a normal empty state.
+- A line missing hiragana still opens. When every line lacks hiragana, that column says nothing is there yet.
 
 ## Accessibility
 
@@ -161,7 +162,7 @@ Rules:
 
 ## Security and privacy
 
-- No account. Lyric replace and MP3 attach are the writes in [Song creation](../song-creation/spec.md).
+- No account. The write on this screen is attaching one MP3, specified in [Song creation](../song-creation/spec.md). Chat does not replace the saved lines.
 - Generated text renders as plain escaped content.
 - No analytics, recording, microphone, or personal data.
 - No internal paths in the response.
@@ -204,7 +205,7 @@ Rules:
 3. Hide/show each layer's text without moving the columns or the scroll position.
 4. Navigate/back or reload within session and restore visibility.
 5. Exercise player controls without changing lyric state.
-6. Exercise the player and confirm it does not highlight or scroll a line. There is no tempo control.
+6. Exercise the player and confirm playback does not highlight or scroll a line. There is no tempo control. On a wide window, when at least two documents are open, hover or focus marks the same line across them.
 
 ## Sequencing
 
@@ -228,7 +229,7 @@ Can proceed in parallel with Audio Player once its layout envelope and event con
 - Manual scroll survives player actions.
 - Loading, unavailable, malformed, API, and media failures are understandable/recoverable as applicable.
 - Screen meets keyboard, language, focus, zoom, wrapping, contrast, and sticky-content requirements.
-- There is no line timing, current-line highlight, follow-scroll, tempo control, word timing, or loop.
+- There is no line timing, playback highlight, follow-scroll, tempo control, word timing, or loop.
 
 ## Risks
 
@@ -242,7 +243,7 @@ Mitigate with the labels Romaji and English, fixed order, tabs on a narrow windo
 
 ## Non-goals and deferred work
 
-- Line start times, audio scanning, current-line highlight, follow-scroll, or tempo pacing
+- Line start times, audio scanning, playback highlight, follow-scroll, or tempo pacing
 - Word/mora timing, line/A-B loop
 - Word/mora segmentation
 - Editing or reporting content
