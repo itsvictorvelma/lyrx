@@ -6,7 +6,7 @@ import pytest
 from app.contracts import DraftLine, LyricDraft
 from app.errors import DomainError
 from app.generation.lrclib import Recording
-from app.generation.prompts import completion_limit, segment_body, segment_message
+from app.generation.prompts import completion_limit, prompt_tokens, segment_body, segment_message
 from app.generation.service import GenerationService, song_name
 from app.lyrics import draft_from_model
 from tests.lyric_fixture import AME, search_ame
@@ -47,7 +47,9 @@ def test_one_completion_stays_inside_the_token_minute() -> None:
     assert isinstance(schema, dict)
     assert schema["json_schema"]["name"] == "lyric_slots"
     assert "pronunciationRomaji" not in json.dumps(schema)
-    assert body["max_completion_tokens"] + 800 + len(prompt) // 4 <= 8000
+    room = 8_000 - prompt_tokens(prompt)
+    assert body["max_completion_tokens"] == room
+    assert room > 6_000
 
 
 def test_a_song_that_cannot_fit_does_not_call_groq() -> None:
@@ -272,6 +274,130 @@ def test_a_repeated_line_stays_in_order() -> None:
     assert len(client.prompts) == 1
     assert numbered_lines(client.prompts[0]) == ["【雨】", "【雨】"]
     assert [line.translationEnglish for line in result.draft.lines] == ["rain", "rain"]
+
+
+def _ame_lines(readings: list[object]) -> str:
+    return json.dumps(
+        {
+            "lines": [
+                {"readings": reading, "translationEnglish": english}
+                for reading, english in zip(readings, ("rain", "sky"), strict=True)
+            ]
+        },
+        ensure_ascii=False,
+    )
+
+
+def test_json_validate_failed_keeps_the_generated_lines() -> None:
+    """Groq returns 400 json_validate_failed when the JSON does not finish.
+
+    The lines are in failed_generation. That text is this completion, so it
+    becomes the draft. Nothing is asked again.
+    """
+
+    client = FakeGroq(
+        {
+            "status_code": 400,
+            "data": {
+                "error": {
+                    "code": "json_validate_failed",
+                    "failed_generation": _ame_lines([["あめ"], ["そら"]]),
+                }
+            },
+        }
+    )
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert client.calls == 1
+    assert [line.readingHiragana for line in result.draft.lines] == ["あめ", "そら"]
+    assert [line.pronunciationRomaji for line in result.draft.lines] == ["ame", "sora"]
+    assert result.draft.lines[0].translationEnglish == "rain"
+
+
+def test_a_readings_string_is_not_thrown_away() -> None:
+    client = FakeGroq(
+        {
+            "status_code": 200,
+            "data": {"choices": [{"message": {"content": _ame_lines(["あめ", "そら"])}}]},
+        }
+    )
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert client.calls == 1
+    assert result.draft.lines[0].readingHiragana == "あめ"
+    assert result.draft.lines[0].pronunciationRomaji == "ame"
+    assert result.draft.lines[1].pronunciationRomaji == "sora"
+
+
+def test_pipe_separated_readings_follow_the_brackets() -> None:
+    def search(_title: str, _artist: str) -> Recording:
+        return Recording(title="Ame", artist="Example", text="鉄の弾")
+
+    client = FakeGroq(
+        {
+            "status_code": 200,
+            "data": {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {"lines": [{"readings": "てつ|たま", "translationEnglish": "an iron bullet"}]},
+                                ensure_ascii=False,
+                            )
+                        }
+                    }
+                ]
+            },
+        }
+    )
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search).generate("Ame", None)
+
+    assert client.calls == 1
+    assert result.draft.lines[0].readingHiragana == "てつ の たま"
+    assert result.draft.lines[0].pronunciationRomaji == "tetsu no tama"
+
+
+def test_an_empty_validation_failure_is_still_rejected() -> None:
+    client = FakeGroq(
+        {"status_code": 400, "data": {"error": {"code": "json_validate_failed", "failed_generation": ""}}}
+    )
+
+    with pytest.raises(DomainError) as error:
+        GenerationService(client, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert error.value.code == "generation_invalid"
+    assert client.calls == 1
+
+
+def test_lyrics_after_a_preamble_or_in_reasoning_are_kept() -> None:
+    generated = _ame_lines([["あめ"], ["そら"]])
+    decoy = json.dumps(
+        {"lines": [{"readings": ["よみ"], "translationEnglish": "wrong"}]},
+        ensure_ascii=False,
+    )
+    fenced = FakeGroq(
+        {
+            "status_code": 200,
+            "data": {"choices": [{"message": {"content": f"```json\n{decoy}\n{generated}\n```"}}]},
+        }
+    )
+    reasoned = FakeGroq(
+        {
+            "status_code": 200,
+            "data": {"choices": [{"message": {"content": None, "reasoning": generated}}]},
+        }
+    )
+
+    fenced_draft = GenerationService(fenced, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+    reasoned_draft = GenerationService(reasoned, "openai/gpt-oss-120b", search_ame).generate("Ame", None)
+
+    assert fenced.calls == 1
+    assert reasoned.calls == 1
+    assert fenced_draft.draft.lines[0].readingHiragana == "あめ"
+    assert reasoned_draft.draft.lines[1].readingHiragana == "そら"
 
 
 def test_a_saved_draft_does_not_start_another_completion() -> None:

@@ -16,10 +16,9 @@ from app.reading import marked
 TOKEN_MINUTE = 8_000
 SCHEMA_OVERHEAD = 800
 COMPLETION_FLOOR = 400
-COMPLETION_CAP = 6_000
 
 SLOT_RULES = (
-    "readings is one hiragana string for each 【bracket】, in order. "
+    "readings is a list of one hiragana string for each 【bracket】, in order. "
     "Read the whole bracket, including the kana inside it, and leave every character outside the brackets out of readings. "
     "A line with no brackets has an empty readings list. "
     "私 is わたし. 明日 is あした. Keep rendaku. "
@@ -60,15 +59,32 @@ def segment_message(title: str, artist: str, originals: list[str]) -> str:
     return f"Song: {title} / {artist}\n{SLOT_RULES}\nLines:\n{shown}"
 
 
+def prompt_tokens(prompt: str) -> int:
+    """Tokens this prompt will spend, counted high for Japanese.
+
+    One wide character is about one token. Dividing the whole prompt by four
+    leaves the completion cap too high, and Groq rejects the minute.
+    """
+
+    wide = sum(1 for char in prompt if ord(char) > 127)
+    narrow = len(prompt) - wide
+    return SCHEMA_OVERHEAD + wide + narrow // 4
+
+
 def completion_limit(prompt: str) -> int:
-    estimate = SCHEMA_OVERHEAD + max(1, len(prompt) // 4)
-    room = TOKEN_MINUTE - estimate
+    """How many completion tokens this prompt can still spend in the minute.
+
+    The cap is the whole remainder. A lower cap cuts the JSON off, and Groq
+    answers json_validate_failed.
+    """
+
+    room = TOKEN_MINUTE - prompt_tokens(prompt)
     if room < COMPLETION_FLOOR:
         raise DomainError(
             "generation_too_large",
             "That song is too long for one lyric request. Shorten the request and send again.",
         )
-    return min(COMPLETION_CAP, room)
+    return room
 
 
 def segment_body(model: str, title: str, artist: str, originals: list[str]) -> dict[str, object]:
