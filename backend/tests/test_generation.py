@@ -9,7 +9,8 @@ from app.generation.lrclib import Recording
 from app.generation.prompts import completion_limit, prompt_tokens, segment_body, segment_message
 from app.generation.service import GenerationService, song_name
 from app.lyrics import draft_from_model
-from tests.lyric_fixture import AME, search_ame
+from app.reading import units
+from tests.lyric_fixture import AME, PLASTIC_LOVE_LINES, search_ame
 
 
 def sample_payload() -> dict[str, object]:
@@ -398,6 +399,55 @@ def test_lyrics_after_a_preamble_or_in_reasoning_are_kept() -> None:
     assert reasoned.calls == 1
     assert fenced_draft.draft.lines[0].readingHiragana == "あめ"
     assert reasoned_draft.draft.lines[1].readingHiragana == "そら"
+
+
+def test_an_extra_reading_keeps_all_twenty_six_lines() -> None:
+    """Plastic Love line index 1 has two brackets. The completion returned three readings.
+
+    The extra reading stays on that line. The other 25 lines stay. One call.
+    """
+
+    assert len(PLASTIC_LOVE_LINES) == 26
+    assert sum(1 for kind, _surface in units(PLASTIC_LOVE_LINES[1]) if kind == "slot") == 2
+
+    def readings_for(index: int, line: str) -> list[str]:
+        if index == 1:
+            return ["こい", "くるわせ", "ないでね"]
+        readings: list[str] = []
+        for kind, surface in units(line):
+            if kind != "slot":
+                continue
+            kana = "".join(char for char in surface if "\u3040" <= char <= "\u30ff" or char == "ー")
+            readings.append(f"あ{kana}")
+        return readings
+
+    rows = [
+        {
+            "readings": readings_for(index, line),
+            "translationEnglish": f"line {index}",
+            "pronunciationRomaji": "from-the-model",
+        }
+        for index, line in enumerate(PLASTIC_LOVE_LINES)
+    ]
+    assert rows[1]["readings"] == ["こい", "くるわせ", "ないでね"]
+    content = json.dumps({"lines": rows}, ensure_ascii=False)
+    client = FakeGroq(
+        {"status_code": 200, "data": {"choices": [{"message": {"content": content}}]}}
+    )
+
+    def search(_title: str, _artist: str) -> Recording:
+        return Recording(title="Plastic Love", artist="Mariya Takeuchi", text="\n".join(PLASTIC_LOVE_LINES))
+
+    result = GenerationService(client, "openai/gpt-oss-120b", search).generate(
+        "Plastic Love by Mariya Takeuchi", None
+    )
+
+    assert client.calls == 1
+    assert [line.originalText for line in result.draft.lines] == PLASTIC_LOVE_LINES
+    assert result.draft.lines[1].readingHiragana == "こい の ぷろぐらむを くるわせないでね"
+    assert result.draft.lines[1].pronunciationRomaji == "koi no puroguramuo kuruwasenaidene"
+    assert "from-the-model" not in result.draft.lines[1].pronunciationRomaji
+    assert result.draft.lines[20].readingHiragana == "I'm just playing games, I know that's plastic love"
 
 
 def test_a_saved_draft_does_not_start_another_completion() -> None:

@@ -52,6 +52,25 @@ def test_katakana_in_the_line_cannot_be_rewritten() -> None:
     assert romaji == "nigakutesetsunai kaori"
 
 
+def test_an_extra_reading_joins_the_longest_bracket() -> None:
+    line = "恋のプログラムを 狂わせないでね"
+
+    hiragana, romaji = assemble_reading(line, ["こい", "くるわせ", "ないでね"])
+
+    assert hiragana == "こい の ぷろぐらむを くるわせないでね"
+    assert romaji == "koi no puroguramuo kuruwasenaidene"
+
+    hiragana, romaji = assemble_reading(line, ["こい", "ぷろぐらむ", "くるわせないでね"])
+
+    assert hiragana == "こい の ぷろぐらむを くるわせないでね"
+    assert romaji == "koi no puroguramuo kuruwasenaidene"
+
+
+def test_too_few_readings_still_do_not_match_the_line() -> None:
+    with pytest.raises(ReadingError):
+        assemble_reading("恋のプログラムを 狂わせないでね", ["こい"])
+
+
 def test_common_lyric_readings_replace_the_dictionary_miss() -> None:
     hiragana, romaji = assemble_reading("私はきっと泣いている", ["わたくし", "ないている"])
 
