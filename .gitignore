@@ -14,7 +14,6 @@ coverage/
 .env
 .env.*
 !.env.example
-!.env.authoring.example
 
 # SQLite
 *.db
@@ -26,9 +25,6 @@ coverage/
 media/
 private-media/
 uploads/
-
-# Lyric authoring drafts and checkpoints
-drafts/
 
 # Agent guardrail state and local failure reports
 .agent-state/
