@@ -1,11 +1,6 @@
----
-cursor:
-  subagentId: "bc-43f25a2f-93d8-5ec7-9282-d2774358e7bf"
----
-
 # Audio player specification
 
-Parent plan: [Prototype 1 build plan](../../AGENTS.md)
+Prototype 2.
 
 Host screen and platform:
 
@@ -14,17 +9,20 @@ Host screen and platform:
 
 ## Goal
 
-Provide a reliable, accessible, responsive player for rehearsal while remaining completely independent from lyric selection, scrolling, and visibility.
+Play one MP3 the learner attaches, on the lyric screen, without tying playback time to the lyrics.
+
+The song stays readable with no audio. Spotify playback is out of scope. Lyric following from the clock is out of scope.
 
 ## Media contract
 
 - Input is the Song detail `audioUrl`.
 - `audioUrl` may be null. The player then shows that no audio is attached and does not load a source. Seek, skip, and play stay disabled. Lyrics stay on the page. The attach control is specified in [Song creation](../song-creation/spec.md).
-- Prototype media is a validated MP3.
-- Server/reverse proxy supports HTTPS, correct audio MIME, content length when known, and byte-range requests.
+- The file is a validated MP3.
+- Server or reverse proxy supports HTTPS, correct audio MIME, content length when known, and byte-range requests.
 - The player uses `HTMLAudioElement`.
 - Playback begins only after a user gesture.
 - Media errors never expose storage paths or internal diagnostics.
+- The player does not load a provider SDK, a stream, or a remote catalog.
 
 ## Approved controls
 
@@ -47,9 +45,9 @@ Defaults:
 - Paused
 - Position zero
 - Playback rate 1×
-- Browser/default application volume unless a documented local presentation preference is added; do not add server persistence
+- Browser or default application volume. Do not add server persistence for volume.
 
-No restart, next/previous track, loop, A/B loop, line seek, autoplay, auto-scroll, waveform, karaoke, or provider control.
+No restart, next or previous track, loop, A/B loop, line seek, autoplay, auto-scroll, waveform, karaoke, or provider control.
 
 ## Behavior
 
@@ -57,53 +55,54 @@ No restart, next/previous track, loop, A/B loop, line seek, autoplay, auto-scrol
 
 - One control reflects actual media state, not optimistic state alone.
 - Handle rejected play promises with a visible recoverable message.
-- Ended state returns the control to “Play”; do not autoplay or loop.
+- Ended state returns the control to Play. Do not autoplay or loop.
 
 ### Seek
 
 - Slider range follows zero to known duration.
 - While duration is unknown, disable seeking and communicate loading.
 - User seek updates media current time and display.
-- Back/forward 10 seconds clamp to `[0, duration]`.
-- Seeking does not change playback rate, mute/volume, layer visibility, or manual lyric scroll.
+- Back and forward 10 seconds clamp to `[0, duration]`.
+- Seeking does not change playback rate, mute, volume, layer visibility, manual lyric scroll, or the lyric line mark.
 
-### Elapsed/duration
+### Elapsed and duration
 
 - Use one consistent `m:ss` or `h:mm:ss` formatter.
 - Unknown duration has a non-misleading placeholder.
 - Display stays coherent after metadata load, seek, rate change, and media end.
-- Updates should feel current without causing excessive full-screen React rerenders.
+- Updates should feel current without causing a full-screen React rerender.
+- Publishing the current time does not highlight a lyric line and does not scroll the lyrics.
 
 ### Volume and mute
 
 - Volume supports the browser's valid range.
 - Mute preserves the previous nonzero volume so unmute restores it.
 - A zero volume is communicated consistently with muted state.
-- If a platform limits programmatic volume behavior, controls degrade honestly.
+- If a platform limits programmatic volume, the controls show that limit.
 
 ### Playback rate
 
-- Only 0.75×, 1×, 1.25×.
-- Changing rate preserves position and playing/paused state.
+- Only 0.75×, 1×, and 1.25×.
+- Changing rate preserves position and playing or paused state.
 - Current rate is visible and exposed to assistive technology.
-- Pitch behavior uses browser support; no custom audio processing is required.
+- Pitch behavior uses browser support. No custom audio processing is required.
 
-## Sticky responsive layout
+## Layout
 
-- The player is a compact bar: play/pause, back and forward 10 seconds, the song title, seek, elapsed time and duration, volume, mute, and playback rate.
+- The player is a compact bar on the lyric screen: play/pause, back and forward 10 seconds, the song title, seek, elapsed time and duration, volume, mute, and playback rate.
 - Play, pause, and mute are icons. Their accessible names stay Play, Pause, Mute, and Unmute. The 10-second controls read −10 and +10, with the accessible names Back 10 seconds and Forward 10 seconds.
-- The bar stays under the application header at every width, in normal flow. Lyrics begin below it and the page scrolls underneath.
-- The final lyric and focused controls are not covered, because the bar is not a fixed bottom sheet.
+- The bar sits with the song, in normal flow, under the header and above the documents. The page scrolls. The bar is not a fixed bottom sheet and does not cover the last lyric or a focused control.
+- The bar is not a sidebar, and it does not sit beside a song list.
 - At high zoom or narrow widths, controls may wrap while retaining order and operability.
 - No horizontal overflow.
-- Layer visibility and lyric reading order remain independent.
+- Layer visibility and lyric reading order stay independent of the bar.
 
 ## State model
 
 Track:
 
-- Media readiness/loading/error
-- Playing/paused/ended
+- Media readiness, loading, and error
+- Playing, paused, and ended
 - Current time
 - Duration
 - Seeking state
@@ -114,135 +113,127 @@ Track:
 Do not track:
 
 - Active lyric line
-- Timestamp/cue index
+- Timestamp or cue index
 - Loop points
-- User/account progress
-- Provider/device session
+- User or account progress
+- Provider or device session
 
 ## Error states
 
 - No MP3 attached: status says audio is not attached. Transport controls that need a file stay disabled.
 - Metadata loading: play may wait; seek disabled; clear status.
-- Play blocked/rejected: explain interaction is required and allow retry.
-- Unsupported/unreadable source: show Audio unavailable; lyrics remain usable.
-- Network interruption: show recoverable failure and retry/reload media.
-- Range/seek unsupported: show safe degradation or failure; do not fake success.
-- Invalid duration/current time: clamp/fallback and log safe diagnostics.
-- Media removed/unpublished: return a safe unavailable state.
+- Play blocked or rejected: explain that interaction is required and allow retry.
+- Unsupported or unreadable source: show Audio unavailable. Lyrics remain usable.
+- Network interruption: show a recoverable failure and retry or reload the media.
+- Range or seek unsupported: show a safe failure. Do not report success.
+- Invalid duration or current time: clamp or fall back, and log a safe diagnostic.
+- Media removed: return a safe unavailable state.
 
-Player failure must not crash or remove the lyric content.
+Player failure must not crash the page or remove the lyrics.
 
 ## Accessibility
 
 - Every control has a visible or programmatic label.
-- Toggle control announces Play/Pause according to state.
+- The play control announces Play or Pause according to state.
 - Mute announces mute state.
-- Seek and volume expose min/max/current and accessible value text.
-- Rate control exposes selected rate.
+- Seek and volume expose min, max, current value, and accessible value text.
+- Rate control exposes the selected rate.
 - Keyboard:
   - Tab reaches every control in logical order.
-  - Space/Enter activate buttons.
-  - Sliders use standard arrow/page/home/end behavior.
+  - Space and Enter activate buttons.
+  - Sliders use standard arrow, page, home, and end behavior.
 - Touch targets meet mobile sizing guidance.
-- Visible focus is never hidden behind sticky content.
+- Visible focus is never hidden by the bar.
 - Time updates do not use a noisy assertive live region.
-- Errors/status changes are announced politely.
-- Do not create undocumented global media keyboard shortcuts in Prototype 1.
+- Errors and status changes are announced politely.
+- Do not add global media keyboard shortcuts.
 
 ## Security and privacy
 
 - No external player SDK, provider API, cookie, account, DRM workaround, or media extraction.
-- Only validated same-application/approved media URLs.
+- No Spotify playback and no Spotify SDK.
+- Only validated same-application media URLs.
 - Do not log full URLs containing secrets or local paths.
 - No microphone, recording, media-session analytics, or listening history.
 
 ## Performance
 
-- Do not rerender every lyric unit on media-time updates.
+- Do not rerender the lyric documents on each media-time update.
 - Isolate player state from the lyric list.
-- Use an update cadence appropriate to elapsed-time display, not karaoke animation.
-- Clean up event listeners/object references on song change/unmount.
-- Avoid Web Audio; it is unnecessary for the approved controls.
+- Use an update cadence appropriate to the elapsed-time display.
+- Clean up event listeners and object references on song change and unmount.
+- Avoid Web Audio. The approved controls do not need it.
 
 ## Tests
 
-### Unit/component
+### Unit and component
 
-- Time formatting including hour boundary/unknown values
-- Play/pause/ended transitions
-- Back/forward clamping near zero/end
-- Seek behavior with known/unknown duration
-- Volume/mute restoration
-- Each allowed playback rate and rejection of unsupported values
+- Time formatting, including the hour boundary and unknown values
+- Play, pause, and ended transitions
+- Back and forward clamping near zero and near the end
+- Seek behavior with known and unknown duration
+- Volume and mute restoration
+- Each allowed playback rate, and rejection of other rates
 - Media error rendering and retry
-- No callback/state for lyric selection
+- No lyric-line state and no scroll call from time updates
 
 ### Accessibility
 
 - Names, roles, states, and slider values
 - Keyboard-only operation
-- Focus remains visible in sticky layouts
+- Focus remains visible
 - Touch target review
-- Error/status announcements
+- Error and status announcements
 
 ### Responsive
 
-- Narrow and wide: compact bar stuck under the header
+- Narrow and wide: compact bar with the song, lyrics filling the screen
 - Control wrapping at high zoom
 - Final lyric and focused content not obscured
 - No horizontal overflow
+- No song column introduced by the player
 
-### Integration/end-to-end
+### Integration and end-to-end
 
 - Real fixture served with byte ranges
-- Play/pause and continuous seek
-- ±10 seconds at middle and bounds
-- Volume/mute
-- 0.75×/1×/1.25× without position reset
-- Manual lyric scroll and toggles remain unchanged
-- Network/media failure leaves lyrics usable
-- Assert absence of loop, line seek, autoplay, karaoke, and provider UI
-
-## Sequencing
-
-1. Freeze media delivery and Song detail `audioUrl`.
-2. Implement isolated media state hook/controller.
-3. Add exact controls and state/error handling.
-4. Add responsive sticky layout.
-5. Integrate into Learn Song without timeline coupling.
-6. Complete accessibility, boundary, real-media, and responsive tests.
-
-May proceed in parallel with Learn Song after the layout envelope and independence contract are agreed.
+- Play, pause, and continuous seek
+- ±10 seconds at the middle and at the bounds
+- Volume and mute
+- 0.75×, 1×, and 1.25× without a position reset
+- Manual lyric scroll and document toggles stay unchanged
+- Network or media failure leaves the lyrics usable
+- Assert absence of loop, line seek, autoplay, karaoke, Spotify, and lyric following from the clock
 
 ## Acceptance criteria
 
-- The exact approved controls are present and no others.
+- The approved controls are present, and no others.
 - Playback starts only by user action.
-- Seek, elapsed/duration, ±10 seconds, volume/mute, and rates behave at boundaries.
-- State changes do not reset playback or alter lyrics, toggles, or manual scroll.
-- Sticky player remains reachable and never obscures content/focus at supported sizes/zoom.
-- Every control is keyboard/touch/screen-reader operable.
-- Media failure is understandable and leaves lyrics available.
-- No karaoke, timestamp, line seek, loop, autoplay, automation, provider API, or public-upload behavior exists.
+- Seek, elapsed time, duration, ±10 seconds, volume, mute, and rates behave at the boundaries.
+- State changes do not reset playback or alter the lyrics, the toggles, the line mark, or manual scroll.
+- Playback time does not highlight a line and does not scroll the lyrics.
+- The bar stays reachable and does not cover content or focus at supported sizes and zoom.
+- Every control is operable by keyboard, touch, and screen reader.
+- Media failure is understandable and leaves the lyrics available.
+- One optional MP3 is the only audio. No line timing, loop, autoplay, Spotify playback, or provider API.
 
 ## Risks
 
-- Mobile autoplay/volume limitations create misleading controls.
-- Sticky UI covers content or the on-screen browser chrome.
-- Frequent time updates rerender the lyric list.
+- Mobile autoplay and volume limits can make a control look more capable than it is.
+- The bar can cover content or the browser chrome.
+- Frequent time updates can rerender the lyric documents or drive a line mark.
 - Seek fails when byte-range delivery is misconfigured.
-- Scope drifts into line synchronization.
+- A provider embed can replace the MP3.
 
-Mitigate with honest capability states, safe-area/layout tests, state isolation, real reverse-proxy media tests, and explicit no-timing contract tests.
+## Out of scope
 
-## Non-goals and deferred work
-
-- Karaoke/current-line highlighting
+- Spotify playback
+- Lyric following from the clock
+- Karaoke and current-line highlighting from playback time
 - Lyrics-to-audio seeking
-- Looping or rehearsal regions
+- Looping and rehearsal regions
 - Autoplay and automated scrolling
 - Waveforms
-- Media Session/global shortcuts
-- Provider SDKs/APIs
-- Recording, microphone, pitch analysis
+- Media Session and global shortcuts
+- Provider SDKs and provider APIs
+- Recording, microphone, and pitch analysis
 - Saved playback position

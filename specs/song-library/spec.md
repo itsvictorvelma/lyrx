@@ -1,11 +1,6 @@
----
-cursor:
-  subagentId: "bc-43f25a2f-93d8-5ec7-9282-d2774358e7bf"
----
-
 # Song Library specification
 
-Parent plan: [Prototype 1 build plan](../../AGENTS.md)
+Prototype 2.
 
 Dependencies and destinations:
 
@@ -15,16 +10,20 @@ Dependencies and destinations:
 
 ## Goal
 
-Open on the songs this install has saved. Filter that list by title or artist, and start a new song from here.
+Let the learner return to songs saved on this install.
 
-The list is not a catalog of music the learner has not saved. A song appears after save.
+The library is a menu or a section. It is not the screen the app opens on, and it is not a column beside the lyrics. The learner starts by typing a song name, as specified in [Song creation](../song-creation/spec.md).
+
+There is no catalog of pre-checked songs. A song appears here after the learner saves it. A fixed song list may exist only as a developer test fixture, never as a screen.
 
 ## Route and availability
 
-- Route: `/`
+- Route: `/songs`
+- Reached from the header menu, or opened as the library section.
 - Available on the local app.
 - No login, account, or personalization.
-- The primary action opens `/songs/new`.
+- The action that starts a song opens the search (`/`, `/search`, or `/songs/new`).
+- Opening a card goes to `/songs/:songId`, and the lyrics then fill the screen. The list does not stay beside them.
 - There is no Import Song link.
 
 ## Data contract
@@ -41,21 +40,21 @@ Each item:
 - Duration when an MP3 has been measured
 - Publication status
 
-Saved songs are published. The list is the songs on this install.
+Saved songs are published. The list is the songs on this install. It is not a list shipped with the app.
 
-The text filter runs in the browser over the loaded list. It matches title and artist, case-insensitive. There is no search query parameter in Prototype 1.
+The text filter runs in the browser over the loaded list. It matches title and artist, case-insensitive. There is no search query parameter. This filter is not the lyric search.
 
 ## Screen content
 
 - Screen heading: Song Library
-- A short explanation that songs are requested in chat, then saved here
-- A control that starts a new song
+- A short explanation that these are songs the learner saved after a search
+- A control that opens the search
 - A text field labeled Search saved songs
 - A semantic list of song cards
 - Each card shows title, artist, Japanese → English, and formatted duration when known
 - Each card is a link to `/songs/:songId`
 
-Do not add sort controls, genres, playlists, recommendations, artwork, social counts, or pagination.
+Do not add sort controls, genres, playlists, recommendations, artwork, social counts, or pagination. Do not add a list of songs the learner has not saved.
 
 ## State behavior
 
@@ -66,18 +65,18 @@ Do not add sort controls, genres, playlists, recommendations, artwork, social co
 ### Empty
 
 - Explain that no songs are saved yet.
-- The new-song action is the way forward.
+- The search is the way forward.
 - The filter has nothing to match.
 
 ### Success
 
-- Render each song once with a stable key.
+- Render each saved song once with a stable key.
 - Card action is a real link.
 - The filter hides non-matching cards and does not refetch.
 
 ### No filter match
 
-- Say that no saved song matches. Keep the new-song action.
+- Say that no saved song matches. Keep the control that opens the search.
 
 ### Request failure
 
@@ -85,26 +84,28 @@ Do not add sort controls, genres, playlists, recommendations, artwork, social co
 
 ## Responsive behavior
 
+- The library section is usable at narrow and wide widths.
+- At every width, choosing a song or a new search leaves the list. The lyrics fill the screen.
 - Cards are a single column at narrow widths.
-- Wider layouts may change the container width. They do not hide the new-song action or the filter.
+- Wider layouts may change the container width. They do not pin this list beside the lyrics, and they do not hide the search action or the filter.
 - Usable at 200% zoom without a horizontal page scrollbar.
 
 ## Accessibility
 
 - One main landmark and one level-one heading.
-- The filter has a visible label.
+- The filter has a visible label, Search saved songs.
 - The song collection uses list semantics.
 - Each card's accessible name includes title and artist.
 - Language direction is text.
 - Loading, empty, no-match, and error status are announced.
-- The filter, new-song action, and retry are keyboard operable with visible focus.
+- The filter, the search action, and retry are keyboard operable with visible focus.
 
 ## Security and privacy
 
 - No account state.
 - Titles and artist names render as text.
 - Do not show filesystem paths or internal notes.
-- The library is the songs on this machine. It is not a shared public catalog.
+- The library is the songs on this machine. It is not a shared public catalog, and it is not a catalog of pre-checked songs.
 
 ## Tests
 
@@ -114,6 +115,8 @@ Do not add sort controls, genres, playlists, recommendations, artwork, social co
 - Duration formatting, including unknown duration
 - Card name and link
 - No import action
+- The list renders saved songs only
+- A fixture song list is not rendered as this screen
 
 ### API integration
 
@@ -122,38 +125,37 @@ Do not add sort controls, genres, playlists, recommendations, artwork, social co
 
 ### End-to-end
 
-- The app opens on Song Library without login.
-- An empty library offers a new song.
-- After a song is saved, the card opens Learn Song.
+- The app opens on the search, not on Song Library.
+- The header menu or the library section opens Song Library.
+- An empty library offers the search.
+- After a song is saved, the card opens Learn Song, and the list is not still beside the lyrics.
 - The filter narrows the cards that are already loaded.
-- Browser back returns to the library.
-
-## Sequencing
-
-1. Freeze the song summary contract.
-2. Keep the list API and card links.
-3. Add the filter and the new-song action.
-4. Remove the import link.
-
-Requires the foundation. The new-song action needs [Song creation](../song-creation/spec.md).
+- Browser back returns to the library section.
 
 ## Acceptance criteria
 
-- `/` renders without authentication.
+- `/songs` renders without authentication.
+- The app does not open on this screen.
 - The list is saved songs only.
-- Search saved songs filters that list in the page.
-- New song opens `/songs/new`.
-- A card opens `/songs/:songId`.
+- A fixed song list is not a screen.
+- Search saved songs filters the loaded list in the page.
+- The search action opens the one search.
+- A card opens `/songs/:songId` with the lyrics filling the screen.
+- The list is not a permanent sidebar.
 - Loading, empty, no-match, failure, and retry are explicit.
 - There is no import action.
 
 ## Risks
 
-- A filter can be mistaken for a search of every song the model knows. The label is Search saved songs, and an empty library points at new song.
-- Nested click targets on a card make it inaccessible.
+- Song Library can be mistaken for a catalog of songs the learner has not saved. The heading copy says these are saved songs, and an empty library points at the search.
+- The label Search saved songs can be mistaken for the lyric search. The lyric search is the song-name field in [Song creation](../song-creation/spec.md).
+- A wide layout can put the list back in a column beside the lyrics.
 
-## Non-goals and deferred work
+## Out of scope
 
+- A catalog of pre-checked songs
+- A fixed song list as a screen
+- A permanent sidebar
 - Server-side search, sorting, and pagination
 - Playlists, favorites, history, and progress
 - Artwork

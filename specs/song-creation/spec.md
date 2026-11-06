@@ -1,11 +1,6 @@
----
-cursor:
-  subagentId: "bc-43f25a2f-93d8-5ec7-9282-d2774358e7bf"
----
-
 # Song creation specification
 
-Parent plan: [Prototype 1 build plan](../../AGENTS.md)
+Prototype 2.
 
 Dependencies and consumers:
 
@@ -16,22 +11,26 @@ Dependencies and consumers:
 
 ## Goal
 
-Let one learner ask for a song in chat, see four aligned lyric documents, save that song into the local library, and attach one MP3.
+Let one learner type a song name, see Original, Hiragana, Romaji, and English, save that song, and attach one MP3.
 
-For a named song, LRCLIB (`backend/app/generation/lrclib.py`) is the source of the original Japanese lines. A Japanese lyric wins over an English translation. Among the lyrics that remain, an exact title and artist match wins, and then the longest plain lyric wins. Groq then supplies the readings and the English. The learner supplies the only audio file. The app does not ship a commercial recording.
+One search. LRCLIB supplies the original Japanese lines. A Japanese lyric wins over an English translation. One Groq completion supplies the hiragana readings and the direct English. Romaji is spelled from the hiragana. One user send is one completion. A bad draft is not saved and does not start a repair completion.
+
+The learner supplies the only audio file. The app does not ship a recording.
 
 ## Routes
 
-- `/songs/new` — new song. Chat, the four documents, and save.
-- `/songs/:songId` — the saved song in [Learn Song](../learn-song/spec.md). Chat does not rewrite it.
+- `/`, `/search`, and `/songs/new` are the same search. The song-name field, the result, and save live here.
+- `/songs/:songId` is the saved song in [Learn Song](../learn-song/spec.md). A later search does not rewrite it.
 
-Both routes are part of the local app. There is no login. `/import` and `POST /api/import` are not part of this product.
+Both are part of the local app. There is no login. `/import` and `POST /api/import` are not part of this product.
 
-An unsaved draft lives in the page. Refresh or leaving the page drops it. The chat transcript is not stored. The new-song page sends the learner's message and does not send a saved song.
+The search result fills this screen. Saved songs stay in the menu or the library section from [Song Library](../song-library/spec.md). They are not a column beside the documents.
+
+An unsaved draft lives in the page. Refresh or leaving the page drops it. The text the learner sent is not stored. The search does not send a saved song.
 
 ## Lyric draft
 
-The model returns structured data. The server checks it before the page renders documents. The visible chat line is a short confirmation the server builds from that draft, such as the title and the line count. The model is not asked for a second prose reply.
+LRCLIB supplies each `originalText`. The completion supplies the hiragana reading and the direct English. The server spells romaji from the hiragana. The server checks the draft before the page renders documents. The visible status line is a short confirmation the server builds from that draft, such as the title and the line count. The model is not asked for a prose reply.
 
 Draft fields:
 
@@ -43,39 +42,54 @@ Draft fields:
 
 Each line:
 
-- `originalText` — Japanese as written
+- `originalText` — the Japanese line from LRCLIB, unchanged
 - `readingHiragana` — full hiragana reading
-- `pronunciationRomaji` — Hepburn pronunciation
+- `pronunciationRomaji` — Hepburn pronunciation spelled from the hiragana
 - `translationEnglish` — direct English meaning
 
 The server assigns a zero-based `index` after a valid parse. Stable line ids are assigned when the song is saved. The draft rejects an empty title, an empty artist, an empty line list, a missing layer, or a blank layer on a line that has any text. Timing fields are rejected.
 
-Hiragana is required on every line. The learner can hide that document on the reading screen.
+Hiragana is required on every line of a new draft. The learner can hide that document on the reading screen. Kana already in the original line is kept.
 
-## Generation call
+## One search
 
-The browser never calls Groq and never sees the API key. The key is the local credential from `swytchcode auth connect Groq`. Application code does not read the key or set `Authorization`. Each Groq call is one Swytchcode execution of `groq.chat.completions.create`.
+The learner sends one song name to `POST /api/generations`.
 
-A message shaped like "title by artist" is the song name. A message of at least three words that is not shaped that way asks Groq to name the title and artist first. The server then searches LRCLIB at `https://lrclib.net/api/search`. Instrumental rows are skipped. A Japanese lyric wins over an English translation. An exact title match wins, then an exact artist match, then the longest plain lyric. A line that is only a square-bracket label is dropped. The original lines from that lyric stay as written. Groq fills them in groups of 12. Each group asks for the kanji readings and the English line. Kana in the original line is kept. Romaji is spelled from the hiragana. A group that comes back unusable is tried once more. If LRCLIB has no usable lyric, one Groq completion writes the whole draft.
+- Text shaped like "title by artist" is the title and the artist.
+- Any other text is the title. The server does not call Groq to invent an artist.
 
-The server builds each Groq request as one Swytchcode execution:
+The server searches LRCLIB at `https://lrclib.net/api/search`. Instrumental rows are skipped. A line that is only a square-bracket label is dropped. A Japanese lyric wins over an English translation. An English translation is not used. Among Japanese lyrics, an exact title match wins, then an exact artist match when the learner included an artist, then the longest plain lyric.
+
+The draft's title and artist are the title and artist of that recording. The original lines stay as written. If LRCLIB has no usable Japanese lyric, or the lyric fetch fails, the server returns the shared error envelope, does not call Groq, and does not save.
+
+## One completion
+
+A usable Japanese lyric is filled by one Groq completion. That completion supplies the hiragana readings and the direct English for those lines. Romaji is spelled from the hiragana after the completion returns. The model is not the source of the romaji.
+
+The browser never calls Groq and never sees the API key. The key is the local credential from `swytchcode auth connect Groq`. Application code does not read the key or set `Authorization`. The call is one Swytchcode execution of `groq.chat.completions.create`.
+
+The server builds that request as:
 
 - `model` — `GROQ_MODEL`, default `openai/gpt-oss-120b`
-- `messages` — one user message. No earlier transcript is included.
-- `response_format` — strict JSON. A whole draft uses the schema named `lyric_draft`, with the draft fields above required and extra properties closed. A group from LRCLIB uses the schema named `lyric_slots`, with `readings` and `translationEnglish` required.
+- `messages` — one user message. No earlier text is included. The original lines in that message are the LRCLIB lines.
+- `response_format` — strict JSON, schema named `lyric_slots`, with `readings` and `translationEnglish` required and extra properties closed. The result lines up with the LRCLIB lines in order.
 - `reasoning_effort` — `low`
 - `include_reasoning` — `false`
-- `temperature` — `0.6` for a lyric completion. Naming the song uses `0`.
+- `temperature` — `0.6`
 - The completion is not streamed.
-- `max_completion_tokens` — large enough to finish the JSON, and small enough that the estimated prompt tokens plus this cap stay within 8,000. Naming the song caps this at 200.
+- `max_completion_tokens` — large enough to finish the JSON, and small enough that the estimated prompt tokens plus this cap stay within 8,000.
+
+There is no second completion in that send. There is no completion that only names the song, no completion per group of lines, and no completion that writes the original lines.
 
 Groq's free plan for this model allows 8,000 tokens per minute and 200,000 tokens per day, counting prompt tokens and completion tokens together. Reasoning tokens are part of the completion count. `include_reasoning: false` omits the reasoning text from the message body and does not remove those tokens from `usage`. The measured call is [benchmarks/groq-token-usage.md](../../benchmarks/groq-token-usage.md).
 
-If the prompt estimate leaves no room for a complete draft under 8,000 tokens, the server does not call Groq. It returns `generation_too_large`.
+If the prompt estimate leaves no room for a complete result under 8,000 tokens, the server does not call Groq. It returns `generation_too_large`. Nothing is saved.
 
-The new-song page disables Ask while that request is in progress. It does not start a second generation to repair the whole song. Swytchcode's policy for this method may retry HTTP 429, 503, and 504 up to three times inside a 90 second total timeout. Those retries belong to that one execution. HTTP 400 is not retried. The response ceiling for the method is 102,400 bytes.
+The search screen disables Send while that request is in progress. A bad draft is not saved and does not start a repair completion. Swytchcode's policy for this method may retry HTTP 429, 503, and 504 up to three times inside a 90 second total timeout. Those retries belong to that one execution. They are not a second lyric completion. HTTP 400 is not retried. The response ceiling for the method is 102,400 bytes.
 
-The server reads `choices[0].message.content`, parses the JSON, and runs the line checks. The Groq `usage` object is the token count for that call. Logs may record token totals and the song id. Logs do not record the API key or the full lyric text by default.
+The server reads `choices[0].message.content`, parses the JSON, keeps the LRCLIB lines, spells the romaji, and runs the line checks. The Groq `usage` object is the token count for that call. Logs may record token totals and the song id. Logs do not record the API key or the full lyric text by default.
+
+The learner may send again. That is a new send, and it is one new completion. The server does not start it on its own.
 
 ### Generation errors
 
@@ -83,11 +97,13 @@ Use the shared error envelope.
 
 | Code | When |
 | --- | --- |
-| `generation_invalid` | The reply is empty, cut off, or fails the line checks. The learner can send again. |
-| `generation_too_large` | The song cannot fit in one 8,000-token call. |
+| `generation_invalid` | The reply is empty, cut off, or fails the line checks. Nothing is saved. No repair completion starts. The learner can send again. |
+| `generation_too_large` | The song cannot fit in one 8,000-token completion. Groq is not called. |
 | `groq_rate_limited` | Groq returns 429 or 413, including after Swytchcode's retries. |
 | `groq_unavailable` | Timeout, or Groq returns 503 or 504 after retries. |
 | `groq_unauthorized` | The local Groq credential is missing or rejected. |
+
+A search with no usable Japanese lyric uses the same envelope, does not call Groq, and does not save.
 
 Messages are safe. They do not include the key, request ids from Groq, or response bodies.
 
@@ -95,9 +111,9 @@ Read endpoints still start when Groq is not connected. Only generation fails.
 
 ## Save
 
-`POST /api/songs` stores a valid draft as a published song and returns Song detail. `audioUrl` is null until an MP3 is stored. Saving a draft always creates a song. The server does not dedupe by title. There is no route that replaces a saved song's lyrics. A saved song is not rewritten from chat.
+`POST /api/songs` stores a valid draft as a published song and returns Song detail. `audioUrl` is null until an MP3 is stored. Saving a draft always creates a song. The server does not dedupe by title. There is no route that replaces a saved song's lyrics. A saved song is not rewritten by a later search.
 
-The save validates the draft before committing. A failed save does not add a song.
+The save validates the draft before committing. A failed save does not add a song. A draft that failed the line checks cannot be saved.
 
 ## Audio attach
 
@@ -105,27 +121,27 @@ The only upload is one MP3. The client filename is not required to be `audio.mp3
 
 `POST /api/songs/{songId}/audio` accepts multipart field `audio`. Replacing an existing file requires `replace=true`. The new file is staged until validation succeeds. A failure removes the staged file and leaves the previous audio in place.
 
-The MP3 is attached on the saved song, after save. `/songs/new` does not upload audio. If the upload fails, the song remains saved without audio and the page shows a recoverable audio error.
+The MP3 is attached on the saved song, after save. The search screen does not upload audio. If the upload fails, the song remains saved without audio and the page shows a recoverable audio error.
 
 Attaching audio does not call Groq.
 
 ## Screen behavior
 
-`/songs/new` shows:
+The search screen shows:
 
-- A link back to Song Library
-- A text field labeled Song and an Ask button
+- A way to saved songs, the menu or the library section from [Application foundation](../app-foundation/spec.md)
+- A text field labeled Song and a Send button
 - A pending state while the request is working
 - The confirmation line and the four documents after a valid draft
 - Save, enabled only when a valid draft is on the page
 
-A saved song does not show this composer. Refresh of a saved song shows the stored lines. The MP3 control is on that page.
+After a valid draft, the four documents fill the screen. The song field stays the way to send again. It is not a second column. Document order, hide and show, and the line mark are specified in [Learn Song](../learn-song/spec.md). The player is on the saved song, specified in [Audio player](../audio-player/spec.md).
 
-The reading layout, hide and show, and the player are specified in [Learn Song](../learn-song/spec.md) and [Audio player](../audio-player/spec.md).
+A saved song does not show this field. Refresh of a saved song shows the stored lines. The MP3 control is on that page.
 
 ## Accessibility
 
-- The composer has a persistent label and a visible send control.
+- The song field has a persistent label and a visible Send control.
 - Pending, success, rate-limit, and validation messages use a live region and do not move focus by surprise.
 - Save and the file input are keyboard operable.
 - The file input is not drag-and-drop only.
@@ -136,8 +152,14 @@ The reading layout, hide and show, and the player are specified in [Learn Song](
 ### Unit
 
 - Draft schema accepts four filled layers and rejects a missing or blank layer
+- Original lines in a named-song draft are the LRCLIB lines
+- A Japanese lyric is chosen over an English translation
 - Timing fields are rejected
-- Prompt builder sends one user message and does not include an earlier transcript
+- The request builder sends one user message and does not include an earlier send
+- One send builds one `groq.chat.completions.create` body
+- A bad draft does not build a second completion
+- No Groq body is built when LRCLIB has no usable Japanese lyric
+- Romaji stored on the draft is the spelling of the hiragana
 - `max_completion_tokens` stays inside the 8,000-token minute when the prompt is large
 - `generation_too_large` is returned without a Groq call when the prompt cannot fit
 - Server confirmation line is built from title and line count
@@ -157,44 +179,43 @@ Groq is not called from the default test run. The request body builder is tested
 
 ### End-to-end
 
-- Ask for a song, see four documents, save, and open it from Song Library.
+- Type a song name, see four documents, save, and open it from the library section. The documents fill the screen.
 - Leave without saving and confirm the library is unchanged.
-- Open a saved song and confirm chat cannot replace its lines.
+- Open a saved song and confirm a later search does not replace its lines.
 - Attach a valid MP3 and play it. Reject an invalid file with the song still readable.
-
-## Sequencing
-
-1. Freeze the draft, save, and audio contracts.
-2. Validate drafts and build the Groq request without a live call in unit tests.
-3. Add `POST /api/generations` and `POST /api/songs`.
-4. Build `/songs/new`.
-5. Add MP3 attach.
-6. Remove the four-file import route and endpoint.
 
 ## Acceptance criteria
 
-- A learner can request a song in chat and see Original, Hiragana, Romaji, and English.
-- For a named song, the original lines come from LRCLIB and Groq supplies the readings and the English.
-- A bad or oversized reply does not create a song and does not start another generation for the rest of the song.
-- Save publishes a new song into the local library.
-- A saved song is not rewritten from chat.
+- A learner can type a song name and see Original, Hiragana, Romaji, and English.
+- The original lines come from LRCLIB. A Japanese lyric wins over an English translation.
+- Groq supplies the hiragana readings and the direct English. Romaji is spelled from the hiragana.
+- One user send is one completion.
+- A bad or oversized reply does not create a song and does not start a repair completion.
+- A miss on LRCLIB does not call Groq and does not save.
+- Save publishes a new song into the library section.
+- A saved song is not rewritten by a later search.
 - The only upload is one validated MP3, and it can be missing.
 - The Groq key stays on the server.
 - `/import` and `POST /api/import` are gone.
+- The search result is not shown beside a song sidebar.
 
 ## Risks
 
 - Free-model wording can be wrong while the JSON shape is valid. The learner reads the documents before save.
 - A prompt that cannot fit under 8,000 tokens is refused with `generation_too_large` and does not call Groq.
-- Swytchcode retries a 429 inside one execution. The app must not stack its own retry on top.
+- Swytchcode retries a 429 inside one execution. The app must not start a repair completion on top of that.
 - Lyric save and MP3 upload are two requests. A failed upload leaves a saved song with no audio.
 
-## Non-goals and deferred work
+## Out of scope
 
+- A second model
+- LangChain and LangGraph
+- A repair completion, a completion per group of lines, or a completion that writes the original lines
+- Groq choosing the song name
 - Accounts and a public multi-user host
-- Stored chat transcripts
+- A stored transcript of searches
 - Streaming tokens
-- Automatic repair of a whole song
 - A paid Groq plan
 - Lyric text-file upload
 - Line timing, audio scan, and a tempo control
+- Spotify playback. That is specified in [Audio player](../audio-player/spec.md).
