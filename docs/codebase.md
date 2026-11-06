@@ -21,7 +21,7 @@ The page is grouped by what it does:
 | `frontend/src/library/` | The saved-song list and its text filter |
 | `frontend/src/lyrics/` | Original, Hiragana, Romaji, and English |
 | `frontend/src/player/` | The player and the MP3 form |
-| `frontend/src/new-song.tsx` | The chat that asks for a new song |
+| `frontend/src/new-song.tsx` | The page that asks for a song |
 
 The API is grouped the same way:
 
@@ -119,7 +119,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | For a named song, reads the original lines from LRCLIB, then asks Groq for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana in `backend/app/reading.py`. A request that does not match a recording asks Groq for the whole draft. Does not save the song |
+| `POST /api/generations` | Always | One search. The message is a title, or "title by artist". LRCLIB supplies the original Japanese lines. A Japanese lyric wins over an English translation. One Groq completion asks for the kanji readings and the direct English. Kana in the original line is kept. Romaji is spelled from the hiragana in `backend/app/reading.py`. A miss, a bad draft, or a song that cannot fit does not call Groq again and does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
@@ -152,7 +152,7 @@ To fill missing hiragana on one saved song, from `backend/`:
 uv run python scripts/fill_hiragana.py akuma-no-ko
 ```
 
-That asks Groq through the same client as New song, in groups of 12 lines, checks that the original lines still match, and saves only the hiragana. A group is tried once more if it does not match.
+That asks Groq once, through the same completion as Search, for the kanji readings. It checks that the original lines still match and saves only the hiragana. A bad reply is not saved and is not tried again.
 
 ## Frontend
 
@@ -210,7 +210,7 @@ The tests check:
 - A saved lyric draft can be read back from the song list and song detail before an MP3 is attached.
 - Saving the same title again creates another song.
 - An unreadable MP3 does not store an audio file.
-- A generation test uses a stand-in client and does not call Groq.
+- A generation test uses a fixed lyric fixture and a stand-in client. It does not call Groq or LRCLIB. That fixture is not a screen.
 - Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
 - Starting the API does not load an authoring, LangChain, or LangGraph module.
 - The check guardrail hook spots real check runs and reset attempts, and ignores the same words inside quotes, heredocs, and failure reports.

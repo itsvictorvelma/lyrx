@@ -69,7 +69,7 @@ export function Library() {
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {songs && songs.length === 0 ? (
         <p className="empty-note" role="status">
-          No songs yet. Ask for one, then save it here.
+          No songs yet. Search for one, then save it here.
         </p>
       ) : null}
       {songs && songs.length > 0 && visible.length === 0 ? (

@@ -117,7 +117,7 @@ export function LearnSong({ songId }: { songId: string }) {
               These lyrics could not be shown.
             </p>
           ) : wide ? (
-            <DesktopLyrics song={state.song} layers={layers} onToggle={changeLayer} />
+            <DesktopLyrics lines={state.song.lines} layers={layers} onToggle={changeLayer} />
           ) : (
             <LyricDocument
               column={active}
@@ -132,12 +132,12 @@ export function LearnSong({ songId }: { songId: string }) {
   )
 }
 
-function DesktopLyrics({
-  song,
+export function DesktopLyrics({
+  lines,
   layers,
   onToggle,
 }: {
-  song: SongDetail
+  lines: LyricLine[]
   layers: LayerVisibility
   onToggle: (key: LayerKey) => void
 }) {
@@ -149,7 +149,7 @@ function DesktopLyrics({
   return (
     <div
       className="lyric-sheet"
-      style={lineRowStyle(song.lines.length)}
+      style={lineRowStyle(lines.length)}
       onPointerOver={(event) => setHoverLine(lineIndexFromValue(datasetLine(event.target)))}
       onPointerLeave={() => setHoverLine(null)}
       onFocus={(event) => setFocusLine(lineIndexFromValue(datasetLine(event.target)))}
@@ -169,7 +169,7 @@ function DesktopLyrics({
             </header>
             <LyricBody
               column={column}
-              lines={song.lines}
+              lines={lines}
               shown={shown}
               correspond={visibleDocuments >= 2}
               activeLine={activeLine}
@@ -181,7 +181,7 @@ function DesktopLyrics({
   )
 }
 
-function LayerToggle({ label, shown, onToggle }: { label: string; shown: boolean; onToggle: () => void }) {
+export function LayerToggle({ label, shown, onToggle }: { label: string; shown: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
@@ -232,7 +232,7 @@ export function LyricTabs({ active, onSelect }: { active: LayerKey; onSelect: (k
   )
 }
 
-function LyricDocument({
+export function LyricDocument({
   column,
   lines,
   labelledBy,

@@ -1,6 +1,8 @@
 """Fill missing hiragana for one saved song.
 
 From backend/: uv run python scripts/fill_hiragana.py <song-id>
+
+One Groq completion reads the kanji. A bad reply is not saved and is not tried again.
 """
 
 import sys
@@ -10,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import get_settings
-from app.contracts import DraftLine, LyricDraft, LyricLine
+from app.contracts import LyricDraft, LyricLine
 from app.database import open_database
 from app.errors import DomainError
 from app.generation.groq import SwytchcodeGroq
@@ -19,13 +21,6 @@ from app.lyrics import SCHEMA_VERSION, content_hash, dump_lines, hiragana_for_li
 from app.repositories.records import TrackWrite, VersionWrite
 from app.repositories.songs import SqlAlchemySongRepository
 from app.services.songs import SongService
-
-PLACEHOLDER = "よみ"
-INSTRUCTION = (
-    "Fill readingHiragana with spaced hiragana. Keep the same spaces as originalText. "
-    "Do not run the words together. "
-    "Keep originalText, pronunciationRomaji, and translationEnglish unchanged and in the same order."
-)
 
 
 def main() -> None:
@@ -50,31 +45,13 @@ def main() -> None:
 
 
 def _ask(title: str, artist: str, lines: list[LyricLine], model: str) -> list[str]:
-    draft = LyricDraft(
-        title=title,
-        artist=artist,
-        lines=[
-            DraftLine(
-                originalText=line.originalText,
-                readingHiragana=line.readingHiragana.strip() or PLACEHOLDER,
-                pronunciationRomaji=line.pronunciationRomaji,
-                translationEnglish=line.translationEnglish,
-            )
-            for line in lines
-        ],
-    )
     service = GenerationService(SwytchcodeGroq(), model)
-    failure: DomainError | None = None
-    for _attempt in range(2):
-        try:
-            result = service.generate(INSTRUCTION, draft)
-            readings = hiragana_for_lines(lines, result.draft)
-            if all(reading == PLACEHOLDER for reading in readings):
-                raise DomainError("generation_invalid", "The hiragana did not match the saved lines. Send again.")
-            return readings
-        except DomainError as exc:
-            failure = exc
-    raise SystemExit(failure.message if failure else "The hiragana could not be saved.")
+    try:
+        filled = service.complete_lines(title, artist, [line.originalText for line in lines])
+        draft = LyricDraft(title=title, artist=artist, lines=filled)
+        return hiragana_for_lines(lines, draft)
+    except DomainError as exc:
+        raise SystemExit(exc.message) from exc
 
 
 def _save(repository: SqlAlchemySongRepository, song_id: str, readings: list[str]) -> None:
