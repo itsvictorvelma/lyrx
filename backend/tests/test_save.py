@@ -8,10 +8,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from app.core.deps import get_generation_service
+from app.generation.service import GenerationService
 from app.main import create_app
 from app.models import LyricVersion, Track
-from app.generation.service import GenerationService
 from app.services.library import song_id_from_title
+from tests.lyric_fixture import search_ame
 from tests.test_app import settings
 from tests.test_database import migration_config
 
@@ -126,6 +127,29 @@ def test_lyric_file_import_is_gone(tmp_path: Path) -> None:
     assert response.json()["code"] == "not_found"
 
 
+def _slots(readings: list[list[str]]) -> dict[str, object]:
+    return {
+        "status_code": 200,
+        "data": {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "lines": [
+                                    {"readings": row, "translationEnglish": "rain", "pronunciationRomaji": "from-the-model"}
+                                    for row in readings
+                                ]
+                            },
+                            ensure_ascii=False,
+                        )
+                    }
+                }
+            ]
+        },
+    }
+
+
 def test_generation_uses_one_injected_call(tmp_path: Path) -> None:
     application = app_for(tmp_path)
     calls = {"count": 0}
@@ -133,17 +157,46 @@ def test_generation_uses_one_injected_call(tmp_path: Path) -> None:
     class FakeGroq:
         def complete(self, body: dict[str, object]) -> dict[str, object]:
             calls["count"] += 1
-            return {
-                "status_code": 200,
-                "data": {"choices": [{"message": {"content": json.dumps(draft())}}]},
-            }
+            return _slots([["あめ"], ["そら"]])
 
-    application.dependency_overrides[get_generation_service] = lambda: GenerationService(FakeGroq(), "openai/gpt-oss-120b")
-    response = TestClient(application).post("/api/generations", json={"message": "Ame by Example"})
+    application.dependency_overrides[get_generation_service] = lambda: GenerationService(
+        FakeGroq(),
+        "openai/gpt-oss-120b",
+        search_ame,
+    )
+    response = TestClient(application).post("/api/generations", json={"message": "Ame by Example", "draft": draft()})
 
     assert response.status_code == 200
     assert calls["count"] == 1
-    assert response.json()["draft"]["lines"][0]["readingHiragana"] == "あめ"
+    lyric = response.json()["draft"]
+    assert [line["originalText"] for line in lyric["lines"]] == ["雨", "空"]
+    assert lyric["lines"][0]["readingHiragana"] == "あめ"
+    assert lyric["lines"][0]["pronunciationRomaji"] == "ame"
+    session = sessionmaker(bind=application.state.engine)()
+    tracks = session.scalar(select(func.count()).select_from(Track))
+    session.close()
+    assert tracks == 0
+
+
+def test_a_bad_generation_is_not_saved_or_retried(tmp_path: Path) -> None:
+    application = app_for(tmp_path)
+    calls = {"count": 0}
+
+    class FakeGroq:
+        def complete(self, body: dict[str, object]) -> dict[str, object]:
+            calls["count"] += 1
+            return _slots([])
+
+    application.dependency_overrides[get_generation_service] = lambda: GenerationService(
+        FakeGroq(),
+        "openai/gpt-oss-120b",
+        search_ame,
+    )
+    response = TestClient(application).post("/api/generations", json={"message": "Ame by Example"})
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "generation_invalid"
+    assert calls["count"] == 1
     session = sessionmaker(bind=application.state.engine)()
     tracks = session.scalar(select(func.count()).select_from(Track))
     session.close()

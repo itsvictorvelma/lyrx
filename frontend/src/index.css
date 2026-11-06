@@ -205,6 +205,23 @@ input[type='range'] {
   text-decoration: none;
 }
 
+.site-nav {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.site-nav a {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.site-nav a[aria-current='page'] {
+  color: var(--ink);
+}
+
 .workspace {
   display: flex;
   flex: 1;
@@ -212,26 +229,11 @@ input[type='range'] {
   flex-direction: column;
 }
 
-.rail,
 .stage {
   min-height: 0;
   min-width: 0;
-}
-
-.rail {
-  overflow: auto;
-  padding: var(--space-5) var(--page-gutter) var(--space-7);
-}
-
-.stage {
   overflow: auto;
   scroll-padding-top: calc(var(--tools-height) + var(--space-4));
-}
-
-.shell[data-screen='compose'] .rail,
-.shell[data-screen='song'] .rail,
-.shell[data-screen='missing'] .rail {
-  display: none;
 }
 
 .stage-home,
@@ -279,8 +281,16 @@ input[type='range'] {
   margin-top: var(--space-3);
 }
 
-.rail-title {
-  font-size: 1.75rem;
+.recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+.recovery a {
+  text-decoration: none;
 }
 
 .song-list {
@@ -306,8 +316,13 @@ input[type='range'] {
   margin-top: var(--space-5);
 }
 
+.library-page .lede + .button-primary,
 .library-page .empty-note + .button-primary {
   margin-top: var(--space-4);
+}
+
+.draft-in.learn {
+  padding: 0;
 }
 
 .song-row {
@@ -733,6 +748,10 @@ label:has(input[type='checkbox']) {
   top: var(--tools-height);
 }
 
+.draft-in .lyric-pane-title {
+  top: 0;
+}
+
 .lyric-pane-title h2 {
   margin: 0;
   font-size: inherit;
@@ -955,38 +974,3 @@ label:has(input[type='checkbox']) {
   }
 }
 
-@media (min-width: 72rem) {
-  .workspace {
-    display: grid;
-    grid-template-columns: 18.5rem minmax(0, 1fr);
-    overflow: hidden;
-  }
-
-  .shell[data-screen='library'] .workspace,
-  .shell[data-screen='missing'] .workspace {
-    display: block;
-  }
-
-  .shell[data-screen='compose'] .rail,
-  .shell[data-screen='song'] .rail {
-    display: block;
-  }
-
-  .rail {
-    border-right: 1px solid var(--line);
-    padding: var(--space-4) var(--space-3) var(--space-6);
-  }
-
-  .rail-title {
-    padding-inline: 0.75rem;
-    color: var(--ink-soft);
-    font-size: 0.75rem;
-    font-weight: 650;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .back-link {
-    display: none;
-  }
-}

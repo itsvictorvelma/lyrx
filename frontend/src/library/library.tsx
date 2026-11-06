@@ -6,12 +6,11 @@ import { Link } from '../routes/link.tsx'
 import { songHref } from '../routes/route.ts'
 import { filterSongs, languageDirection } from './filter.ts'
 
-export function Library({ activeId, variant = 'rail' }: { activeId?: string | null; variant?: 'page' | 'rail' }) {
+export function Library() {
   const [songs, setSongs] = useState<SongSummary[] | null>(null)
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const page = variant === 'page'
 
   useEffect(() => {
     let active = true
@@ -39,15 +38,12 @@ export function Library({ activeId, variant = 'rail' }: { activeId?: string | nu
   const visible = songs ? filterSongs(songs, query) : []
 
   return (
-    <div className={page ? 'library library-page' : 'library'}>
-      {page ? (
-        <>
-          <h1>Song Library</h1>
-          <p className="lede">Ask for a song, then save it here. Original, hiragana, romaji, and English stay together.</p>
-        </>
-      ) : (
-        <p className="rail-title">Songs</p>
-      )}
+    <div className="library library-page">
+      <h1>Song Library</h1>
+      <p className="lede">Songs you saved after a search.</p>
+      <Link className="button-primary" href="/">
+        Search
+      </Link>
       {error ? (
         <div className="notice" role="alert">
           <p>{error}</p>
@@ -69,13 +65,8 @@ export function Library({ activeId, variant = 'rail' }: { activeId?: string | nu
       {songs === null && !error ? <p role="status">Loading songs.</p> : null}
       {songs && songs.length === 0 ? (
         <p className="empty-note" role="status">
-          No songs yet. Ask for one, then save it here.
+          No songs yet. Search for one, then save it here.
         </p>
-      ) : null}
-      {songs && songs.length === 0 && page ? (
-        <Link className="button-primary" href="/songs/new">
-          New song
-        </Link>
       ) : null}
       {songs && songs.length > 0 && visible.length === 0 ? (
         <p className="empty-note" role="status">
@@ -86,10 +77,9 @@ export function Library({ activeId, variant = 'rail' }: { activeId?: string | nu
         <ul className="song-list">
           {visible.map((song) => {
             const duration = formatDuration(song.durationSeconds)
-            const current = song.id === activeId
             return (
               <li key={song.id}>
-                <Link className="song-row" href={songHref(song.id)} current={current}>
+                <Link className="song-row" href={songHref(song.id)}>
                   <span className="song-mark" aria-hidden="true">
                     {monogram(song.title)}
                   </span>

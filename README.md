@@ -23,7 +23,7 @@ If startup says `Field required`, `backend/.env` is missing. Copy the example an
 
 Check `GET http://localhost:8000/api/health`. A healthy API returns `{"status": "ok"}`.
 
-The Groq key is not in `.env`. Connect it once with `swytchcode auth connect Groq`. Asking for a named song also reads the original lines from LRCLIB.
+The Groq key is not in `.env`. Connect it once with `swytchcode auth connect Groq`. A search reads the original lines from LRCLIB, then asks Groq once for the readings and the English. A miss does not call Groq.
 
 ## Page
 

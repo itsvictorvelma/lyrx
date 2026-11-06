@@ -11,8 +11,8 @@ export function songHref(songId: string): string {
 }
 
 export function parseRoute(path: string): Route {
-  if (path === '/' || path === '/songs') return { name: 'library' }
-  if (path === '/songs/new' || path === '/search') return { name: 'compose' }
+  if (path === '/' || path === '/songs/new' || path === '/search') return { name: 'compose' }
+  if (path === '/songs') return { name: 'library' }
   const match = /^\/songs\/([^/]+)$/.exec(path)
   if (match?.[1]) return { name: 'song', songId: decodeURIComponent(match[1]) }
   return { name: 'missing' }

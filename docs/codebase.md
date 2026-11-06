@@ -11,7 +11,7 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 Today there are two small programs:
 
 - `backend/` is the API. It stores songs, asks Groq for a lyric draft, and serves the audio.
-- `frontend/` is the web page. Songs, a new song, and Learn Song share one workspace.
+- `frontend/` is the web page. It opens on a search. Saved songs are a library section. Learn Song fills the screen with the four documents.
 
 The page is grouped by what it does:
 
@@ -21,7 +21,7 @@ The page is grouped by what it does:
 | `frontend/src/library/` | The saved-song list and its text filter |
 | `frontend/src/lyrics/` | Original, Hiragana, Romaji, and English |
 | `frontend/src/player/` | The player and the MP3 form |
-| `frontend/src/new-song.tsx` | The chat that asks for a new song |
+| `frontend/src/new-song.tsx` | The search where the learner types a song name |
 
 The API is grouped the same way:
 
@@ -119,7 +119,7 @@ The browser copy of these shapes is `frontend/src/contracts.ts`. If you change a
 | `GET /api/health` | Always | Returns `{"status": "ok"}` |
 | `GET /api/songs` | Always | Lists published songs |
 | `GET /api/songs/{songId}` | Always | Returns one song, its audio address when an MP3 is attached, and its lyric lines in order |
-| `POST /api/generations` | Always | For a named song, reads the original lines from LRCLIB, then asks Groq for each kanji word's reading and the English, in groups of 12 lines. Kana in the original line is kept. A correction sends only the lines it names, or the same groups when it names none. Romaji is spelled from the hiragana in `backend/app/reading.py`. A request that does not match a recording asks Groq for the whole draft. Does not save the song |
+| `POST /api/generations` | Always | One search. The message is a title, or "title by artist". LRCLIB supplies the original Japanese lines. A Japanese lyric wins over an English translation. One Groq completion asks for the kanji readings and the direct English. Kana in the original line is kept. Romaji is spelled from the hiragana in `backend/app/reading.py`. A miss, a bad draft, or a song that cannot fit does not call Groq again and does not save the song |
 | `POST /api/songs` | Always | Saves a lyric draft. The address is made from the title. Saving the same title again creates another song |
 | `POST /api/songs/{songId}/audio` | Always | Stores one MP3. Replacing an existing file requires `replace=true` |
 
@@ -152,7 +152,7 @@ To fill missing hiragana on one saved song, from `backend/`:
 uv run python scripts/fill_hiragana.py akuma-no-ko
 ```
 
-That asks Groq through the same client as New song, in groups of 12 lines, checks that the original lines still match, and saves only the hiragana. A group is tried once more if it does not match.
+That asks Groq once, through the same completion as Search, for the kanji readings. It checks that the original lines still match and saves only the hiragana. A bad reply is not saved and is not tried again.
 
 ## Frontend
 
@@ -163,17 +163,17 @@ npm install
 npm run dev
 ```
 
-The page is one workspace:
+The page opens on the search. Saved songs are not a column beside the lyrics.
 
 | Route | What it shows |
 | --- | --- |
-| `/` and `/songs` | Song Library. Search saved songs by title or artist, then open one. |
-| `/songs/new` | Ask for a song. On a wide window the saved songs stay in a side list. `/search` opens this too. |
-| `/songs/:songId` | Learn Song, beside the song list on a wide window. Original, Hiragana, Romaji, and English, plus the player and MP3 attach. |
+| `/`, `/search`, and `/songs/new` | The search. Type a song name. A valid result fills the page with Original, Hiragana, Romaji, and English. |
+| `/songs` | Song Library. Songs saved on this install, filtered in the page by title or artist. |
+| `/songs/:songId` | Learn Song. The four documents fill the page, plus the player and MP3 attach. |
 
-`/import` is not a page. A narrow window shows either the song list or the open song, with the same header.
+`/import` is not a page. The header links to the search and to Song Library at every width.
 
-`frontend/src/App.tsx` shows the library on its own and, on a wide window, keeps the song list beside a new song or Learn Song. `frontend/src/library/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/lyrics/learn.tsx` reads one song. `frontend/src/player/audio-form.tsx` posts the MP3. `frontend/src/player/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
+`frontend/src/App.tsx` shows one screen at a time. `frontend/src/library/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/lyrics/learn.tsx` reads one song. `frontend/src/player/audio-form.tsx` posts the MP3. `frontend/src/player/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
 Learn Song starts with all four documents visible. On a wide window they sit side by side and the reading area scrolls once. The same lyric index shares one row, so a wrapped English line stays with its Japanese line. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page. A narrow draft uses those tabs too.
 
@@ -210,7 +210,7 @@ The tests check:
 - A saved lyric draft can be read back from the song list and song detail before an MP3 is attached.
 - Saving the same title again creates another song.
 - An unreadable MP3 does not store an audio file.
-- A generation test uses a stand-in client and does not call Groq.
+- A generation test uses a fixed lyric fixture and a stand-in client. It does not call Groq or LRCLIB. That fixture is not a screen.
 - Failed requests use the error shape, including a request id. A stored lyric document that cannot be read does not return the lyric text.
 - Starting the API does not load an authoring, LangChain, or LangGraph module.
 - The check guardrail hook spots real check runs and reset attempts, and ignores the same words inside quotes, heredocs, and failure reports.

@@ -158,8 +158,8 @@ test('lyric lines must be ordered, identified, and filled in', () => {
   assert.equal(lyricProblem([line(0), line(1)]), null)
 })
 
-test('routes stay in one workspace for the library, a new song, and one saved song', () => {
-  assert.deepEqual(parseRoute('/'), { name: 'library' })
+test('the app opens on the search, and saved songs are not a column beside the lyrics', () => {
+  assert.deepEqual(parseRoute('/'), { name: 'compose' })
   assert.deepEqual(parseRoute('/songs'), { name: 'library' })
   assert.deepEqual(parseRoute('/search'), { name: 'compose' })
   assert.deepEqual(parseRoute('/songs/new'), { name: 'compose' })
@@ -168,6 +168,15 @@ test('routes stay in one workspace for the library, a new song, and one saved so
   assert.deepEqual(parseRoute('/songs/a%20b'), { name: 'song', songId: 'a b' })
   assert.deepEqual(parseRoute('/missing'), { name: 'missing' })
   assert.equal(songHref('akuma-no-ko'), '/songs/akuma-no-ko')
+
+  const here = dirname(fileURLToPath(import.meta.url))
+  const app = readFileSync(join(here, 'App.tsx'), 'utf8')
+  const search = readFileSync(join(here, 'new-song.tsx'), 'utf8')
+  const library = readFileSync(join(here, 'library/library.tsx'), 'utf8')
+  assert.doesNotMatch(app, /<aside|className="rail"/)
+  assert.match(search, /'Send'/)
+  assert.doesNotMatch(search, /First Love|lyric_fixture/)
+  assert.doesNotMatch(library, /First Love|Akuma no Ko/)
 })
 
 test('saved song search matches title or artist only', () => {
