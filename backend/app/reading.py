@@ -91,11 +91,49 @@ def needs_model(text: str) -> bool:
     return has_kanji(text) or bool(_kana_core(text))
 
 
+def fold_extra_readings(original: str, readings: list[str]) -> list[str]:
+    """Fit readings that outnumber the brackets on one line.
+
+    An extra reading is not another lyric line. A reading that only repeats
+    kana outside the brackets is set aside, because that kana is copied from
+    the line. Readings still left over are pieces of the longest bracket and
+    are joined onto it in order.
+    """
+
+    parts = units(original.strip())
+    slots = [surface for kind, surface in parts if kind == "slot"]
+    if len(readings) <= len(slots) or not slots:
+        return readings
+    keep_kana = "".join(_kana_core(surface) for kind, surface in parts if kind == "keep")
+    slot_kana = "".join(_kana_core(surface) for surface in slots)
+    kept: list[str] = []
+    spare = len(readings) - len(slots)
+    for reading in readings:
+        core = _kana_core(reading)
+        if spare > 0 and core and core in keep_kana and core not in slot_kana:
+            spare -= 1
+            continue
+        kept.append(reading)
+    if len(kept) <= len(slots):
+        return kept
+    extra = len(kept) - len(slots)
+    longest = max(range(len(slots)), key=lambda index: (len(_kana_core(slots[index])), index))
+    assigned: list[str] = []
+    cursor = 0
+    for index, _surface in enumerate(slots):
+        take = 1 + (extra if index == longest else 0)
+        assigned.append("".join(part.strip() for part in kept[cursor : cursor + take]))
+        cursor += take
+    return assigned
+
+
 def assemble_reading(original: str, readings: list[str]) -> tuple[str, str]:
     """Build hiragana and romaji. Kana comes from the original line."""
 
     parts = units(original.strip())
     expected = [surface for kind, surface in parts if kind == "slot"]
+    if len(readings) > len(expected):
+        readings = fold_extra_readings(original, readings)
     if len(readings) != len(expected):
         raise ReadingError("reading does not match the line")
     spoken: list[str] = []
