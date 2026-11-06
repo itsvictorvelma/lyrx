@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
 import { Library } from './library/library.tsx'
 import { LearnSong } from './lyrics/learn.tsx'
 import { NewSong } from './new-song.tsx'
 import { Link } from './routes/link.tsx'
-import { useRoute, type Route } from './routes/route.ts'
+import { useRoute } from './routes/route.ts'
 
 export default function App() {
   const route = useRoute()
@@ -16,7 +15,14 @@ export default function App() {
         <Link className="wordmark" href="/">
           Lyrx
         </Link>
-        <SiteMenu key={stageKey} route={route} />
+        <nav className="site-nav" aria-label="Pages">
+          <Link href="/songs/new" current={screen === 'compose'}>
+            New song
+          </Link>
+          <Link href="/songs" current={screen === 'library'}>
+            Library
+          </Link>
+        </nav>
       </header>
       <div className="workspace">
         <main className="stage" key={stageKey}>
@@ -27,66 +33,6 @@ export default function App() {
         </main>
       </div>
     </div>
-  )
-}
-
-function SiteMenu({ route }: { route: Route }) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (open) return
-    const panel = rootRef.current?.querySelector('#site-menu-panel')
-    const active = document.activeElement
-    if (panel && active instanceof Node && panel.contains(active)) buttonRef.current?.focus()
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-    function onKey(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return
-      setOpen(false)
-      buttonRef.current?.focus()
-    }
-    function onPointer(event: PointerEvent) {
-      const target = event.target
-      if (!(target instanceof Node) || rootRef.current?.contains(target)) return
-      setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('pointerdown', onPointer)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onPointer)
-    }
-  }, [open])
-
-  return (
-    <nav className="site-menu" aria-label="Library and new song" ref={rootRef}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className="menu-button"
-        aria-expanded={open}
-        aria-controls="site-menu-panel"
-        onClick={() => setOpen((value) => !value)}
-      >
-        Menu
-      </button>
-      <ul id="site-menu-panel" className="site-menu-panel" hidden={!open} onClick={() => setOpen(false)}>
-        <li>
-          <Link className="menu-link" href="/songs/new" current={route.name === 'compose'}>
-            New song
-          </Link>
-        </li>
-        <li>
-          <Link className="menu-link" href="/songs" current={route.name === 'library'}>
-            Song Library
-          </Link>
-        </li>
-      </ul>
-    </nav>
   )
 }
 
