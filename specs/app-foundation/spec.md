@@ -1,11 +1,6 @@
----
-cursor:
-  subagentId: "bc-43f25a2f-93d8-5ec7-9282-d2774358e7bf"
----
-
 # Application foundation specification
 
-Parent plan: [Prototype 1 build plan](../../AGENTS.md)
+Prototype 2.
 
 Related features:
 
@@ -14,9 +9,19 @@ Related features:
 - [Learn Song](../learn-song/spec.md)
 - [Audio player](../audio-player/spec.md)
 
+## Learner path
+
+The learner already has a song. They open Lyrx, type the name, and get four documents: Original, Hiragana, Romaji, and English. Then they practice. One optional MP3 can play with those documents.
+
+This install is local and has one learner. There is no account.
+
+There is no catalog of pre-checked songs for the learner to pick from. A fixed song list may exist only as a developer test fixture, never as a screen.
+
+The lyrics get the screen. Saved songs and a new search are a menu or a library section.
+
 ## Goal
 
-Create the smallest stable platform on which Song Library, new-song chat, and Learn Song can be implemented and tested without accounts, timing data, or a public multi-user host.
+Provide the local shell for that path: one search, four lyric documents, and one optional MP3, without accounts, line timing, or a public host.
 
 ## Scope
 
@@ -28,28 +33,35 @@ Create the smallest stable platform on which Song Library, new-song chat, and Le
 - Alembic migrations
 - Shared request/response/error contracts
 - Local media filesystem and media delivery boundary
-- Swytchcode call to Groq for lyric generation, with the key kept out of the app
+- One Swytchcode call to Groq for a lyric completion, with the key kept out of the app
 - Baseline accessibility, test, lint, type-check, and build configuration
 
 ## Architecture
 
 ### Frontend shell
 
-- One application shell owns the header, the workspace, and the screen for the current address.
+- One application shell owns the header and the screen for the current address.
+- The header offers a new search and saved songs. That offer is a menu, or it opens the library section. It is not a column that stays beside the lyrics.
+- The main region is the search, and then the lyrics. On a saved song, the four documents fill that region.
 - Addresses are read and changed by the app's own links.
 - Addresses:
-  - `/` and `/songs` — Song Library
-  - `/songs/new` and `/search` — new song
-  - `/songs/:songId` — Learn Song
-- An unknown address shows a not-found state and a link to Song Library.
+  - `/`, `/search`, and `/songs/new` — the one search in [Song creation](../song-creation/spec.md). A valid result fills this screen with the four documents.
+  - `/songs` — the [Song Library](../song-library/spec.md) section. Songs saved on this install. Not shown beside the lyrics.
+  - `/songs/:songId` — [Learn Song](../learn-song/spec.md). The lyrics fill the screen.
+- An unknown address shows a not-found state and a link back to the search.
 - No authentication provider, account context, global server-state library, or timing engine.
+- No screen renders a fixed list of songs. A fixture list stays in developer tests.
 
 ### Backend shell
 
 - FastAPI application with:
-  - Health/readiness endpoint suitable for deployment checks
-  - Song list, song detail, generation, save, and MP3 attach from [Song creation](../song-creation/spec.md)
-  - Media URL generation
+  - `GET /api/health`
+  - `GET /api/songs`
+  - `GET /api/songs/{song_id}`
+  - `POST /api/generations` — one search, not saved
+  - `POST /api/songs` — save a valid draft
+  - `POST /api/songs/{song_id}/audio` — attach or replace one MP3
+  - The media URL when an MP3 is stored
 - Validate configuration at startup and fail clearly on missing/unsafe values.
 - Keep business validation independent of HTTP so generation and repository tests do not need a running server or a Groq call.
 
@@ -61,19 +73,7 @@ Create the smallest stable platform on which Song Library, new-song chat, and Le
 - The schema has only `tracks` and `lyric_versions`.
 - Store aligned-line documents as schema-versioned JSON text after domain validation.
 - Use dialect-portable identifiers, booleans, timestamps, constraints, and indexes.
-
-### PostgreSQL upgrade seam
-
-Before public multi-user/multi-instance operation:
-
-1. Provision PostgreSQL.
-2. Apply the full Alembic chain to an empty PostgreSQL database.
-3. Export/import validated data through a controlled migration.
-4. Run repository, import, and API contract suites against PostgreSQL.
-5. Switch the external database URL.
-6. Verify rollback and backup procedures.
-
-Prototype 1 must not claim PostgreSQL compatibility solely because SQLAlchemy is used.
+- This install uses SQLite. PostgreSQL is out of scope.
 
 ## Shared contracts
 
@@ -106,7 +106,7 @@ Song summary plus:
 - `pronunciationRomaji`
 - `translationEnglish`
 
-The contract rejects timestamp/timing fields. Line indexes are unique and monotonic within a version.
+The contract rejects timestamp/timing fields. Line indexes are unique and monotonic within a version. Indexes start at 0 and have no gaps.
 
 ### Error response
 
@@ -130,7 +130,7 @@ Required categories:
 - Maximum audio upload size
 - Allowed development origin
 
-The Groq key is not an application environment variable. Swytchcode injects it.
+The Groq key is not an application environment variable. Swytchcode injects it. There is no second model key.
 
 Production invariants:
 
@@ -151,19 +151,21 @@ Production invariants:
 ## Accessibility
 
 - Application shell provides one main landmark and skip link.
+- The header control that opens search or saved songs has a visible name and a visible focus style.
 - Route changes move focus to the screen heading or an announced route target.
 - Global errors use an accessible alert/status pattern.
 - Not-found and failure screens contain keyboard-operable recovery actions.
 - Plain CSS preserves visible focus and sufficient contrast.
 - Responsive behavior does not reorder semantic reading order.
+- A wide window and a narrow window both give the lyrics the screen. Width does not add a song column.
 
 ## Security
 
 - No users, sessions, tokens, password code, or authorization roles.
-- Learner-facing writes are generation, save, and one MP3 upload, on this install. A saved song is not rewritten from chat.
+- Learner-facing writes are one search, save, and one MP3 upload, on this install. A saved song is not rewritten by a later search.
 - `POST /api/import` is not registered.
 - Generated media paths prevent traversal and hide local paths.
-- Imported strings render as text, never raw HTML.
+- Lyric text renders as text, never raw HTML.
 - CORS is restricted to configured origins; do not use permissive credentials settings.
 - Secrets are excluded from responses, source control, frontend bundles, and public media.
 - Log request IDs and safe identifiers, not lyric payloads or local file paths by default.
@@ -189,28 +191,22 @@ Production invariants:
 
 ### Frontend
 
-- Address rendering and the not-found page
-- `/songs/new` and Learn Song render. `/import` does not.
-- A failed song list or a failed song can be retried
+- `/` renders the search. It does not render a catalog of songs.
+- `/songs` renders saved songs as a section, and that section is not a column beside the lyrics.
+- `/songs/new` and `/search` render the same search as `/`.
+- `/songs/:songId` renders the lyrics. `/import` does not.
+- A failed song list or a failed song can be retried.
+- No screen is built from a fixed song list. A developer test may use a fixture list.
 
 ### Build
 
 - Type check, lint, backend static checks, frontend production build, and migration consistency run in CI.
 
-## Sequencing
-
-1. Freeze contracts and error shape.
-2. Configure frontend/backend workspace and environment validation.
-3. Create SQLAlchemy models and first Alembic revision.
-4. Implement repository and read API skeletons.
-5. Create the React shell, the app's own links, and the development feature boundary.
-6. Add baseline tests and CI gates.
-
-This feature blocks every other specification.
-
 ## Acceptance criteria
 
-- `/`, `/songs/new`, and `/songs/:songId` resolve.
+- The app opens on the search. A valid result shows Original, Hiragana, Romaji, and English.
+- `/songs` is saved songs only, and it is not a permanent sidebar.
+- `/songs/:songId` fills the screen with the lyrics.
 - `/import` does not resolve.
 - The backend has no import mutation.
 - Empty-database setup succeeds through Alembic only.
@@ -224,17 +220,17 @@ This feature blocks every other specification.
 ## Risks
 
 - The Groq key is copied into the frontend or the repository.
-- SQLite-specific behavior leaks into repository code.
-- Contract drift across backend/frontend.
-- An overly broad app shell introduces unapproved screens or state.
+- The saved-song list returns as a column beside the lyrics.
+- A fixture song list is wired up as a screen.
+- Contract drift across backend and frontend.
 
-Mitigate with production route tests, PostgreSQL-oriented portability review, generated/shared contract checks where practical, and scope review against the parent plan.
+## Out of scope
 
-## Non-goals and deferred work
-
-- Authentication/accounts
-- PostgreSQL operation in Prototype 1
+- Accounts and a public multi-user host
+- A catalog of pre-checked songs
+- A permanent sidebar of songs
+- PostgreSQL
 - Background jobs, queues, object storage, CDN, analytics
 - User preferences persisted server-side
-- Karaoke timing, timestamps, synchronization services
-- A public multi-user host
+- Line timing and timestamps
+- Spotify playback, lyric following from the clock, a second model, and LangChain or LangGraph. Those are stated in [Audio player](../audio-player/spec.md), [Learn Song](../learn-song/spec.md), and [Song creation](../song-creation/spec.md).
