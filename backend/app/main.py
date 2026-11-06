@@ -3,7 +3,7 @@
 GET /api/health is always available.
 GET /api/songs lists published songs.
 GET /api/songs/{song_id} returns one song and its lyric lines.
-POST /api/generations asks Groq for a lyric draft.
+POST /api/generations asks Groq for a lyric draft and does not save it.
 POST /api/songs saves a draft.
 POST /api/songs/{song_id}/audio attaches one MP3.
 """
@@ -18,7 +18,7 @@ from app.config import Settings, get_settings
 from app.core.context import bind_request_id
 from app.core.responses import guard_unexpected, register_exception_handlers
 from app.database import open_database
-from app.routers.create import router as create_router
+from app.routers.generations import router as generations_router
 from app.routers.health import router as health_router
 from app.routers.songs import router as songs_router
 
@@ -35,7 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(songs_router)
-    app.include_router(create_router)
+    app.include_router(generations_router)
 
     if resolved.environment == "development":
         app.add_middleware(

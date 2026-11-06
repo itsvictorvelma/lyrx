@@ -1,21 +1,13 @@
 import { useEffect, useLayoutEffect, useState, type KeyboardEvent } from 'react'
-import { AudioAttach } from './audio-form.tsx'
-import { ApiFailure, getSong } from './api.ts'
+import { ApiFailure, getSong } from '../api.ts'
+import type { LyricLine, SongDetail } from '../contracts.ts'
+import { AudioAttach } from '../player/audio-form.tsx'
+import { Player } from '../player/player.tsx'
+import { Link } from '../routes/link.tsx'
 import { COLUMNS } from './columns.ts'
-import type { LyricLine, SongDetail } from './contracts.ts'
-import { Link } from './link.tsx'
-import { Player } from './player.tsx'
-import { lineRowStyle, useWideLayout } from './reading.ts'
-import {
-  lineIndexFromValue,
-  linkedLineIndex,
-  lyricProblem,
-  readLayers,
-  toggleLayer,
-  writeLayers,
-  type LayerKey,
-  type LayerVisibility,
-} from './rehearsal.ts'
+import { lineRowStyle, useWideLayout } from './layout.ts'
+import { readLayers, toggleLayer, writeLayers, type LayerKey, type LayerVisibility } from './layers.ts'
+import { lineIndexFromValue, linkedLineIndex, lyricProblem } from './lines.ts'
 
 type LoadState =
   | { phase: 'loading' }

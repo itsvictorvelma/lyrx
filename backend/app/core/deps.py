@@ -6,10 +6,10 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.groq_client import SwytchcodeGroq
+from app.generation.groq import SwytchcodeGroq
+from app.generation.service import GenerationService
 from app.repositories.songs import SqlAlchemySongRepository
-from app.services.catalog import CatalogService
-from app.services.generation import GenerationService
+from app.services.library import LibraryService
 from app.services.songs import SongService
 
 
@@ -25,10 +25,10 @@ def get_song_service(session: Session = Depends(get_session)) -> SongService:
     return SongService(SqlAlchemySongRepository(session))
 
 
-def get_catalog_service(request: Request, session: Session = Depends(get_session)) -> CatalogService:
+def get_library_service(request: Request, session: Session = Depends(get_session)) -> LibraryService:
     settings: Settings = request.app.state.settings
     repository = SqlAlchemySongRepository(session)
-    return CatalogService(repository, SongService(repository), settings)
+    return LibraryService(repository, SongService(repository), settings)
 
 
 def get_generation_service(request: Request) -> GenerationService:
@@ -41,6 +41,6 @@ def get_media_base_url(request: Request) -> str:
     return settings.public_media_base_url
 
 
-def get_import_limit(request: Request) -> int:
+def get_audio_limit(request: Request) -> int:
     settings: Settings = request.app.state.settings
-    return settings.max_import_bytes
+    return settings.max_audio_bytes

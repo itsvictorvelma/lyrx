@@ -14,7 +14,6 @@ def settings(**overrides: object) -> Settings:
         "database_url": "sqlite:///./lyrx.db",
         "media_root": "./media",
         "public_media_base_url": "http://localhost:8000/media",
-        "frontend_api_base_url": "http://localhost:8000",
         "groq_model": "openai/gpt-oss-120b",
     }
     values.update(overrides)
@@ -83,4 +82,4 @@ def test_routes_and_services_stay_out_of_sqlalchemy() -> None:
 
 def test_settings_reject_shared_storage_roots() -> None:
     with pytest.raises(ValidationError, match="must be different directories"):
-        settings(import_staging_root="./media")
+        settings(audio_staging_root="./media")

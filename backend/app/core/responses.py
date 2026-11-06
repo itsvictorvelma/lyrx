@@ -16,12 +16,7 @@ logger = logging.getLogger(__name__)
 
 STATUS_CODES = {
     "invalid_metadata": 400,
-    "wrong_filename": 400,
     "invalid_audio": 400,
-    "invalid_text": 400,
-    "line_count_mismatch": 400,
-    "partial_blank_row": 400,
-    "empty_song": 400,
     "generation_invalid": 422,
     "generation_too_large": 400,
     "groq_rate_limited": 429,

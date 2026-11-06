@@ -1,1 +1,1 @@
-"""Song reads, lyric generation, and MP3 attach."""
+"""Read a saved song, and save a song with its MP3."""

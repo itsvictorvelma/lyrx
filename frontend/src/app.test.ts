@@ -4,23 +4,18 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import type { LyricLine } from './contracts.ts'
-import { parseRoute, songHref } from './route.ts'
+import { filterSongs, languageDirection } from './library/filter.ts'
 import {
   ALL_LAYERS,
   LAYER_STORAGE_KEY,
-  clampTime,
-  formatTime,
-  languageDirection,
-  lineIndexFromValue,
-  filterSongs,
-  linkedLineIndex,
-  lyricProblem,
-  playbackRate,
   readLayers,
   toggleLayer,
   writeLayers,
   type KeyValueStore,
-} from './rehearsal.ts'
+} from './lyrics/layers.ts'
+import { lineIndexFromValue, linkedLineIndex, lyricProblem } from './lyrics/lines.ts'
+import { clampTime, formatTime, playbackRate } from './player/time.ts'
+import { parseRoute, songHref } from './routes/route.ts'
 
 function memory(initial?: Record<string, string>): KeyValueStore & { values: Map<string, string> } {
   const values = new Map(Object.entries(initial ?? {}))
@@ -98,7 +93,7 @@ test('a lyric mark follows one index without changing its own box, and sheet row
 
   const here = dirname(fileURLToPath(import.meta.url))
   const css = readFileSync(join(here, 'index.css'), 'utf8')
-  const learn = readFileSync(join(here, 'learn.tsx'), 'utf8')
+  const learn = readFileSync(join(here, 'lyrics/learn.tsx'), 'utf8')
   const sheet = ruleBody(css, '.lyric-sheet')
   const linked = ruleBody(css, '.learn .lyric-line.is-linked')
   assert.match(sheet, /display:\s*grid/)

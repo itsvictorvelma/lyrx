@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { listSongs } from './api.ts'
-import type { SongSummary } from './contracts.ts'
-import { Link } from './link.tsx'
-import { filterSongs, formatDuration, languageDirection } from './rehearsal.ts'
-import { songHref } from './route.ts'
+import { listSongs } from '../api.ts'
+import type { SongSummary } from '../contracts.ts'
+import { formatDuration } from '../player/time.ts'
+import { Link } from '../routes/link.tsx'
+import { songHref } from '../routes/route.ts'
+import { filterSongs, languageDirection } from './filter.ts'
 
 export function Library({ activeId, variant = 'rail' }: { activeId?: string | null; variant?: 'page' | 'rail' }) {
   const [songs, setSongs] = useState<SongSummary[] | null>(null)

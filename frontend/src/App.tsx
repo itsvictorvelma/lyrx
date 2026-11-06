@@ -1,8 +1,8 @@
+import { Library } from './library/library.tsx'
+import { LearnSong } from './lyrics/learn.tsx'
 import { NewSong } from './new-song.tsx'
-import { LearnSong } from './learn.tsx'
-import { Library } from './library.tsx'
-import { Link } from './link.tsx'
-import { useRoute } from './route.ts'
+import { Link } from './routes/link.tsx'
+import { useRoute } from './routes/route.ts'
 
 export default function App() {
   const route = useRoute()

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { attachAudio } from './api.ts'
+import { attachAudio } from '../api.ts'
 
 export function AudioAttach({
   songId,
@@ -37,29 +37,29 @@ export function AudioAttach({
     <form className="audio-attach" onSubmit={(event) => void submit(event)}>
       <details>
         <summary>{hasAudio ? 'Replace audio' : 'Attach audio'}</summary>
-      <label>
-        MP3
-        <input name="audio" type="file" accept="audio/mpeg,.mp3" required />
-      </label>
-      {hasAudio ? (
         <label>
-          <input
-            name="replace"
-            type="checkbox"
-            checked={replace}
-            onChange={(event) => setReplace(event.currentTarget.checked)}
-          />{' '}
-          Replace the saved audio
+          MP3
+          <input name="audio" type="file" accept="audio/mpeg,.mp3" required />
         </label>
-      ) : null}
-      {error ? (
-        <p className="notice" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <button type="submit" disabled={pending || (hasAudio && !replace)}>
-        {pending ? 'Saving audio…' : hasAudio ? 'Replace audio' : 'Attach audio'}
-      </button>
+        {hasAudio ? (
+          <label>
+            <input
+              name="replace"
+              type="checkbox"
+              checked={replace}
+              onChange={(event) => setReplace(event.currentTarget.checked)}
+            />{' '}
+            Replace the saved audio
+          </label>
+        ) : null}
+        {error ? (
+          <p className="notice" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" disabled={pending || (hasAudio && !replace)}>
+          {pending ? 'Saving audio…' : hasAudio ? 'Replace audio' : 'Attach audio'}
+        </button>
       </details>
     </form>
   )

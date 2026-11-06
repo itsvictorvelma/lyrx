@@ -40,7 +40,9 @@ class SqlAlchemySongRepository:
 
     def list_published(self) -> list[TrackRecord]:
         try:
-            tracks = self._session.scalars(select(Track).where(Track.status == "published").order_by(Track.title, Track.id))
+            tracks = self._session.scalars(
+                select(Track).where(Track.status == "published").order_by(Track.title, Track.id)
+            )
         except (OperationalError, ProgrammingError) as exc:
             raise _unavailable() from exc
         return [_track_record(track) for track in tracks]
@@ -68,30 +70,7 @@ class SqlAlchemySongRepository:
             return None
         return _track_record(track)
 
-    def latest_lines_json(self, song_id: str) -> str | None:
-        try:
-            version = self._session.scalar(
-                select(LyricVersion).where(LyricVersion.track_id == song_id).order_by(LyricVersion.id.desc())
-            )
-        except (OperationalError, ProgrammingError) as exc:
-            raise _unavailable() from exc
-        if version is None:
-            return None
-        return version.lines_json
-
-    def has_content_version(self, song_id: str, content_version: str) -> bool:
-        try:
-            found = self._session.scalar(
-                select(LyricVersion.id).where(
-                    LyricVersion.track_id == song_id,
-                    LyricVersion.content_version == content_version,
-                )
-            )
-        except (OperationalError, ProgrammingError) as exc:
-            raise _unavailable() from exc
-        return found is not None
-
-    def save_import(self, track: TrackWrite, version: VersionWrite | None) -> None:
+    def save_song(self, track: TrackWrite, version: VersionWrite | None) -> None:
         try:
             stored = self._session.get(Track, track.id)
             if stored is None:

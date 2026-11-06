@@ -5,10 +5,11 @@ alwaysApply: true
 
 # Scope guard
 
-- Build only what AGENTS.md and specs/ approve. If a ticket seems to need more, stop and say so in the pull request instead of building it.
-- Lyric timing is one optional `startSeconds` per line, set by the audio scan or by stamping a line. Never add end times, word/mora timing, tempo or beats-per-line pacing, sync offsets, or timing tables/columns.
-- Only three screens (Song Library, Import Song in development only, Learn Song) and only the API routes in AGENTS.md and docs/codebase.md.
-- No accounts, analytics, runtime provider/catalog APIs, autoplay, looping, or microphone. The only learner writes are saving line start times and scanning a saved song.
-- Never edit AGENTS.md or anything under specs/. Those are Victor's plan documents.
-- Never add inactive fields or UI "for later".
-- If you add a folder, route, setting, or data field, update docs/codebase.md in the same change.
+- Build only what AGENTS.md describes. If a change seems to need more, say so in the pull request instead of building it.
+- Do not edit `specs/`. Edit `AGENTS.md` only when Victor asks.
+- No line timing. Timing fields, including `startSeconds`, are rejected. No audio scan, follow-scroll, word timing, looping, autoplay, tempo control, or microphone.
+- Screens are Song Library, New song, and Learn Song. Routes are the ones in `docs/codebase.md`.
+- No accounts, analytics, or a public host. The learner can ask for lyrics, save a song, and attach one MP3.
+- Lyric generation is the Groq path in `backend/app/generation/`. A named song reads its original lines from LRCLIB. Do not add LangChain, LangGraph, another provider, or a second offline draft path.
+- Never add inactive fields or UI for later.
+- If you add a folder, route, setting, or data field, update `docs/codebase.md` in the same change.

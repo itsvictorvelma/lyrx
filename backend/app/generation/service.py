@@ -10,9 +10,9 @@ import re
 
 from app.contracts import DraftLine, GenerationResponse, LyricDraft
 from app.errors import DomainError
-from app.generation import completion_body, confirmation, segment_body
-from app.groq_client import GroqClient
-from app.lrclib import lyric_lines, search_plain
+from app.generation.groq import GroqClient
+from app.generation.lrclib import lyric_lines, search_plain
+from app.generation.prompts import completion_body, confirmation, segment_body
 from app.lyrics import draft_from_model
 from app.reading import ReadingError, assemble_reading, lock_reading, needs_model
 

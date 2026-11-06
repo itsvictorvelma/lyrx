@@ -10,8 +10,8 @@ from sqlalchemy.orm import sessionmaker
 from app.core.deps import get_generation_service
 from app.main import create_app
 from app.models import LyricVersion, Track
-from app.services.catalog import song_id_from_title
-from app.services.generation import GenerationService
+from app.generation.service import GenerationService
+from app.services.library import song_id_from_title
 from tests.test_app import settings
 from tests.test_database import migration_config
 
@@ -46,7 +46,7 @@ def app_for(tmp_path: Path):
         settings(
             database_url=f"sqlite:///{database_path}",
             media_root=str(tmp_path / "media"),
-            import_staging_root=str(tmp_path / "uploads"),
+            audio_staging_root=str(tmp_path / "uploads"),
             public_media_base_url="http://localhost:8000/media",
         )
     )

@@ -22,14 +22,12 @@
   --space-7: 3rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
-  --text-lg: 1.125rem;
   --text-reading: 1.25rem;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --motion: 240ms;
   --text-xl: 2rem;
   --radius: 16px;
   --page-gutter: var(--space-4);
-  --measure: 100rem;
   --ui: system-ui, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
 }
 
@@ -267,20 +265,12 @@ input[type='range'] {
   margin-top: var(--space-2);
 }
 
-.kicker,
 .lede,
 .byline,
 .song-meta,
 .song-artist,
 .empty-note {
   color: var(--ink-soft);
-}
-
-.kicker {
-  font-size: var(--text-sm);
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .stage-home .button-primary,

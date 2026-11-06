@@ -1,5 +1,5 @@
-import type { LyricLine } from './contracts.ts'
-import type { LayerKey } from './rehearsal.ts'
+import type { LyricLine } from '../contracts.ts'
+import type { LayerKey } from './layers.ts'
 
 export const COLUMNS: {
   key: LayerKey

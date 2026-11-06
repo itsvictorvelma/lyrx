@@ -1,4 +1,4 @@
-from app.lrclib import choose_plain, lyric_lines
+from app.generation.lrclib import choose_plain, lyric_lines
 
 
 def test_section_labels_are_not_lyric_lines() -> None:
