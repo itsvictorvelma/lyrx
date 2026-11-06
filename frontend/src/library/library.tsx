@@ -77,32 +77,36 @@ export function Library() {
           No saved song matches.
         </p>
       ) : null}
-      {visible.length > 0 ? (
-        <ul className="song-list">
-          {visible.map((song) => {
-            const duration = formatDuration(song.durationSeconds)
-            return (
-              <li key={song.id}>
-                <Link className="song-row" href={songHref(song.id)}>
-                  <span className="song-mark" aria-hidden="true">
-                    {monogram(song.title)}
-                  </span>
-                  <span className="song-copy">
-                    <span className="song-title">{song.title}</span>
-                    <span className="song-artist">{song.artist}</span>
-                    <span className="song-meta">
-                      {languageDirection(song.sourceLanguage, song.targetLanguage)}
-                      {duration ? ` · ${duration}` : ''}
-                      {song.status === 'draft' ? ' · Draft' : ''}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+      {visible.length > 0 ? <SongRows songs={visible} /> : null}
     </div>
+  )
+}
+
+export function SongRows({ songs }: { songs: SongSummary[] }) {
+  return (
+    <ul className="song-list">
+      {songs.map((song) => {
+        const duration = formatDuration(song.durationSeconds)
+        return (
+          <li key={song.id}>
+            <Link className="song-row" href={songHref(song.id)}>
+              <span className="song-mark" aria-hidden="true">
+                {monogram(song.title)}
+              </span>
+              <span className="song-title" lang="ja">
+                {song.title}
+              </span>
+              <span className="song-artist">{song.artist}</span>
+              <span className="song-meta">
+                {languageDirection(song.sourceLanguage, song.targetLanguage)}
+                {duration ? ` · ${duration}` : ''}
+                {song.status === 'draft' ? ' · Draft' : ''}
+              </span>
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

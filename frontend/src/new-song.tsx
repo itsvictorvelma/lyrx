@@ -1,11 +1,19 @@
-import { useState, type FormEvent } from 'react'
-import { generateLyrics, saveSong } from './api.ts'
-import type { DraftLine, LyricDraft } from './contracts.ts'
+import { useEffect, useState, type FormEvent } from 'react'
+import { generateLyrics, listSongs, saveSong } from './api.ts'
+import type { DraftLine, LyricDraft, SongSummary } from './contracts.ts'
+import { SongRows } from './library/library.tsx'
 import { COLUMNS } from './lyrics/columns.ts'
 import { lineRowStyle, useWideLayout } from './lyrics/layout.ts'
 import { LyricTabs } from './lyrics/learn.tsx'
 import type { LayerKey } from './lyrics/layers.ts'
 import { navigate, songHref } from './routes/route.ts'
+
+const DESK_NOTE: Record<LayerKey, string> = {
+  japanese: 'Kanji stays as it is written. Kana already in the line is kept.',
+  hiragana: 'The reading of each line, in kana.',
+  romaji: 'Spelled from the hiragana, so the line can be sounded out.',
+  meaning: 'The same lines, in English, in the same order.',
+}
 
 export function NewSong() {
   const [draft, setDraft] = useState<LyricDraft | null>(null)
@@ -13,7 +21,22 @@ export function NewSong() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<'ask' | 'save' | null>(null)
   const [reading, setReading] = useState<LayerKey>('japanese')
+  const [saved, setSaved] = useState<SongSummary[]>([])
   const wide = useWideLayout()
+
+  useEffect(() => {
+    let active = true
+    listSongs()
+      .then((songs) => {
+        if (active) setSaved(songs)
+      })
+      .catch(() => {
+        if (active) setSaved([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -62,10 +85,7 @@ export function NewSong() {
       ) : (
         <>
           <h1>New song</h1>
-          <p className="lede">
-            Ask for a song. You get Original, Hiragana, Romaji, and English here, then the recording attaches on the
-            song.
-          </p>
+          <p className="lede">Ask for a song. The recording attaches after you save.</p>
         </>
       )}
       <div className="ask-block">
@@ -105,6 +125,26 @@ export function NewSong() {
           </p>
         ) : null}
       </div>
+      {draft ? null : (
+        <section className="desk" aria-label="The four documents">
+          {COLUMNS.map((column) => (
+            <article key={column.key}>
+              <h2 className={column.className} lang={column.lang}>
+                {column.label}
+              </h2>
+              <p className={column.className} lang={column.lang}>
+                {DESK_NOTE[column.key]}
+              </p>
+            </article>
+          ))}
+        </section>
+      )}
+      {!draft && saved.length > 0 ? (
+        <section className="saved-block" aria-labelledby="saved-songs">
+          <h2 id="saved-songs">Saved songs</h2>
+          <SongRows songs={saved} />
+        </section>
+      ) : null}
       {draft ? (
         <div className="draft-in">
           {wide ? (
