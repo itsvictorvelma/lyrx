@@ -1,27 +1,26 @@
 import { useState, type FormEvent } from 'react'
 import { generateLyrics, saveSong } from './api.ts'
-import type { DraftLine, LyricDraft, LyricLine } from './contracts.ts'
+import type { DraftLine, LyricDraft } from './contracts.ts'
 import { COLUMNS } from './lyrics/columns.ts'
-import { DesktopLyrics, LayerToggle, LyricDocument, LyricTabs } from './lyrics/learn.tsx'
-import { readLayers, toggleLayer, writeLayers, type LayerKey, type LayerVisibility } from './lyrics/layers.ts'
-import { useWideLayout } from './lyrics/layout.ts'
+import { lineRowStyle, useWideLayout } from './lyrics/layout.ts'
+import { LyricTabs } from './lyrics/learn.tsx'
+import type { LayerKey } from './lyrics/layers.ts'
 import { navigate, songHref } from './routes/route.ts'
 
 export function NewSong() {
   const [draft, setDraft] = useState<LyricDraft | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<'send' | 'save' | null>(null)
+  const [pending, setPending] = useState<'ask' | 'save' | null>(null)
   const [reading, setReading] = useState<LayerKey>('japanese')
-  const [layers, setLayers] = useState<LayerVisibility>(() => readLayers(browserLayers()))
   const wide = useWideLayout()
 
-  async function send(event: FormEvent<HTMLFormElement>) {
+  async function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const message = new FormData(event.currentTarget).get('message')
     if (typeof message !== 'string' || !message.trim()) return
     setError(null)
-    setPending('send')
+    setPending('ask')
     try {
       const result = await generateLyrics(message.trim())
       setDraft(result.draft)
@@ -46,30 +45,20 @@ export function NewSong() {
     }
   }
 
-  function changeLayer(key: LayerKey) {
-    const next = toggleLayer(layers, key)
-    setLayers(next)
-    const storage = browserLayers()
-    if (storage) writeLayers(storage, next)
-  }
-
-  const lines = draft ? readable(draft.lines) : []
-  const column = COLUMNS.find((item) => item.key === reading) ?? COLUMNS[0]
-
   return (
     <article className="composer-page">
-      <h1>Search</h1>
-      <p className="lede">Type a song name. You get Original, Hiragana, Romaji, and English.</p>
-      <form className="composer" onSubmit={(event) => void send(event)}>
+      <h1>New song</h1>
+      <p className="lede">Ask for a song. You get Original, Hiragana, Romaji, and English here, then the recording attaches on the song.</p>
+      <form className="composer" onSubmit={(event) => void ask(event)}>
         <label>
           Song
-          <input name="message" required autoComplete="off" placeholder="Akuma no Ko by Ai Higuchi" />
+          <textarea name="message" required rows={3} placeholder="Akuma no Ko by Ai Higuchi" />
         </label>
         <button type="submit" className="button-primary" disabled={pending !== null}>
-          {pending === 'send' ? 'Sending…' : 'Send'}
+          {pending === 'ask' ? 'Writing lyrics…' : 'Ask'}
         </button>
       </form>
-      {pending === 'send' ? <p role="status">Searching.</p> : null}
+      {pending === 'ask' ? <p role="status">Writing lyrics.</p> : null}
       {note ? <p role="status">{note}</p> : null}
       {error ? (
         <p className="notice" role="alert">
@@ -77,25 +66,27 @@ export function NewSong() {
         </p>
       ) : null}
       {draft ? (
-        <div className="draft-in learn">
+        <div className="draft-in">
           <h2>
             {draft.title} <span className="byline">{draft.artist}</span>
           </h2>
           {wide ? (
-            <DesktopLyrics lines={lines} layers={layers} onToggle={changeLayer} />
+            <div className="lyric-sheet" style={lineRowStyle(draft.lines.length)}>
+              {COLUMNS.map((column) => (
+                <section key={column.key} className="lyric-pane" aria-labelledby={`draft-${column.key}`}>
+                  <h3 className="lyric-pane-title" id={`draft-${column.key}`}>
+                    {column.label}
+                  </h3>
+                  <div className={`lyric-body ${column.className}`} lang={column.lang}>
+                    {draft.lines.map((line, index) => (
+                      <p key={`${column.key}-${index}`}>{column.text(line)}</p>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           ) : (
-            <>
-              <div className="lyric-switch">
-                <LyricTabs active={column.key} onSelect={setReading} />
-                <LayerToggle label={column.label} shown={layers[column.key]} onToggle={() => changeLayer(column.key)} />
-              </div>
-              <LyricDocument
-                column={column}
-                lines={lines}
-                labelledBy={`tab-${column.key}`}
-                shown={layers[column.key]}
-              />
-            </>
+            <DraftTabs lines={draft.lines} reading={reading} onSelect={setReading} />
           )}
           <button type="button" className="button-primary" disabled={pending !== null} onClick={() => void save()}>
             {pending === 'save' ? 'Saving…' : 'Save song'}
@@ -106,21 +97,35 @@ export function NewSong() {
   )
 }
 
-function readable(lines: DraftLine[]): LyricLine[] {
-  return lines.map((line, index) => ({
-    id: `draft-${index}`,
-    index,
-    originalText: line.originalText,
-    readingHiragana: line.readingHiragana,
-    pronunciationRomaji: line.pronunciationRomaji,
-    translationEnglish: line.translationEnglish,
-  }))
-}
-
-function browserLayers(): Storage | null {
-  try {
-    return window.sessionStorage
-  } catch {
-    return null
-  }
+function DraftTabs({
+  lines,
+  reading,
+  onSelect,
+}: {
+  lines: DraftLine[]
+  reading: LayerKey
+  onSelect: (key: LayerKey) => void
+}) {
+  const column = COLUMNS.find((item) => item.key === reading) ?? COLUMNS[0]
+  return (
+    <>
+      <div className="lyric-switch">
+        <LyricTabs active={column.key} onSelect={onSelect} />
+      </div>
+      <section
+        key={column.key}
+        className="lyric-document"
+        id={`panel-${column.key}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${column.key}`}
+      >
+        <h3 className="sr-only">{column.label}</h3>
+        <div className={column.className} lang={column.lang}>
+          {lines.map((line, index) => (
+            <p key={`${column.key}-${index}`}>{column.text(line)}</p>
+          ))}
+        </div>
+      </section>
+    </>
+  )
 }

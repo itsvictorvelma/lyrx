@@ -11,7 +11,7 @@ Lyrx helps a learner rehearse a Japanese song. The page shows the audio, the Jap
 Today there are two small programs:
 
 - `backend/` is the API. It stores songs, asks Groq for a lyric draft, and serves the audio.
-- `frontend/` is the web page. It opens on a search. Saved songs are a library section. Learn Song fills the screen with the four documents.
+- `frontend/` is the web page. The header menu opens a new song and the saved songs. Lyrics use the screen.
 
 The page is grouped by what it does:
 
@@ -21,7 +21,7 @@ The page is grouped by what it does:
 | `frontend/src/library/` | The saved-song list and its text filter |
 | `frontend/src/lyrics/` | Original, Hiragana, Romaji, and English |
 | `frontend/src/player/` | The player and the MP3 form |
-| `frontend/src/new-song.tsx` | The search where the learner types a song name |
+| `frontend/src/new-song.tsx` | The page that asks for a song |
 
 The API is grouped the same way:
 
@@ -163,19 +163,19 @@ npm install
 npm run dev
 ```
 
-The page opens on the search. Saved songs are not a column beside the lyrics.
+The page is one shell. The header menu opens New song and Song Library. Lyrics use the width of the window. There is no song column beside them.
 
 | Route | What it shows |
 | --- | --- |
-| `/`, `/search`, and `/songs/new` | The search. Type a song name. A valid result fills the page with Original, Hiragana, Romaji, and English. |
-| `/songs` | Song Library. Songs saved on this install, filtered in the page by title or artist. |
-| `/songs/:songId` | Learn Song. The four documents fill the page, plus the player and MP3 attach. |
+| `/`, `/songs/new`, and `/search` | Ask for a song. A draft fills this screen. |
+| `/songs` | Song Library. Search saved songs by title or artist, then open one. This list is its own section. |
+| `/songs/:songId` | Learn Song. Original, Hiragana, Romaji, and English fill the screen, plus the player and MP3 attach. |
 
-`/import` is not a page. The header links to the search and to Song Library at every width.
+`/import` is not a page.
 
-`frontend/src/App.tsx` shows one screen at a time. `frontend/src/library/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/lyrics/learn.tsx` reads one song. `frontend/src/player/audio-form.tsx` posts the MP3. `frontend/src/player/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
+`frontend/src/App.tsx` shows one screen at a time. The header menu links to a new song and the library. `frontend/src/library/library.tsx` reads `GET /api/songs` and filters that list in the page. `frontend/src/new-song.tsx` posts to `POST /api/generations` and then `POST /api/songs`. `frontend/src/lyrics/learn.tsx` reads one song. `frontend/src/player/audio-form.tsx` posts the MP3. `frontend/src/player/player.tsx` plays that song's `audioUrl` when one is stored. The player state stays inside the player, so the clock does not redraw the lyrics.
 
-Learn Song starts with all four documents visible. On a wide window they sit side by side and the reading area scrolls once. The same lyric index shares one row, so a wrapped English line stays with its Japanese line. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page. A narrow draft uses those tabs too.
+Learn Song starts with all four documents visible. On a wide window they sit side by side and the reading area scrolls once. The same lyric index shares one row, so a wrapped English line stays with its Japanese line. Each heading is Original, Hiragana, Romaji, or English, and that heading holds Hide or Show. Hiding a layer fades its text and leaves the column width, heading, and line positions in place. The choice is saved in `sessionStorage` under `lyrx.layers.v2` for this browser tab only. Any layer can be hidden. There are no per-line labels. On a narrow window the same four names are tabs, and hiding the text does not move the page. A narrow draft uses those tabs too. On a wide window, hover or keyboard focus marks the same line across the open documents.
 
 The player is a compact bar under the header. It shows the song title, play/pause, a seek bar, the elapsed time and duration, back and forward 10 seconds, volume, mute, and the speeds 0.75×, 1×, and 1.25×. Play, pause, and mute are icons. The player does not mark a lyric line or move the page. The lyrics scroll under it. With no MP3, the bar says that no audio is attached.
 

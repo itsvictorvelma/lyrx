@@ -76,18 +76,19 @@ export function LearnSong({ songId }: { songId: string }) {
 
   return (
     <article className="learn">
-      <Link className="back-link" href="/songs">
-        Songs
-      </Link>
       <h1>{title}</h1>
       {state.phase === 'loading' ? <p role="status">Loading song.</p> : null}
       {state.phase === 'missing' ? (
         <div className="notice" role="alert">
           <p>That song is not available.</p>
-          <p className="recovery">
-            <Link href="/">Search</Link>
-            <Link href="/songs">Songs</Link>
-          </p>
+          <ul className="recovery-links">
+            <li>
+              <Link href="/songs/new">New song</Link>
+            </li>
+            <li>
+              <Link href="/songs">Song Library</Link>
+            </li>
+          </ul>
         </div>
       ) : null}
       {state.phase === 'failed' ? (

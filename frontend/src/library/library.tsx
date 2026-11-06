@@ -39,11 +39,15 @@ export function Library() {
 
   return (
     <div className="library library-page">
-      <h1>Song Library</h1>
-      <p className="lede">Songs you saved after a search.</p>
-      <Link className="button-primary" href="/">
-        Search
-      </Link>
+      <div className="library-intro">
+        <div className="library-copy">
+          <h1>Song Library</h1>
+          <p className="lede">Ask for a song, then save it here. Original, hiragana, romaji, and English stay together.</p>
+        </div>
+        <Link className="button-primary" href="/songs/new">
+          New song
+        </Link>
+      </div>
       {error ? (
         <div className="notice" role="alert">
           <p>{error}</p>
