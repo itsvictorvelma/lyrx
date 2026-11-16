@@ -2,13 +2,40 @@
 
 from typing import Any, Literal
 
-ErrorCode = Literal["invalid_request", "host_not_allowed", "internal_error"]
+from lyrx import config
+
+ErrorCode = Literal[
+    "invalid_request",
+    "empty_input",
+    "no_japanese",
+    "input_too_large",
+    "host_not_allowed",
+    "not_found",
+    "method_not_allowed",
+    "server_not_configured",
+    "internal_error",
+]
 
 ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "invalid_request": (400, "The request body must be JSON with a string field `lyrics`."),
+    "empty_input": (400, "Paste some lyrics first."),
+    "no_japanese": (400, "No Japanese text found. Paste Japanese lyrics."),
+    "input_too_large": (
+        413,
+        f"The lyrics are too long. The limit is {config.MAX_CHARACTERS:,} characters"
+        f" and {config.MAX_LINES} lines.",
+    ),
     "host_not_allowed": (403, "This server only answers on 127.0.0.1 or localhost."),
+    "not_found": (404, "There is nothing at this address."),
+    "method_not_allowed": (405, "This address does not accept that method."),
+    "server_not_configured": (503, "The server has no Claude API key."),
     "internal_error": (500, "Something went wrong on the server."),
 }
+
+
+def size_limit_details() -> dict[str, Any]:
+    """The `details` of every `input_too_large` error: the paste limits."""
+    return {"maxCharacters": config.MAX_CHARACTERS, "maxLines": config.MAX_LINES}
 
 
 class ApiError(Exception):

@@ -11,9 +11,9 @@ step() {
 
 cd "$repo_root/backend"
 step "backend: ruff format"
-uv run ruff format --check
+uv run ruff format --check --no-cache
 step "backend: ruff lint"
-uv run ruff check
+uv run ruff check --no-cache
 step "backend: mypy"
 uv run mypy
 step "backend: pytest"

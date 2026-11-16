@@ -151,6 +151,8 @@ One shape for every error: `code`, `message`, optional `details`. No stack trace
 | `no_japanese` | 400 | No line has a Japanese character |
 | `input_too_large` | 413 | Over 5,000 characters or 200 lines |
 | `host_not_allowed` | 403 | `Host` is not `127.0.0.1` or `localhost` (any port) |
+| `not_found` | 404 | No route at that path |
+| `method_not_allowed` | 405 | The path exists but not for that HTTP method |
 | `model_refused` | 502 | `stop_reason == "refusal"` |
 | `model_output_truncated` | 502 | `stop_reason == "max_tokens"` |
 | `model_output_invalid` | 502 | The reply fails any check above |
@@ -253,6 +255,13 @@ All tests use invented lyrics. Server tests replace the Claude client with a fak
 - AC-39: When fetch rejects, the page shows "Could not reach the Lyrx server. Is it running?".
 - AC-40: A line whose `original` and `english` contain `<b>x</b>` renders the literal text `<b>x</b>`, and no `b` element is created.
 - AC-41: A line with `readingVerified: false` shows the text "Reading not verified" in its group next to its hiragana. A line with `readingVerified: true` shows no such text.
+
+### Amendment (2026-11-16, approved by the user)
+
+- AC-42: An unknown path returns `404` `not_found`, and `GET /api/versions` returns `405` `method_not_allowed`, both in the one error shape with no other keys.
+
+- AC-43: A "Japanese character" also includes the kana iteration marks `ゝ` `ゞ` `ヽ` `ヾ`, `〆`, CJK Extension A (U+3400–4DBF), and CJK Compatibility Ideographs (U+F900–FAFF). A line with any of them counts as Japanese.
+- AC-44: The server refuses a request body over 64 KB with `413` `input_too_large` before parsing it, whether or not `Content-Length` is present or truthful. This follows the AGENTS.md rule that size limits run before anything reads the input. Any other client error FastAPI raises maps to `400` `invalid_request`, and any other server error to `500` `internal_error`, with no detail text.
 
 ## Open questions
 
