@@ -16,6 +16,7 @@
 |---|---|---|
 | `pyproject.toml`, `uv.lock` | new | uv project `lyrx`; ruff, mypy (strict), and pytest config live here |
 | `src/lyrx/__init__.py` | new | Package marker |
+| `src/lyrx/py.typed` | new | Empty marker so mypy type-checks the package when tests import it |
 | `src/lyrx/__main__.py` | new | `uv run python -m lyrx` starts uvicorn on the host and port from `config.py` (AC-31) |
 | `src/lyrx/config.py` | new | Every setting in one place: host, port, model, effort, `max_tokens`, timeout, size limits, and reading the API key |
 | `src/lyrx/errors.py` | new | `ApiError` and the table of error codes → HTTP status and message |
