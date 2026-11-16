@@ -1,40 +1,33 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-
-# Node
-node_modules/
-dist/
-coverage/
-
-# Local environment
+# --- Secrets -------------------------------------------------------------
 .env
 .env.*
 !.env.example
 
-# SQLite
+# --- Local data: audio, databases, rehearsal media -----------------------
+*.mp3
 *.db
 *.db-*
 *.sqlite
 *.sqlite3
-
-# Local audio and uploads
 media/
-private-media/
-uploads/
-
-# Agent guardrail state and local failure reports
-.agent-state/
-.agent-reports/
-
-# macOS
-.DS_Store
-
-.swytchcode/workspace.json
-.swytchcode/mcp.pid
-
-# Local rehearsal media. Not part of the app.
 test_media/
+
+# --- Python --------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- Node ----------------------------------------------------------------
+node_modules/
+dist/
+build/
+coverage/
+
+# --- Local tools ---------------------------------------------------------
+.claude/settings.local.json
+
+# --- OS ------------------------------------------------------------------
+.DS_Store

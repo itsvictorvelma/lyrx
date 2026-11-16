@@ -1,3 +1,0 @@
-# Readable by agents on request, but kept out of codebase search and indexing.
-backend/uv.lock
-frontend/package-lock.json
