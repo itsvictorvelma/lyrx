@@ -64,6 +64,20 @@
 
 **Romaji** is a hand-written kana table plus three rules: small っ, ん, and ー. It uses no library. It works word by word, so the は/へ particle rule is a whole-word match.
 
+**Romaji edge cases** (coordinator decisions within modified Hepburn; the spec leaves them open):
+- Katakana in the input is turned into hiragana first, then romanized.
+- A word is split on ASCII or full-width spaces. Spacing is kept as given, with no collapsing. ん before a space is plain `n` (`ほん あお` → `hon ao`).
+- The particle rule ignores punctuation attached to the word: `は、` → `wa,` and `へ。` → `e.`.
+- Extended kana from loanwords: ふぁ fa, ふぃ fi, ふぇ fe, ふぉ fo, ふゅ fyu, てぃ ti, でぃ di, とぅ tu, どぅ du, しぇ she, じぇ je, ちぇ che, いぇ ye, うぃ wi, うぇ we, うぉ wo, ゔ vu, and ゔぁ/ゔぃ/ゔぇ/ゔぉ va/vi/ve/vo. ゐ is wi and ゑ is we. A small vowel or ゃゅょゎ that can't combine with the kana before it is read as its own sound (a, i, u, e, o, ya, yu, yo, wa).
+- ゝ repeats the kana before it, and ゞ repeats it voiced (`すゞ` → `suzu`).
+- Small っ before ん, ー, another っ, or at the end is dropped. A ー with no vowel before it (at the start of a word, or after ん or っ) is dropped.
+- Full-width Latin letters and digits pass through unchanged, like other non-kana.
+- A dropped mark is invisible to the next rule. `あっー` is `aa`: っ is dropped, and ー repeats the vowel of あ. `んーあ` is `n'a`: ー is dropped, so ん comes before a vowel.
+- ゝ repeats the whole sound before it as written (`ぶゝ` → `bubu`, `きゃゝ` → `kyakya`). ゞ repeats it voiced when a voiced form exists, and as written otherwise (`あゞ` → `aa`). Either mark at the start of a word is dropped.
+- Small katakana ヵ and ヶ (and their hiragana ゕ ゖ) read as `ka` and `ke`. No kana from the tables survives into the romaji. Rare marks outside them (ヷ–ヺ, ゟ, ヿ, ゠, ゛ ゜) pass through as written.
+- `…`, `～`, `〜`, `『`, `』` and `・` also count as attached punctuation for the particle rule. They pass through unchanged.
+- ASCII punctuation counts as attached punctuation for the particle rule (`は!` → `wa!`). Katakana ハ or ヘ standing alone becomes hiragana first, so it reads `wa` or `e`.
+
 **Reading checks.** The hard check is a character-set test. The kana-kept comparison turns katakana into hiragana by code point, then builds a pattern from the original where each kanji run matches one or more hiragana.
 
 **Logging** writes one line per request: status, code, line and character counts, duration, and token usage. It never logs the lyrics, the reply, headers, or the key.

@@ -118,7 +118,7 @@ def test_ac42_get_on_versions_route_is_method_not_allowed(client: TestClient) ->
     assert set(response.json()) <= ERROR_SHAPE_KEYS
 
 
-def test_body_over_64kb_is_input_too_large_before_parsing(
+def test_ac44_body_over_64kb_is_input_too_large_before_parsing(
     client: TestClient, fake_claude_client: FakeClaudeClient
 ) -> None:
     # Spec amendment: a body over 64 KB is refused before parsing. This body is
@@ -134,7 +134,7 @@ def test_body_over_64kb_is_input_too_large_before_parsing(
     assert fake_claude_client.messages.calls == []
 
 
-def test_body_just_under_64kb_still_gets_the_normal_error(client: TestClient) -> None:
+def test_ac44_body_just_under_64kb_still_gets_the_normal_error(client: TestClient) -> None:
     # Spec amendment: the cap only catches oversized bodies; a smaller broken body is parsed.
     body_under_the_cap = b"{" + b" " * 60_000
 
@@ -146,7 +146,7 @@ def test_body_just_under_64kb_still_gets_the_normal_error(client: TestClient) ->
     assert_error_shape(response.json(), "invalid_request")
 
 
-def test_chunked_body_over_64kb_without_content_length_is_input_too_large(
+def test_ac44_chunked_body_over_64kb_without_content_length_is_input_too_large(
     client: TestClient, fake_claude_client: FakeClaudeClient
 ) -> None:
     # Spec amendment: the cap counts the bytes read, so a body with no Content-Length is capped.
@@ -198,7 +198,7 @@ def send_raw_request(app: FastAPI, headers: list[tuple[bytes, bytes]], chunks: l
     return status
 
 
-def test_body_over_64kb_with_a_false_small_content_length_is_input_too_large(
+def test_ac44_body_over_64kb_with_a_false_small_content_length_is_input_too_large(
     app: FastAPI, fake_claude_client: FakeClaudeClient
 ) -> None:
     # Spec amendment: a lying Content-Length cannot get a large body past the cap.
@@ -219,7 +219,7 @@ def test_body_over_64kb_with_a_false_small_content_length_is_input_too_large(
     ("raised_status", "expected_status", "expected_code"),
     [(418, 400, "invalid_request"), (503, 500, "internal_error")],
 )
-def test_ac32_other_http_exceptions_map_to_the_error_shape_without_their_detail(
+def test_ac44_other_http_exceptions_map_to_the_error_shape_without_their_detail(
     app: FastAPI,
     client: TestClient,
     raised_status: int,
