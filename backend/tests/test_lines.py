@@ -1,7 +1,13 @@
 """Tests for splitting the paste into lines, the size limits, and Japanese detection."""
 
 import pytest
-from pastes import LIMIT_DETAILS, japanese_line, paste_of_characters, paste_of_lines
+from pastes import (
+    LIMIT_DETAILS,
+    LIMIT_MESSAGE,
+    japanese_line,
+    paste_of_characters,
+    paste_of_lines,
+)
 
 from lyrx.errors import ApiError
 from lyrx.lines import check_limits, has_japanese, split_lines
@@ -154,11 +160,45 @@ def test_ac7_a_blank_line_inside_the_text_counts_toward_the_limit() -> None:
     assert_refused(paste, "input_too_large")
 
 
-def test_ac7_limit_details_hold_only_the_two_limits() -> None:
+def test_ac45_limit_details_hold_only_the_three_limits() -> None:
     error = assert_refused(paste_of_lines(201), "input_too_large")
 
     assert error.details is not None
-    assert set(error.details) == {"maxCharacters", "maxLines"}
+    assert set(error.details) == {"maxCharacters", "maxLines", "maxLineCharacters"}
+
+
+# Line length limit (AC-45)
+
+
+def test_ac45_line_of_exactly_200_characters_is_within_limits() -> None:
+    assert_within_limits(japanese_line(200))
+
+
+def test_ac45_line_of_201_characters_is_input_too_large() -> None:
+    error = assert_refused(japanese_line(201), "input_too_large")
+
+    assert error.status == 413
+    assert error.details == LIMIT_DETAILS
+
+
+def test_ac45_one_long_line_among_short_ones_is_input_too_large() -> None:
+    paste = paste_of_lines(10) + "\n" + japanese_line(201) + "\n" + paste_of_lines(10)
+
+    assert_refused(paste, "input_too_large")
+
+
+def test_ac45_line_length_is_measured_after_trailing_whitespace_is_removed() -> None:
+    assert_within_limits(japanese_line(200) + "   \t")
+
+
+def test_ac45_leading_whitespace_counts_toward_the_line_length() -> None:
+    assert_refused("  " + japanese_line(199), "input_too_large")
+
+
+def test_ac45_message_names_all_three_limits() -> None:
+    error = assert_refused(japanese_line(201), "input_too_large")
+
+    assert error.message == LIMIT_MESSAGE
 
 
 # Japanese detection (AC-8)

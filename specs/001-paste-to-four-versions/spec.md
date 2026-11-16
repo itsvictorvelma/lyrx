@@ -262,6 +262,9 @@ All tests use invented lyrics. Server tests replace the Claude client with a fak
 
 - AC-43: A "Japanese character" also includes the kana iteration marks `ゝ` `ゞ` `ヽ` `ヾ`, `〆`, CJK Extension A (U+3400–4DBF), and CJK Compatibility Ideographs (U+F900–FAFF). A line with any of them counts as Japanese.
 - AC-44: The server refuses a request body over 64 KB with `413` `input_too_large` before parsing it, whether or not `Content-Length` is present or truthful. This follows the AGENTS.md rule that size limits run before anything reads the input. Any other client error FastAPI raises maps to `400` `invalid_request`, and any other server error to `500` `internal_error`, with no detail text.
+- AC-45 (approved by the user): A line over 200 characters is refused with `413` `input_too_large`, and Claude is not called. The error `details` become `{ "maxCharacters": 5000, "maxLines": 200, "maxLineCharacters": 200 }`, and the message becomes "The lyrics are too long. The limit is 5,000 characters, 200 lines, and 200 characters per line." That same text is used on the page.
+- AC-46 (approved by the user): A reading longer than 6 times its original line is a hard failure, `model_output_invalid`. It is checked before the kana-kept comparison, so checking a reply always takes bounded time.
+- AC-47 (coordinator decision, flagged to the user): An empty reading for a Japanese line is a hard failure, `model_output_invalid`, the same as an empty English line (rule 7).
 
 ## Open questions
 

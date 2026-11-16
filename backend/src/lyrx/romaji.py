@@ -9,6 +9,8 @@ marks ゝ and ゞ, small っ, the long mark ー, and ん. A word that is exactly
 
 import string
 
+from lyrx.kana import to_hiragana
+
 # One kana chart row per line.
 BASIC_SOUNDS = {
     "あ": "a", "い": "i", "う": "u", "え": "e", "お": "o",
@@ -97,18 +99,10 @@ LONG_MARK = "ー"
 ITERATION_MARK = "ゝ"
 VOICED_ITERATION_MARK = "ゞ"
 
-# Each katakana sits 0x60 code points above its hiragana (ア U+30A2, あ U+3042).
-KATAKANA_TO_HIRAGANA_OFFSET = 0x60
-KATAKANA_WITH_HIRAGANA = [
-    *range(ord("ァ"), ord("ヶ") + 1),
-    *range(ord("ヽ"), ord("ヾ") + 1),
-]
-KATAKANA_TO_HIRAGANA = {code: code - KATAKANA_TO_HIRAGANA_OFFSET for code in KATAKANA_WITH_HIRAGANA}
-
 
 def to_romaji(text: str) -> str:
     """Spells a line of hiragana (or katakana) as romaji, keeping its spacing."""
-    hiragana = text.translate(KATAKANA_TO_HIRAGANA).replace(FULL_WIDTH_SPACE, " ")
+    hiragana = to_hiragana(text).replace(FULL_WIDTH_SPACE, " ")
     return " ".join(spell_word(word) for word in hiragana.split(" "))
 
 

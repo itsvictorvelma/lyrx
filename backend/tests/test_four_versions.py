@@ -4,7 +4,13 @@ import pytest
 from error_shape import assert_error_shape
 from fake_claude import FakeClaudeClient
 from fastapi.testclient import TestClient
-from pastes import LIMIT_DETAILS, paste_of_characters, paste_of_lines
+from pastes import (
+    LIMIT_DETAILS,
+    LIMIT_MESSAGE,
+    japanese_line,
+    paste_of_characters,
+    paste_of_lines,
+)
 
 from lyrx.app import VERSIONS_PATH
 
@@ -105,6 +111,28 @@ def test_ac7_paste_of_201_lines_is_input_too_large_and_claude_is_not_called(
 @pytest.mark.usefixtures("without_api_key")
 def test_ac7_paste_of_exactly_200_lines_passes_the_limits(client: TestClient) -> None:
     assert_passed_the_limits(client, paste_of_lines(200))
+
+
+# Line length limit (AC-45)
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac45_line_of_201_characters_is_input_too_large_and_claude_is_not_called(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    status, body = post_lyrics(client, "夜の月\n" + japanese_line(201))
+
+    assert status == 413
+    assert_error_shape(body, "input_too_large")
+    assert isinstance(body, dict)
+    assert body["details"] == LIMIT_DETAILS
+    assert body["message"] == LIMIT_MESSAGE
+    assert fake_claude_client.messages.calls == []
+
+
+@pytest.mark.usefixtures("without_api_key")
+def test_ac45_line_of_exactly_200_characters_passes_the_limits(client: TestClient) -> None:
+    assert_passed_the_limits(client, japanese_line(200))
 
 
 @pytest.mark.usefixtures("without_api_key")

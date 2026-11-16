@@ -22,6 +22,7 @@
 | `src/lyrx/errors.py` | new | `ApiError` and the table of error codes → HTTP status and message |
 | `src/lyrx/schemas.py` | new | Pydantic shapes: request body, response line, Claude's reply |
 | `src/lyrx/app.py` | new | `create_app()`: Host check, error handlers, `POST /api/versions` (AC-9, 30, 32) |
+| `src/lyrx/kana.py` | new | Which characters are kana and kanji, and katakana → hiragana. Shared by `lines`, `romaji`, `readings` |
 | `src/lyrx/lines.py` | new | Split the paste, check size limits, detect Japanese (AC-1, 5–8) |
 | `src/lyrx/prompt.py` | new | The system prompt and the user-message builder, as readable text (AC-11, 12) |
 | `src/lyrx/claude.py` | new | The one Claude call and the checks on its reply (AC-10, 13–16, 20, 21) |
@@ -78,7 +79,10 @@
 - `…`, `～`, `〜`, `『`, `』` and `・` also count as attached punctuation for the particle rule. They pass through unchanged.
 - ASCII punctuation counts as attached punctuation for the particle rule (`は!` → `wa!`). Katakana ハ or ヘ standing alone becomes hiragana first, so it reads `wa` or `e`.
 
-**Reading checks.** The hard check is a character-set test. The kana-kept comparison turns katakana into hiragana by code point, then builds a pattern from the original where each kanji run matches one or more hiragana.
+**Reading checks.** `readings.py` has three public functions:
+- `tidy_reading(reading)` runs first in the pipeline. It normalizes to NFC, trims leading and trailing ASCII spaces, and collapses runs of ASCII spaces to one. It changes nothing else, so a tab or a full-width space is still caught by the hard check.
+- `reading_is_allowed(original, reading)` is the hard check (rule 5). The only whitespace allowed is a single ASCII space between words; any other whitespace is refused even if the original has it. Hiragana includes ゝ and ゞ. As the spec says, a character from the original line (Latin, digits, punctuation, even katakana or kanji) passes this check, but rule 6 then flags a katakana or kanji left in the reading.
+- `reading_keeps_kana(original, reading)` is the warning (rule 6). It removes whitespace and turns katakana into hiragana, then walks the original as tokens: each kanji run (using `kana.is_kanji`, 々 included) and each other character. It checks the reading with a small dynamic-programming matcher over (token, reading position). The cost is tokens × reading length, which is quadratic, with no regex and no exponential backtracking. It stays bounded because a line is at most 200 characters (AC-45) and `reading_is_allowed` refuses a reading longer than 6× its line (AC-46) before this runs. Kana in the original, including ゝ and ゞ, must appear in the reading exactly as written. A kanji run must match one or more characters from hiragana and ー, and the first must be a hiragana letter.
 
 **Logging** writes one line per request: status, code, line and character counts, duration, and token usage. It never logs the lyrics, the reply, headers, or the key.
 

@@ -22,8 +22,8 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "no_japanese": (400, "No Japanese text found. Paste Japanese lyrics."),
     "input_too_large": (
         413,
-        f"The lyrics are too long. The limit is {config.MAX_CHARACTERS:,} characters"
-        f" and {config.MAX_LINES} lines.",
+        f"The lyrics are too long. The limit is {config.MAX_CHARACTERS:,} characters,"
+        f" {config.MAX_LINES} lines, and {config.MAX_LINE_CHARACTERS} characters per line.",
     ),
     "host_not_allowed": (403, "This server only answers on 127.0.0.1 or localhost."),
     "not_found": (404, "There is nothing at this address."),
@@ -35,7 +35,11 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
 
 def size_limit_details() -> dict[str, Any]:
     """The `details` of every `input_too_large` error: the paste limits."""
-    return {"maxCharacters": config.MAX_CHARACTERS, "maxLines": config.MAX_LINES}
+    return {
+        "maxCharacters": config.MAX_CHARACTERS,
+        "maxLines": config.MAX_LINES,
+        "maxLineCharacters": config.MAX_LINE_CHARACTERS,
+    }
 
 
 class ApiError(Exception):

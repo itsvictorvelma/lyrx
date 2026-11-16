@@ -1,6 +1,10 @@
 """Invented Japanese pastes of an exact size, for the size-limit tests. No real lyrics."""
 
-LIMIT_DETAILS = {"maxCharacters": 5000, "maxLines": 200}
+LIMIT_DETAILS = {"maxCharacters": 5000, "maxLines": 200, "maxLineCharacters": 200}
+LIMIT_MESSAGE = (
+    "The lyrics are too long. The limit is 5,000 characters, 200 lines,"
+    " and 200 characters per line."
+)
 FILLER = "ほしのよるに"
 FILLER_LINE_LENGTH = 49
 FILLER_LINE_COUNT = 99
