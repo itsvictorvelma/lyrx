@@ -1,4 +1,4 @@
-"""Data shapes for the API: the request body and the error response."""
+"""Data shapes: the request body, the error response, and Claude's reply."""
 
 from typing import Any
 
@@ -19,3 +19,21 @@ class ErrorResponse(BaseModel):
     code: str
     message: str
     details: dict[str, Any] | None = None
+
+
+class ReplyLine(BaseModel):
+    """One line of Claude's reply. Strict: no coercion and no extra fields."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    index: int
+    reading: str
+    english: str
+
+
+class ClaudeReply(BaseModel):
+    """Claude's whole reply: one entry per sent line. Strict: no coercion and no extra fields."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    lines: list[ReplyLine]

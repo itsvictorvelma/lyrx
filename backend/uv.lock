@@ -474,6 +474,7 @@ source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "uvicorn" },
 ]
 
@@ -489,6 +490,7 @@ dev = [
 requires-dist = [
     { name = "anthropic", specifier = ">=2.9.0" },
     { name = "fastapi", specifier = ">=0.163.1" },
+    { name = "httpx2", specifier = "==2.16.2" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 

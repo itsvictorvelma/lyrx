@@ -39,7 +39,10 @@ def is_allowed_character(character: str, original: str) -> bool:
 
 
 def has_allowed_length(original: str, reading: str) -> bool:
-    """Not empty for a non-empty line (AC-47), and at most 6 times the line's length (AC-46)."""
+    """Not empty for a non-empty line (AC-47), and not over the length cap (AC-46).
+
+    The cap is `config.MAX_READING_LENGTH_FACTOR` times the line's length.
+    """
     if original and not reading:
         return False
     return len(reading) <= config.MAX_READING_LENGTH_FACTOR * len(original)

@@ -61,7 +61,7 @@
 - Streaming keeps a 200-line paste from hitting HTTP timeouts. Thinking is always on for this model and is not configured. Effort `medium` is the model's default, set explicitly.
 - The client is made with `timeout=120` and the SDK's default transport retries.
 - Reply checks, in order: `stop_reason` refusal, then `max_tokens`; `json.loads` and Pydantic validation; exact indexes; non-empty English.
-- SDK errors are caught specific-first (`APIStatusError`, then `APIConnectionError`, which includes timeouts) → `model_unavailable`.
+- SDK errors are caught specific-first (`APIStatusError`, then `APIConnectionError`, which includes timeouts) → `model_unavailable`. So are raw `httpx2.TransportError`s, which the SDK lets through when a streamed reply breaks or times out after the headers arrive. `httpx2` (the SDK's own HTTP library) is a direct runtime dependency, approved by the user.
 
 **Romaji** is a hand-written kana table plus three rules: small っ, ん, and ー. It uses no library. It works word by word, so the は/へ particle rule is a whole-word match.
 

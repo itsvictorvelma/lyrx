@@ -12,6 +12,10 @@ ErrorCode = Literal[
     "host_not_allowed",
     "not_found",
     "method_not_allowed",
+    "model_refused",
+    "model_output_truncated",
+    "model_output_invalid",
+    "model_unavailable",
     "server_not_configured",
     "internal_error",
 ]
@@ -28,6 +32,10 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "host_not_allowed": (403, "This server only answers on 127.0.0.1 or localhost."),
     "not_found": (404, "There is nothing at this address."),
     "method_not_allowed": (405, "This address does not accept that method."),
+    "model_refused": (502, "Claude declined these lyrics. No result was made."),
+    "model_output_truncated": (502, "The reply was cut off. Try a shorter part of the song."),
+    "model_output_invalid": (502, "Claude's reply did not pass the checks. No result was made."),
+    "model_unavailable": (503, "Claude could not be reached. Try again."),
     "server_not_configured": (503, "The server has no Claude API key."),
     "internal_error": (500, "Something went wrong on the server."),
 }
