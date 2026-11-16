@@ -1,0 +1,27 @@
+/* Base page styles: readable text, a Japanese font stack, and a visible focus outline. */
+:root {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    "Hiragino Sans",
+    "Noto Sans JP",
+    "Yu Gothic",
+    sans-serif;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+:focus-visible {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
