@@ -26,8 +26,11 @@ Use Bash only for read-only commands: `git diff`, `git status`, the test command
    - All four versions have the same line count and order.
    - Romaji is derived from the hiragana.
    - Invalid model output creates nothing and is reported clearly.
-4. **Clarity**
-   - Minimal code with plain names.
+4. **Clarity and structure** (the `Code structure` section of `AGENTS.md`)
+   - Would someone new to the repo understand each file from its name and its first line?
+   - One job per file, no `utils`/`helpers`, short single-purpose functions, names without guessed abbreviations.
+   - Settings only in `config.py`; data shapes only in `schemas.py` / `types.ts`.
+   - `scripts/check.sh` passes (format, lint, types, tests, build).
    - Only files `plan.md` lists. No new dependency without approval.
 
 ## Report back
