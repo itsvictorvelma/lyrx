@@ -11,20 +11,23 @@ The source of truth. Code exists only because an approved spec here says so.
 5. The agent loop builds it (see `AGENTS.md`), the explainer writes a walkthrough, then a PR is opened.
 6. After the user merges the PR, set `Status: done`.
 
+Status values: `draft` → `approved` → `done`. When the user drops a spec, its status becomes `shelved`; the file stays as history.
+
 ## Index
 
 | # | Spec | Status |
 |---|---|---|
 | 001 | Paste lyrics, get four versions: Original, Hiragana, Romaji, English (also sets the stack) | done |
-| 002 | Lyrics from a link | approved |
-| 003 | Reading page: the four versions side by side, hide/show, hover | not started |
-| 004 | Song library: save and reopen songs | not started |
-| 005 | MP3 player: attach one track to a song | not started |
-| 006 | Hosting for invited users: login, spending limits, deployment (after the app is built) | not started |
+| 002 | Lyrics from a link | shelved |
+| 003 | Song search: type a name, get the four versions (LRCLIB, local readings, Gemini English) | draft |
+| 004 | Song library | not started |
+| 005 | Audio player: YouTube embed with line highlighting (MP3 upload optional) | not started |
+| 006 | Hosting for invited users | not started |
+| 007 | Compact reading layout | draft |
 
 ## Open questions for later specs
 
-From the Impeccable critique of the spec 001 page (2026-11-16). The user chose to carry these to spec 003:
+From the Impeccable critique of the spec 001 page (2026-11-16). The user first chose to carry these to spec 003. They now feed spec 007 (compact reading layout):
 
 - Is the reading page for reading or for studying? A study mode could hide a row (for example the English) so the learner can test themselves.
 - Should the paste form collapse once a result exists, so the song fills the screen?

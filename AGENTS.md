@@ -6,7 +6,7 @@ The rules every human and agent follows in this repo. When a request conflicts w
 
 ## What Lyrx is
 
-A local app for learning a Japanese song. The learner drops in the lyrics (pasted text) or a link to the song. Lyrx asks Claude to turn it into four versions, line by line:
+A local app for learning a Japanese song. The learner types the song's name (or pastes the lyrics), and Lyrx turns it into four versions, line by line:
 
 1. **Original** (Japanese as written)
 2. **Hiragana** (the reading)
@@ -20,9 +20,9 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
 ## Locked decisions
 
 - **Local for now.** The app runs on the learner's own computer on `127.0.0.1`, with no accounts or login. Hosting it for a small invited group (the user, family, friends) is planned as its own spec once the app is built; that spec adds access control, spending limits, and deployment, and turns the listen address and allowed host names into settings.
-- **One model provider: the Claude API**, called from the server only. The API key comes from the environment (`ANTHROPIC_API_KEY` in a gitignored `.env`). The browser never sees it.
+- **No paid AI or API services** (decided 2026-11-17). Lyrics come from LRCLIB (free, no key). Hiragana comes from a local analyzer (fugashi with a small UniDic dictionary). English comes from the Gemini API free tier only, translated once per song. All outside calls are made from the server only. The Gemini key comes from the environment (in a gitignored `.env`), and the browser never sees it.
 - **No chat.** The learner gives lyrics or a link; Lyrx returns the four versions. There is no conversation with the model in the UI.
-- **Stack (spec 001):** Python server in `backend/` (FastAPI, uvicorn, uv, pytest) and a React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). Model `claude-opus-5-5` through the official `anthropic` SDK. `scripts/check.sh` runs every check.
+- **Stack (spec 001):** Python server in `backend/` (FastAPI, uvicorn, uv, pytest) and a React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). `scripts/check.sh` runs every check. Outside services (LRCLIB, Gemini) are set by spec 003.
 - **Never push to `main`.** Every change is a PR the user reviews and merges.
 
 ## Spec-driven development
@@ -35,7 +35,7 @@ No code exists without an approved spec. Specs live in `specs/NNN-name/`, copied
 | `plan.md` | How: files touched, approach, side effects | coordinator | Explained to the user before any code |
 | `tasks.md` | Ordered checklist; each task cites its AC | coordinator | — |
 
-Status values: `draft` → `approved` → `done`. Only the user sets `approved`. `specs/README.md` is the index.
+Status values: `draft` → `approved` → `done`, or `shelved` when the user drops a spec. Only the user sets `approved`. `specs/README.md` is the index.
 
 ## Agentic loop
 
@@ -67,7 +67,7 @@ Limits:
 ## Security rules (non-negotiable)
 
 ### Secrets
-- The Claude API key lives only in the environment or a gitignored `.env`. Never hardcode, commit, log, print, or send it to the browser.
+- API keys (Gemini) live only in the environment or a gitignored `.env`. Never hardcode, commit, log, print, or send it to the browser.
 - Never weaken `.gitignore` for `.env*`, `*.mp3`, databases, or `.claude/settings.local.json`.
 
 ### Untrusted input
@@ -84,7 +84,7 @@ Limits:
 
 ### Lyrics and tests
 - Song lyrics are copyrighted. Never commit real lyrics: tests, fixtures, specs, and docs use invented lines.
-- Default tests never call the Claude API or the network. Model and fetch calls are replaced with fakes.
+- Default tests never call Gemini, LRCLIB, or the network. Model and fetch calls are replaced with fakes.
 
 ### Before every commit
 - Run `git status` and `git diff --cached`.

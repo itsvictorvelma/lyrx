@@ -1,6 +1,8 @@
 # 002 — Lyrics from a link
 
-Status: approved
+Status: shelved
+
+> Shelved on 2026-11-17 by the user. Lyrics now come from LRCLIB by song name (spec 003). The paste cleanup amendment (AC-58 to AC-73) moved to spec 003, where it is AC-23 to AC-37.
 
 ## Goal
 
