@@ -1,6 +1,6 @@
 # 002 — Lyrics from a link
 
-Status: draft
+Status: approved
 
 ## Goal
 
@@ -206,7 +206,7 @@ Every check here is a hard check. If one fails, the request fails, and no readin
 2. `stop_reason == "max_tokens"` fails with `502 model_output_truncated`.
 3. The reply must parse and match the schema exactly. Otherwise `502 model_output_invalid`. That means an object with only `lyricLines`, holding an array of integers. Booleans, floats, and numeric strings are not integers.
 4. Every number must be the number of a candidate (0 to candidates − 1). Otherwise `model_output_invalid`.
-5. The numbers must be strictly ascending, which also means each appears once. A repeated or out-of-order number fails with `model_output_invalid`. The reply is refused, not sorted, as spec 001 refuses out-of-order indexes.
+5. Repeated numbers are removed and the rest are sorted ascending (user decision). This is harmless because the lyrics are rebuilt from the page's own lines in page order; it saves a failed request and a paid retry for a trivial slip.
 6. An empty list fails with `422 link_no_lyrics`.
 7. A Claude API error, timeout, or connection failure is `503 model_unavailable`, as in spec 001.
 
@@ -275,7 +275,7 @@ Error bodies never contain the link, the host, an IP address, page text, candida
   - **Addresses.** The server resolves the host and checks every address against private, loopback, link-local, multicast, unspecified, shared, and IPv4-mapped forms. The connection goes only to a checked address, so DNS rebinding cannot swap in a private one. Environment proxies are ignored. Every redirect is checked the same way, with at most 5 redirects.
   - **The fetched page.** The content type is checked before the body is read. The body is capped at 2 MiB of decompressed bytes while it streams, and the whole fetch has a 15-second deadline. Both apply before anything decodes or parses it. HTML is read as text by a standard-library parser. No script runs and nothing else is loaded.
   - **Candidate lines.** They are untrusted page text, capped at 400 lines and 16,000 characters before they reach Claude. They are sent inside a delimiter in the user message. The system prompt says they are data and never instructions.
-  - **The selection reply.** It holds numbers only, checked against a strict schema, the candidate range, and strict ascending order. No model text ever becomes lyrics: `lyrics` is built only from the page's own lines.
+  - **The selection reply.** It holds numbers only, checked against a strict schema and the candidate range, then sorted with repeats removed. No model text ever becomes lyrics: `lyrics` is built only from the page's own lines.
   - **Prompt injection.** A page that injects instructions can at worst change which of its own lines are picked. The result is still bounded by the candidate set and spec 001's limits. It then passes spec 001's readings call, which has its own data-not-instructions prompt and reply checks.
   - **Rendering.** The page shows `lyrics` as the text value of the paste box, and the result as spec 001 does, never as HTML.
   - **The route.** It sits behind spec 001's Host check, 64 KB body cap, and crash guard.
@@ -447,11 +447,10 @@ All tests use invented lyrics and invented hosts under `.example`.
   - `{ "lyricLines": [2], "lines": ["君の声が"] }`;
   - `{ "lyricLines": [7] }` when there are 5 candidates;
   - `{ "lyricLines": [-1] }`;
-  - `{ "lyricLines": [2, 2] }`;
-  - `{ "lyricLines": [3, 2] }`;
   - `{ "lyricLines": [1.5] }`;
   - `{ "lyricLines": ["2"] }`;
   - `{ "lyricLines": [true] }`.
+- AC-49b: A selection of `[4, 2, 2, 3]` on the AC-48 page is treated as `[2, 3, 4]`: the lyrics are exactly the page's lines 2, 3 and 4 in page order, and the readings call gets exactly those lines.
 - AC-50: Each of these makes exactly one Claude call and no readings call, and the body holds no exception text:
   - a selection reply with `stop_reason == "refusal"` returns `502 model_refused`;
   - one with `stop_reason == "max_tokens"` returns `502 model_output_truncated`;
@@ -495,9 +494,8 @@ Decided by the user on 2026-11-16.
 
 ## Open questions
 
-These are choices this draft makes on the coordinator's request. The user has not confirmed them yet.
-
-1. **Effort for the selection call.** The draft uses `low`: picking lines is a simple choice, and low is faster and cheaper. `medium` (spec 001's choice) may do better on very messy pages, at more cost and time. Recommendation: `low`. It is one line in `config.py` if real pages show mistakes.
-2. **Out-of-order or repeated numbers.** The draft refuses them with `model_output_invalid`, like spec 001's rule for indexes. That keeps one strict rule: the reply is exactly what was asked, or nothing. Sorting and removing repeats would be harmless here, because the server rebuilds the lyrics in page order anyway. Refusing costs the learner a paid retry for a harmless slip. Recommendation: refuse, for consistency, and revisit if it happens in practice.
-3. **The cost cap: 400 candidate lines and 16,000 characters, and refuse when over.** The alternative to refusing is to send only the first 400 lines or 16,000 characters. That would cut off lyrics placed late on a page full of Japanese comments, without saying so. Recommendation: refuse, as drafted. Check the numbers against a few real pages during the build.
-4. **Lyrics are lost when the readings call fails.** If the selection works but the readings call fails (refusal, timeout, invalid reply), the error shape cannot carry `lyrics`, so the paste box is not filled. Trying again repeats both calls. Returning the lyrics with the error would need a new reply shape. Recommendation: accept this for now, because these failures should be rare.
+None. The user decided the last four on 2026-11-16 and approved the spec:
+- The selection call uses effort `low`.
+- Repeated or out-of-order selection numbers are sorted and de-duplicated, not refused (rule 5, AC-49b).
+- The cost cap is 400 candidate lines and 16,000 characters, refused when over.
+- If the readings call fails after the selection, the paste box is not filled; a retry repeats both calls. Accepted for now.

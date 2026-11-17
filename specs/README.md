@@ -16,7 +16,7 @@ The source of truth. Code exists only because an approved spec here says so.
 | # | Spec | Status |
 |---|---|---|
 | 001 | Paste lyrics, get four versions: Original, Hiragana, Romaji, English (also sets the stack) | done |
-| 002 | Lyrics from a link | draft |
+| 002 | Lyrics from a link | approved |
 | 003 | Reading page: the four versions side by side, hide/show, hover | not started |
 | 004 | Song library: save and reopen songs | not started |
 | 005 | MP3 player: attach one track to a song | not started |
