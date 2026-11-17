@@ -1,16 +1,28 @@
 """Tests for the app shell: the one error shape, the Host check, and errors that leak nothing."""
 
-import asyncio
+import inspect
 import json
+import logging
 
 import pytest
 from error_shape import ERROR_SHAPE_KEYS, assert_error_shape
-from fake_claude import FakeClaudeClient
+from fake_claude import FakeClaudeClient, fake_message
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from raw_asgi import (
+    ALLOWED_HOST_HEADER,
+    JSON_CONTENT_TYPE_HEADER,
+    UVICORN_ERROR_LOGGER,
+    body_messages,
+    response_body,
+    response_status,
+    run_like_uvicorn,
+)
 from starlette.types import Message
 
-from lyrx.app import VERSIONS_PATH
+from lyrx import claude
+from lyrx.app import VERSIONS_PATH, create_app
 
 
 def test_ac9_body_that_is_not_json_is_invalid_request(client: TestClient) -> None:
@@ -164,38 +176,7 @@ def test_ac44_chunked_body_over_64kb_without_content_length_is_input_too_large(
 
 def send_raw_request(app: FastAPI, headers: list[tuple[bytes, bytes]], chunks: list[bytes]) -> int:
     """Call the ASGI app directly with `chunks` as the body; return the response status."""
-    incoming: list[Message] = [
-        {"type": "http.request", "body": chunk, "more_body": index < len(chunks) - 1}
-        for index, chunk in enumerate(chunks)
-    ]
-    sent: list[Message] = []
-
-    async def receive() -> Message:
-        if incoming:
-            return incoming.pop(0)
-        return {"type": "http.disconnect"}
-
-    async def send(message: Message) -> None:
-        sent.append(message)
-
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": "POST",
-        "scheme": "http",
-        "path": VERSIONS_PATH,
-        "raw_path": VERSIONS_PATH.encode(),
-        "query_string": b"",
-        "root_path": "",
-        "headers": headers,
-        "client": ("127.0.0.1", 50000),
-        "server": ("127.0.0.1", 8000),
-    }
-    asyncio.run(app(scope, receive, send))
-    start = next(message for message in sent if message["type"] == "http.response.start")
-    status: int = start["status"]
-    return status
+    return response_status(run_like_uvicorn(app, headers, body_messages(chunks)))
 
 
 def test_ac44_body_over_64kb_with_a_false_small_content_length_is_input_too_large(
@@ -254,3 +235,157 @@ def test_ac30_foreign_host_is_rejected_before_the_body_size_cap(
     assert response.status_code == 403
     assert_error_shape(response.json(), "host_not_allowed")
     assert fake_claude_client.messages.calls == []
+
+
+# The route runs in FastAPI's threadpool (T7 follow-up).
+
+
+def test_ac2_versions_route_is_a_sync_function_so_the_checks_run_off_the_event_loop(
+    app: FastAPI,
+) -> None:
+    """The reading checks are CPU-bound; a sync `def` route keeps them off the event loop."""
+    routes = [
+        route for route in app.routes if isinstance(route, APIRoute) and route.path == VERSIONS_PATH
+    ]
+
+    assert len(routes) == 1
+    assert not inspect.iscoroutinefunction(routes[0].endpoint)
+
+
+# A client that disconnects mid-body never reaches the app (T7 follow-up).
+
+
+def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_claude(
+    app: FastAPI,
+    fake_claude_client: FakeClaudeClient,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The body cap reads the whole body first; a cut-off body never reaches the route."""
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    whole_body = json.dumps({"lyrics": "夜の月が ひかる"}, ensure_ascii=False).encode()
+    # The first chunk is a complete, valid body, but `more_body` says more is coming; then the
+    # client disconnects.
+    incoming: list[Message] = [{"type": "http.request", "body": whole_body, "more_body": True}]
+
+    run_like_uvicorn(app, [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER], incoming)
+
+    # The route always calls Claude for this paste and always writes its one request line.
+    assert fake_claude_client.messages.calls == []
+    assert [record for record in caplog.records if record.name == REQUEST_LOGGER] == []
+
+
+def test_ac44_client_disconnecting_mid_body_gets_no_response_and_logs_no_traceback(
+    app: FastAPI, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A cut-off body ends quietly: nothing is sent and nothing reaches uvicorn's log."""
+    caplog.set_level(logging.DEBUG)
+    whole_body = json.dumps({"lyrics": "夜の月が ひかる"}, ensure_ascii=False).encode()
+    incoming: list[Message] = [{"type": "http.request", "body": whole_body, "more_body": True}]
+
+    sent = run_like_uvicorn(app, [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER], incoming)
+
+    assert sent == []
+    assert [record for record in caplog.records if record.name == UVICORN_ERROR_LOGGER] == []
+
+
+# The crash guard: no exception escapes the app to uvicorn's traceback log.
+
+REQUEST_LOGGER = "lyrx.request_log"
+CRASH_GUARD_LOGGER = "lyrx.crash_guard"
+CRASH_PATH = "/api/raise-outside-the-pipeline"
+CRASH_SECRETS = ["/Users/someone/lyrx/src/lyrx/app.py", "君の声が 遠く ひびく", "test-key-not-real"]
+
+
+def test_ac32_crash_guard_stops_an_exception_raised_outside_the_pipeline(
+    app: FastAPI, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A 500 in the error shape, no uvicorn traceback, one crash line with just the class name."""
+    caplog.set_level(logging.DEBUG)
+
+    def raise_outside_the_pipeline() -> None:
+        raise RuntimeError(" ".join(CRASH_SECRETS))
+
+    app.add_api_route(CRASH_PATH, raise_outside_the_pipeline, methods=["POST"])
+
+    sent = run_like_uvicorn(app, [ALLOWED_HOST_HEADER], body_messages([b""]), path=CRASH_PATH)
+
+    assert response_status(sent) == 500
+    body = response_body(sent).decode()
+    assert_error_shape(json.loads(body), "internal_error")
+    assert [record for record in caplog.records if record.name == UVICORN_ERROR_LOGGER] == []
+    crash_records = [record for record in caplog.records if record.name == CRASH_GUARD_LOGGER]
+    assert len(crash_records) == 1
+    assert "RuntimeError" in crash_records[0].getMessage()
+    crash_text = logging.Formatter().format(crash_records[0]) + repr(crash_records[0].__dict__)
+    for secret in CRASH_SECRETS:
+        assert secret not in crash_text
+        assert secret not in body
+
+
+# The real SDK client is built only when a request needs it (T7 follow-up).
+
+REAL_CLIENT_TEST_KEY = "test-key-for-make-client"
+REAL_CLIENT_REPLY = '{"lines": [{"index": 0, "reading": "よる", "english": "Night"}]}'
+
+
+@pytest.fixture
+def made_clients(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Replaces `claude.make_client` with one that records the key and returns a fake client."""
+    keys: list[str] = []
+
+    def make_fake_client(api_key: str) -> FakeClaudeClient:
+        keys.append(api_key)
+        fake = FakeClaudeClient()
+        fake.messages.final_message = fake_message(REAL_CLIENT_REPLY)
+        return fake
+
+    monkeypatch.setattr(claude, "make_client", make_fake_client)
+    return keys
+
+
+def test_ac2_without_a_client_create_app_uses_make_client_with_the_api_key(
+    made_clients: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No client is built by `create_app`; the request builds one from the environment's key."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", REAL_CLIENT_TEST_KEY)
+    real_app = create_app()
+    assert made_clients == []
+
+    with TestClient(real_app, base_url="http://127.0.0.1:8000") as test_client:
+        response = test_client.post(VERSIONS_PATH, json={"lyrics": "夜"})
+
+    assert response.status_code == 200
+    assert response.json()["lines"][0]["hiragana"] == "よる"
+    assert made_clients == [REAL_CLIENT_TEST_KEY]
+
+
+@pytest.mark.parametrize(
+    ("lyrics", "api_key", "expected_status", "expected_code"),
+    [
+        ("We sing tonight", REAL_CLIENT_TEST_KEY, 400, "no_japanese"),
+        ("   ", REAL_CLIENT_TEST_KEY, 400, "empty_input"),
+        ("夜", None, 503, "server_not_configured"),
+    ],
+)
+def test_ac22_a_refused_paste_never_builds_the_real_client(
+    made_clients: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    lyrics: str,
+    api_key: str | None,
+    expected_status: int,
+    expected_code: str,
+) -> None:
+    """Every refusal before the call happens before the real client is built."""
+    if api_key is None:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", api_key)
+
+    with TestClient(create_app(), base_url="http://127.0.0.1:8000") as test_client:
+        response = test_client.post(VERSIONS_PATH, json={"lyrics": lyrics})
+
+    assert response.status_code == expected_status
+    assert_error_shape(response.json(), expected_code)
+    assert made_clients == []

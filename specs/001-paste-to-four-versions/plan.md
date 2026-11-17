@@ -19,17 +19,22 @@
 | `src/lyrx/py.typed` | new | Empty marker so mypy type-checks the package when tests import it |
 | `src/lyrx/__main__.py` | new | `uv run python -m lyrx` starts uvicorn on the host and port from `config.py` (AC-31) |
 | `src/lyrx/config.py` | new | Every setting in one place: host, port, model, effort, `max_tokens`, timeout, size limits, and reading the API key |
-| `src/lyrx/errors.py` | new | `ApiError` and the table of error codes → HTTP status and message |
-| `src/lyrx/schemas.py` | new | Pydantic shapes: request body, response line, Claude's reply |
-| `src/lyrx/app.py` | new | `create_app()`: Host check, error handlers, `POST /api/versions` (AC-9, 30, 32) |
+| `src/lyrx/errors.py` | new | `ApiError`, the table of error codes → HTTP status and message, and `error_response` (the one error shape as a JSON response) |
+| `src/lyrx/schemas.py` | new | Pydantic shapes: request body, response line, Claude's reply. Internal frozen dataclasses: `Paste` (NFC text and its lines), `TokenUsage`, and `ClaudeReadings` (the checked reply lines with the token counts) |
+| `src/lyrx/app.py` | new | `create_app()`: stacks the ASGI layers, error handlers, `POST /api/versions` (AC-9, 30, 32) |
+| `src/lyrx/host_check.py` | new | Plain ASGI layer refusing any `Host` but `127.0.0.1` or `localhost` (AC-30) |
+| `src/lyrx/body_limit.py` | new | Plain ASGI layer refusing a body over 64 KB before parsing; a cut-off body never reaches the app (AC-44) |
+| `src/lyrx/crash_guard.py` | new | Outermost ASGI layer: no exception escapes to uvicorn; answers `internal_error`, logs only the class name (AC-32, 33) |
+| `src/lyrx/request_log.py` | new | `logged_request`, the context manager the route wraps the pipeline in: times it, writes the one `name=value` log line per `POST /api/versions`, and turns an unexpected exception into `internal_error` (AC-32, 33) |
 | `src/lyrx/kana.py` | new | Which characters are kana and kanji, and katakana → hiragana. Shared by `lines`, `romaji`, `readings` |
-| `src/lyrx/lines.py` | new | Split the paste, check size limits, detect Japanese (AC-1, 5–8) |
+| `src/lyrx/lines.py` | new | Read the paste (NFC, then split), check size limits, detect Japanese (AC-1, 5–8) |
 | `src/lyrx/prompt.py` | new | The system prompt and the user-message builder, as readable text (AC-11, 12) |
 | `src/lyrx/claude.py` | new | The one Claude call and the checks on its reply (AC-10, 13–16, 20, 21) |
 | `src/lyrx/readings.py` | new | Hiragana-only hard check and kana-kept comparison (AC-17–19) |
 | `src/lyrx/romaji.py` | new | One pure `to_romaji(hiragana)` (AC-23–28) |
 | `src/lyrx/four_versions.py` | new | The pipeline: split → limits → key → call → checks → four versions (AC-2–4, 18, 22, 29, 33) |
 | `tests/conftest.py` | new | The fake Claude client and a test-app fixture |
+| `tests/raw_asgi.py` | new | Calls the ASGI app directly with a scripted `receive`, as uvicorn does, and logs an escaping exception to `uvicorn.error` |
 | `tests/test_<module>.py` | new | One test file per module above |
 
 ### Frontend — `frontend/`
@@ -85,6 +90,12 @@
 - `reading_keeps_kana(original, reading)` is the warning (rule 6). It removes whitespace and turns katakana into hiragana, then walks the original as tokens: each kanji run (using `kana.is_kanji`, 々 included) and each other character. It checks the reading with a small dynamic-programming matcher over (token, reading position). The cost is tokens × reading length, which is quadratic, with no regex and no exponential backtracking. It stays bounded because a line is at most 200 characters (AC-45) and `reading_is_allowed` refuses a reading longer than 6× its line (AC-46) before this runs. Kana in the original, including ゝ and ゞ, must appear in the reading exactly as written. A kanji run must match one or more characters from hiragana and ー, and the first must be a hiragana letter.
 
 **Logging** writes one line per request: status, code, line and character counts, duration, and token usage. It never logs the lyrics, the reply, headers, or the key.
+
+**T7 decisions** (coordinator; the spec leaves them open):
+- The paste is normalized to NFC as it enters the pipeline, before splitting, so `original` is the NFC line as split. Composed and decomposed kana look the same on the page.
+- The one log line goes to the `lyrx` logger as `name=value` fields: `status`, `code` (errors only), `lines`, `characters`, `duration_ms`, `input_tokens`/`output_tokens` on success, and `exception=<ClassName>` on `internal_error` only (the class name, never the message). It covers `POST /api/versions` only. Host refusals, 404, 405 and `invalid_request` are not logged.
+- No exception may escape the app, since uvicorn would log its traceback and message. An outermost ASGI layer turns any unexpected exception into the `internal_error` response (if nothing has been sent yet) and logs only the exception's class name.
+- The Host check becomes a plain ASGI middleware like the body-size limit, so a client that disconnects mid-body gets no response and causes no error or traceback.
 
 **Page.** `App` holds one state: idle, waiting, result, or error. `PasteForm` and `FourVersions` are presentational. Requests use `fetch` with no router and no state library. All text renders as React children. CSS is neutral with a Japanese font stack and a visible focus outline, and no invented colors.
 

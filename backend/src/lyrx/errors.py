@@ -1,8 +1,12 @@
-"""The API error and the table of error codes with their HTTP status and message."""
+"""The API error, the table of error codes with their HTTP status and message, and its response."""
 
+from collections.abc import Mapping
 from typing import Any, Literal
 
+from fastapi.responses import JSONResponse
+
 from lyrx import config
+from lyrx.schemas import ErrorResponse
 
 ErrorCode = Literal[
     "invalid_request",
@@ -58,3 +62,11 @@ class ApiError(Exception):
         self.code = code
         self.status, self.message = ERROR_TABLE[code]
         self.details = details
+
+
+def error_response(error: ApiError, headers: Mapping[str, str] | None = None) -> JSONResponse:
+    """The one error shape: `code`, `message`, and `details` only when there are any."""
+    body = ErrorResponse(code=error.code, message=error.message, details=error.details)
+    return JSONResponse(
+        status_code=error.status, content=body.model_dump(exclude_none=True), headers=headers
+    )

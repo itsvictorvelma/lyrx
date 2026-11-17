@@ -14,7 +14,7 @@ from lyrx import config
 from lyrx.errors import ApiError
 from lyrx.lines import has_japanese
 from lyrx.prompt import SYSTEM_PROMPT, build_user_message
-from lyrx.schemas import ClaudeReply, ReplyLine
+from lyrx.schemas import ClaudeReadings, ClaudeReply, TokenUsage
 
 NumberedLines = Sequence[tuple[int, str]]
 
@@ -85,14 +85,17 @@ def make_client(api_key: str) -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key, timeout=config.REQUEST_TIMEOUT_SECONDS)
 
 
-def request_readings(client: ClaudeClient, lines: NumberedLines) -> list[ReplyLine]:
+def request_readings(client: ClaudeClient, lines: NumberedLines) -> ClaudeReadings:
     """Sends the lines in one call and returns the checked reply, one entry per sent line."""
     message = send_request(client, lines)
     check_stop_reason(message)
     reply = parse_reply(join_text_blocks(message))
     check_indexes(reply, lines)
     check_english(reply, lines)
-    return reply.lines
+    usage = TokenUsage(
+        input_tokens=message.usage.input_tokens, output_tokens=message.usage.output_tokens
+    )
+    return ClaudeReadings(lines=reply.lines, usage=usage)
 
 
 def send_request(client: ClaudeClient, lines: NumberedLines) -> Message:
@@ -109,9 +112,10 @@ def send_request(client: ClaudeClient, lines: NumberedLines) -> Message:
             },
         ) as stream:
             return stream.get_final_message()
-    except (anthropic.APIStatusError, anthropic.APIConnectionError, httpx2.TransportError):
-        # APIConnectionError includes timeouts. The SDK lets a raw TransportError through
-        # when a streamed reply breaks or times out after the headers arrive.
+    except (anthropic.APIStatusError, anthropic.APIConnectionError, httpx2.RequestError):
+        # APIConnectionError includes timeouts. The SDK lets a raw httpx2 RequestError through
+        # when a streamed reply breaks, times out, or fails to decompress after the headers
+        # arrive; RequestError covers both TransportError and DecodingError.
         raise ApiError("model_unavailable") from None
 
 

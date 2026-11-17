@@ -1,8 +1,11 @@
 """Splits the paste into lines, checks the size limits, and detects Japanese text."""
 
+import unicodedata
+
 from lyrx import config
 from lyrx.errors import ApiError, size_limit_details
 from lyrx.kana import is_kana, is_kanji
+from lyrx.schemas import Paste
 
 
 def normalize_line_endings(paste: str) -> str:
@@ -20,6 +23,12 @@ def split_lines(paste: str) -> list[str]:
     if lines and lines[-1] == "":
         lines.pop()
     return lines
+
+
+def read_paste(lyrics: str) -> Paste:
+    """The paste in NFC, so decomposed kana (か + U+3099) behaves like が, then split into lines."""
+    text = unicodedata.normalize("NFC", lyrics)
+    return Paste(text=text, lines=split_lines(text))
 
 
 def count_characters(paste: str) -> int:

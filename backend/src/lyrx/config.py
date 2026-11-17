@@ -1,5 +1,6 @@
 """Every server setting in one place."""
 
+import logging
 import os
 from typing import Final
 
@@ -15,6 +16,10 @@ MAX_READING_LENGTH_FACTOR = 6
 # Above any valid paste: even 5,000 astral characters JSON-escaped as \uXXXX\uXXXX
 # (12 bytes each) plus the `{"lyrics":""}` wrapper is 60,013 bytes, under 65,536.
 MAX_BODY_BYTES = 64 * 1024
+
+# The lyrx loggers write at this level; other libraries stay at Python's default (warnings).
+LOG_LEVEL = logging.INFO
+LOG_FORMAT = "%(levelname)s:     %(name)s %(message)s"
 
 API_KEY_ENV_VAR = "ANTHROPIC_API_KEY"
 

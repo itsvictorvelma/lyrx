@@ -46,7 +46,7 @@ def call_with_reply(
     lines: list[tuple[int, str]] = NUMBERED_LINES,
 ) -> list[Any]:
     client.messages.final_message = fake_message(text, stop_reason=stop_reason, thinking=thinking)
-    return list(request_readings(client, lines))
+    return request_readings(client, lines).lines
 
 
 def expect_error(
@@ -96,6 +96,8 @@ def sdk_errors() -> list[BaseException]:
         httpx2.ReadTimeout(SECRET_TEXT, request=sdk_request()),
         httpx2.RemoteProtocolError(SECRET_TEXT, request=sdk_request()),
         httpx2.ReadError(SECRET_TEXT, request=sdk_request()),
+        # A corrupt compressed stream: a RequestError that is not a TransportError.
+        httpx2.DecodingError(SECRET_TEXT, request=sdk_request()),
     ]
 
 
@@ -108,6 +110,7 @@ SDK_ERROR_IDS = [
     "raw-read-timeout",
     "raw-remote-protocol",
     "raw-read-error",
+    "raw-decoding-error",
 ]
 
 
@@ -137,7 +140,7 @@ def test_ac10_text_blocks_are_joined_in_order_before_parsing(client: FakeClaudeC
     text = reply_text(VALID_ITEMS)
     middle = len(text) // 2
     client.messages.final_message = fake_message([text[:middle], text[middle:]])
-    readings = list(request_readings(client, NUMBERED_LINES))
+    readings = request_readings(client, NUMBERED_LINES).lines
     assert [line.index for line in readings] == SENT_INDEXES
     assert len(client.messages.calls) == 1
 
