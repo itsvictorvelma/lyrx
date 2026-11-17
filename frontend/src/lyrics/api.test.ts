@@ -106,16 +106,87 @@ describe("getFourVersions result", () => {
     expect(result).toEqual({ kind: "error", code: "no_japanese" });
   });
 
-  test("test_ac38_error_with_details_returns_its_code", async () => {
+  test("test_ac38_ac48_error_with_details_returns_its_code_and_details", async () => {
+    const details = {
+      maxCharacters: 5000,
+      maxLines: 200,
+      maxLineCharacters: 200,
+    };
     fakeFetch.mockResolvedValue(
       jsonResponse(413, {
         code: "input_too_large",
         message: "The lyrics are too long.",
-        details: { maxCharacters: 5000, maxLines: 200, maxLineCharacters: 200 },
+        details,
       }),
     );
 
     const result = await getFourVersions("星の道");
+
+    expect(result).toEqual({ kind: "error", code: "input_too_large", details });
+  });
+
+  test.each([
+    [
+      "maxCharacters",
+      {
+        maxCharacters: 5000,
+        maxLines: 200,
+        maxLineCharacters: 200,
+        limitHit: "maxCharacters",
+        measured: 5002,
+      },
+    ],
+    [
+      "maxLines",
+      {
+        maxCharacters: 5000,
+        maxLines: 200,
+        maxLineCharacters: 200,
+        limitHit: "maxLines",
+        measured: 201,
+      },
+    ],
+    [
+      "maxLineCharacters",
+      {
+        maxCharacters: 5000,
+        maxLines: 200,
+        maxLineCharacters: 200,
+        limitHit: "maxLineCharacters",
+        measured: 2700,
+        lineNumber: 1,
+      },
+    ],
+  ])(
+    "test_ac48_7_input_too_large_passes_on_the_%s_details",
+    async (_limitHit, details) => {
+      fakeFetch.mockResolvedValue(
+        jsonResponse(413, {
+          code: "input_too_large",
+          message: "A server sentence the page builds itself.",
+          details,
+        }),
+      );
+
+      const result = await getFourVersions("ゆめ");
+
+      expect(result).toEqual({
+        kind: "error",
+        code: "input_too_large",
+        details,
+      });
+    },
+  );
+
+  test("test_ac48_error_without_details_has_no_details", async () => {
+    fakeFetch.mockResolvedValue(
+      jsonResponse(413, {
+        code: "input_too_large",
+        message: "The lyrics are too long.",
+      }),
+    );
+
+    const result = await getFourVersions("ゆめ");
 
     expect(result).toEqual({ kind: "error", code: "input_too_large" });
   });

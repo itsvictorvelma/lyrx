@@ -23,7 +23,7 @@
 | `src/lyrx/py.typed` | new | Empty marker so mypy type-checks the package when tests import it |
 | `src/lyrx/__main__.py` | new | `uv run python -m lyrx` starts uvicorn on the host and port from `config.py` (AC-31) |
 | `src/lyrx/config.py` | new | Every setting in one place: host, port, model, effort, `max_tokens`, timeout, size limits, and reading the API key |
-| `src/lyrx/errors.py` | new | `ApiError`, the table of error codes → HTTP status and message, and `error_response` (the one error shape as a JSON response) |
+| `src/lyrx/errors.py` | new | `ApiError`, the table of error codes → HTTP status and message, and `error_response` (the one error shape as a JSON response), and the three AC-48 size-limit errors |
 | `src/lyrx/schemas.py` | new | Pydantic shapes: request body, response line, Claude's reply. Internal frozen dataclasses: `Paste` (NFC text and its lines), `TokenUsage`, and `ClaudeReadings` (the checked reply lines with the token counts) |
 | `src/lyrx/app.py` | new | `create_app()`: stacks the ASGI layers, error handlers, `POST /api/versions` (AC-9, 30, 32) |
 | `src/lyrx/host_check.py` | new | Plain ASGI layer refusing any `Host` but `127.0.0.1` or `localhost` (AC-30) |
@@ -56,8 +56,8 @@
 | `src/App.tsx` | new | Page layout: form above, result or error below; holds the request state |
 | `src/styles.css` | new | Plain readable styles, Japanese font stack, visible focus |
 | `src/lyrics/types.ts` | new | `Line` (matching the server), `PageErrorCode` (the codes with a page message), and `FourVersionsResult` (lines, error, unreachable, or unreadable) |
-| `src/lyrics/api.ts` | new | `getFourVersions(lyrics)`: one POST, returns lines or an error code |
-| `src/lyrics/errorMessages.ts` | new | Error code → message on the page |
+| `src/lyrics/api.ts` | new | `getFourVersions(lyrics)`: one POST; returns lines, or an error code with its `details`, after checking the reply |
+| `src/lyrics/errorMessages.ts` | new | Error code → message on the page; builds the AC-48 size-limit sentence from `details` |
 | `src/lyrics/PasteForm.tsx` | new | Labeled text area, button, waiting status (AC-34–36) |
 | `src/lyrics/FourVersions.tsx` | new | One group per line with the four labeled rows (AC-37, 40, 41) |
 | `src/lyrics/*.test.ts(x)`, `src/App.test.tsx`, `src/styles.test.ts` | new | Tests next to what they test (AC-34–41, and the T9 accessibility checks) |
@@ -111,6 +111,10 @@
 - A reply that arrives but is not the error shape (non-JSON, or no string `code`) shows "Something went wrong. Try again.", as the spec's "any other code" row says. Only a rejected `fetch` shows the server-unreachable message.
 - A reply the page cannot trust is its own result, `unreadable`, and shows the same fallback message. That covers a reply that isn't the error shape, a 200 whose `lines` are not valid `Line`s (including indexes that don't run 0, 1, 2… in order), and a body that fails to read after the response arrived (AGENTS.md: validate at every boundary).
 - T9 (user-approved, from the Impeccable critique): a result shows an `h2` "Four versions (N lines)" above the list, counting blank lines, and focus moves to it on every new result so keyboard and screen-reader users know it worked. On an error (an error reply, unreachable, or unreadable), focus moves to the paste box instead, with the pasted text kept, so the learner fixes it where they left off; otherwise focus is lost when the button disables. The paste box border uses `--color-muted` to meet the WCAG 3:1 non-text contrast rule; no new color.
+
+**T10 decisions** (coordinator; AC-48):
+- The server sentences live in `errors.py` next to the error table, as `too_many_characters_error`, `too_many_lines_error`, and `line_too_long_error`. Each builds an `ApiError` whose optional `message` replaces the table's message. `lines.check_limits` keeps its order and only picks which one to raise. The 64 KB body cap still uses `size_limit_details()` and the table's AC-45 message.
+- The page formats every number with `Intl.NumberFormat("en-US")`, so `12345` reads `12,345` whatever the browser's language. `errorMessageFor(code, details)` checks `details` with small type guards and falls back to the AC-45 message when anything is invalid.
 
 **Quality tools.** `ruff format`, `ruff check`, `mypy --strict`, and `pytest` for the backend. Prettier, ESLint (typescript-eslint, react-hooks), `tsc --noEmit`, Vitest, and `vite build` for the frontend. `scripts/check.sh` runs them all and fails on the first error.
 

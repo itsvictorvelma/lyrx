@@ -1,10 +1,25 @@
 """Invented Japanese pastes of an exact size, for the size-limit tests. No real lyrics."""
 
+# The AC-45 details and message: still what the 64 KB body cap returns (AC-44, AC-48 decision).
 LIMIT_DETAILS = {"maxCharacters": 5000, "maxLines": 200, "maxLineCharacters": 200}
 LIMIT_MESSAGE = (
     "The lyrics are too long. The limit is 5,000 characters, 200 lines,"
     " and 200 characters per line."
 )
+# Every key an AC-48 size refusal may put in `details`.
+LIMIT_DETAIL_KEYS = {*LIMIT_DETAILS, "limitHit", "measured", "lineNumber"}
+
+
+def limit_details(
+    limit_hit: str, measured: int, line_number: int | None = None
+) -> dict[str, object]:
+    """The AC-48 `details` of a paste refused by the size limits: the limits and what was hit."""
+    details: dict[str, object] = {**LIMIT_DETAILS, "limitHit": limit_hit, "measured": measured}
+    if line_number is not None:
+        details["lineNumber"] = line_number
+    return details
+
+
 FILLER = "ほしのよるに"
 FILLER_LINE_LENGTH = 49
 FILLER_LINE_COUNT = 99

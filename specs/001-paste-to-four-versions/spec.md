@@ -266,6 +266,56 @@ All tests use invented lyrics. Server tests replace the Claude client with a fak
 - AC-46 (approved by the user): A reading longer than 6 times its original line is a hard failure, `model_output_invalid`. It is checked before the kana-kept comparison, so checking a reply always takes bounded time.
 - AC-47 (coordinator decision, flagged to the user): An empty reading for a Japanese line is a hard failure, `model_output_invalid`, the same as an empty English line (rule 7).
 
+### Amendment (2026-11-16, approved by the user)
+
+Why: a whole song pasted with its line breaks lost arrives as one long line. AC-45 refuses it with one message that lists all three limits, so the learner cannot tell which one was hit. AC-48 makes the error say exactly what is wrong. The limits themselves do not change. The code stays `input_too_large` with status `413`, and the error shape stays `{code, message, details?}`.
+
+- AC-48 (approved by the user): A paste refused by the size limits says which limit it broke.
+  - **Order.** The limits are checked in the existing order: total characters, then line count, then line length. Only the first limit that fails is reported.
+  - **Details.** `details` keeps `maxCharacters`, `maxLines`, and `maxLineCharacters`, and adds:
+    - `limitHit`: the name of the limit that failed. It is exactly one of `"maxCharacters"`, `"maxLines"`, or `"maxLineCharacters"`.
+    - `measured`: the value the server measured for that limit, as an integer. This is the character count (as the 5,000 limit counts it), the line count (as the 200 limit counts it), or the length of the offending line (trailing whitespace removed, as the 200-per-line limit counts it).
+    - `lineNumber`: only when `limitHit` is `"maxLineCharacters"`. This is the 1-based number of the first line over the limit, counted in the paste as the learner typed it: after line endings become `\n` (step 1), with every line counted, blank ones included, before blank lines are dropped or collapsed.
+    - `details` never holds any text from the paste. It holds only these integers and the limit name.
+  - **Messages.** The server `message` and the page message are the same sentence. Every number is written with a comma every three digits (`5,000`, `2,700`), whatever the browser's language.
+
+    | `limitHit` | Message (`N` = `measured`, `L` = `lineNumber`) |
+    |---|---|
+    | `maxCharacters` | The lyrics are too long: N characters. The limit is 5,000 characters. |
+    | `maxLines` | The lyrics have too many lines: N. The limit is 200 lines. |
+    | `maxLineCharacters` | Line L is too long: N characters. The limit is 200 characters per line. The lyrics may have lost their line breaks. |
+
+    The limit in each sentence is taken from the matching `max…` value in `details`.
+  - **Fallback on the page.** The page builds the message from `details`. In each of these cases it shows the AC-45 message ("The lyrics are too long. The limit is 5,000 characters, 200 lines, and 200 characters per line."):
+    - `details` is missing.
+    - `limitHit` is missing or is not one of the three names.
+    - `measured` or the matching `max…` value is not a positive integer.
+    - `limitHit` is `"maxLineCharacters"` and `lineNumber` is not a positive integer.
+  - This replaces the `input_too_large` row of the page table, and the AC-45 message, whenever `details` carry a valid `limitHit`. Everything else in AC-38 is unchanged.
+
+  Checks (invented lyrics only):
+
+  - AC-48.1 (pytest): A paste of `ゆめ` repeated 2,501 times on one line (5,002 characters) returns `413 input_too_large`. Its `details` are `{ "maxCharacters": 5000, "maxLines": 200, "maxLineCharacters": 200, "limitHit": "maxCharacters", "measured": 5002 }`, with no `lineNumber`. Its message is "The lyrics are too long: 5,002 characters. The limit is 5,000 characters." This paste is also over the line-length limit, so this check also proves the character limit is reported first. The fake is not called.
+  - AC-48.2 (pytest): A paste of 201 lines, each `うた`, returns `413 input_too_large`. `limitHit` is `"maxLines"`, `measured` is `201`, and there is no `lineNumber`. The message is "The lyrics have too many lines: 201. The limit is 200 lines." The fake is not called.
+  - AC-48.3 (pytest): A paste of `ゆめ` repeated 1,350 times on one line (2,700 characters) returns `413 input_too_large`. `limitHit` is `"maxLineCharacters"`, `measured` is `2700`, and `lineNumber` is `1`. The message is "Line 1 is too long: 2,700 characters. The limit is 200 characters per line. The lyrics may have lost their line breaks." The fake is not called.
+  - AC-48.4 (pytest): For the paste `"\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   "`, `lineNumber` is `7` and `measured` is `201`. This line is index 2 after splitting, so the check proves that `lineNumber` counts lines of the paste as typed, that `\r\n` counts as one line break, and that trailing whitespace is not measured.
+  - AC-48.5 (pytest): When two lines are over the line-length limit, `lineNumber` is the number of the first one.
+  - AC-48.6 (pytest): The body of every AC-48 error holds only `code`, `message`, and `details`. `details` holds only the keys listed above, and none of the pasted text appears anywhere in the body.
+  - AC-48.7 (Vitest): For a mocked `413` reply with `code` `input_too_large`, each of the three `details` above shows its exact sentence from the table in the alert region. Examples: "The lyrics are too long: 5,002 characters. The limit is 5,000 characters.", "The lyrics have too many lines: 201. The limit is 200 lines.", and "Line 1 is too long: 2,700 characters. The limit is 200 characters per line. The lyrics may have lost their line breaks." The page also keeps the pasted text and shows no result.
+  - AC-48.8 (Vitest): A `measured` of `12345` is shown as `12,345` even when the test sets the browser language to one that formats numbers differently (for example `de-DE`).
+  - AC-48.9 (Vitest): The page shows the AC-45 message for each of these `input_too_large` replies:
+    - no `details`;
+    - `details` with only the three `max…` keys;
+    - `limitHit` `"bytes"`;
+    - `measured` `"5,002"` (a string);
+    - `measured` `-3`;
+    - `measured` `2.5`;
+    - `limitHit` `"maxLineCharacters"` with no `lineNumber`.
+  - AC-48.10 (Vitest): A `limitHit` or `measured` that holds `<b>x</b>` creates no `b` element, and the page shows the AC-45 message.
+
 ## Open questions
 
-None.
+None. The AC-48 questions were decided by the user on 2026-11-16:
+- The 64 KB body cap (AC-44) keeps today's AC-45 message and the three `max…` details with no `limitHit`, so the page shows the AC-45 message.
+- `lineNumber` counts the lines of the paste as typed, blank lines included.
+- Counts are made on the NFC-normalized text the server checks; a paste with decomposed kana may measure a few characters fewer than another app's counter.

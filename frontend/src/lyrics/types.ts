@@ -22,7 +22,8 @@ export type PageErrorCode =
 
 export type FourVersionsResult =
   | { kind: "lines"; lines: Line[] }
-  | { kind: "error"; code: string }
+  // `details` is unchecked here; `errorMessageFor` validates it before use.
+  | { kind: "error"; code: string; details?: unknown }
   // A reply arrived but was not a shape the page can trust.
   | { kind: "unreadable" }
   | { kind: "unreachable" };

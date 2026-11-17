@@ -21,7 +21,10 @@ function toPageState(result: FourVersionsResult): PageState {
     case "lines":
       return { kind: "result", lines: result.lines };
     case "error":
-      return { kind: "error", message: errorMessageFor(result.code) };
+      return {
+        kind: "error",
+        message: errorMessageFor(result.code, result.details),
+      };
     case "unreadable":
       return { kind: "error", message: FALLBACK_MESSAGE };
     case "unreachable":

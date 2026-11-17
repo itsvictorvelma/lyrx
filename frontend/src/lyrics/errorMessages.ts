@@ -36,6 +36,71 @@ const MESSAGES_BY_CODE = new Map<PageErrorCode, string>([
 // Widened so any code from the server can be looked up; unknown codes get the fallback.
 const MESSAGES_BY_ANY_CODE: ReadonlyMap<string, string> = MESSAGES_BY_CODE;
 
-export function errorMessageFor(code: string): string {
-  return MESSAGES_BY_ANY_CODE.get(code) ?? FALLBACK_MESSAGE;
+// `details` is used only for `input_too_large`; if it is not valid, the table's message is shown.
+export function errorMessageFor(code: string, details?: unknown): string {
+  const sizeLimitMessage =
+    code === "input_too_large" ? sizeLimitMessageFor(details) : undefined;
+  return sizeLimitMessage ?? MESSAGES_BY_ANY_CODE.get(code) ?? FALLBACK_MESSAGE;
+}
+
+type SizeLimitName = "maxCharacters" | "maxLines" | "maxLineCharacters";
+
+// A Set, not an object, so names like "toString" are never found.
+const SIZE_LIMIT_NAMES: ReadonlySet<string> = new Set<SizeLimitName>([
+  "maxCharacters",
+  "maxLines",
+  "maxLineCharacters",
+]);
+
+// Fixed to en-US so numbers read "12,345" whatever the browser's language.
+const COUNT_FORMAT = new Intl.NumberFormat("en-US");
+
+function formatCount(count: number): string {
+  return COUNT_FORMAT.format(count);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSizeLimitName(value: unknown): value is SizeLimitName {
+  return typeof value === "string" && SIZE_LIMIT_NAMES.has(value);
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+// The sentence naming the size limit the paste broke, or undefined if `details` is not valid.
+function sizeLimitMessageFor(details: unknown): string | undefined {
+  if (!isRecord(details) || !isSizeLimitName(details.limitHit)) {
+    return undefined;
+  }
+  const limitHit = details.limitHit;
+  const measured = details.measured;
+  const limit = Object.hasOwn(details, limitHit)
+    ? details[limitHit]
+    : undefined;
+  if (!isPositiveInteger(measured) || !isPositiveInteger(limit)) {
+    return undefined;
+  }
+  switch (limitHit) {
+    case "maxCharacters":
+      return `The lyrics are too long: ${formatCount(measured)} characters. The limit is ${formatCount(limit)} characters.`;
+    case "maxLines":
+      return `The lyrics have too many lines: ${formatCount(measured)}. The limit is ${formatCount(limit)} lines.`;
+    case "maxLineCharacters":
+      return lineTooLongMessage(details.lineNumber, measured, limit);
+  }
+}
+
+function lineTooLongMessage(
+  lineNumber: unknown,
+  measured: number,
+  limit: number,
+): string | undefined {
+  if (!isPositiveInteger(lineNumber)) {
+    return undefined;
+  }
+  return `Line ${formatCount(lineNumber)} is too long: ${formatCount(measured)} characters. The limit is ${formatCount(limit)} characters per line. The lyrics may have lost their line breaks.`;
 }

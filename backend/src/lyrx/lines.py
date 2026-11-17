@@ -3,7 +3,12 @@
 import unicodedata
 
 from lyrx import config
-from lyrx.errors import ApiError, size_limit_details
+from lyrx.errors import (
+    ApiError,
+    line_too_long_error,
+    too_many_characters_error,
+    too_many_lines_error,
+)
 from lyrx.kana import is_kana, is_kanji
 from lyrx.schemas import Paste
 
@@ -40,16 +45,33 @@ def check_limits(paste: str, lines: list[str]) -> None:
     """Refuses an empty paste, then one over the character, line, or line-length limit.
 
     `paste` is the raw text and `lines` is `split_lines(paste)`: characters are counted
-    before trimming, lines after it.
+    before trimming, lines after it, and line lengths on the lines as typed so the error can
+    name the line number the learner sees.
     """
     if not lines:
         raise ApiError("empty_input")
-    if count_characters(paste) > config.MAX_CHARACTERS:
-        raise ApiError("input_too_large", details=size_limit_details())
+    character_count = count_characters(paste)
+    if character_count > config.MAX_CHARACTERS:
+        raise too_many_characters_error(character_count)
     if len(lines) > config.MAX_LINES:
-        raise ApiError("input_too_large", details=size_limit_details())
-    if any(len(line) > config.MAX_LINE_CHARACTERS for line in lines):
-        raise ApiError("input_too_large", details=size_limit_details())
+        raise too_many_lines_error(len(lines))
+    long_line = find_first_long_line(paste)
+    if long_line is not None:
+        line_number, line_length = long_line
+        raise line_too_long_error(line_number, line_length)
+
+
+def find_first_long_line(paste: str) -> tuple[int, int] | None:
+    """The 1-based number and length of the first line over the line-length limit, if any.
+
+    Lines are numbered as typed, blank ones included; trailing whitespace is not measured,
+    as in `split_lines`.
+    """
+    for line_number, raw_line in enumerate(normalize_line_endings(paste).split("\n"), start=1):
+        line_length = len(raw_line.rstrip())
+        if line_length > config.MAX_LINE_CHARACTERS:
+            return line_number, line_length
+    return None
 
 
 def has_japanese(text: str) -> bool:

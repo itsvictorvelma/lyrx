@@ -24,6 +24,8 @@ ErrorCode = Literal[
     "internal_error",
 ]
 
+SizeLimitName = Literal["maxCharacters", "maxLines", "maxLineCharacters"]
+
 ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "invalid_request": (400, "The request body must be JSON with a string field `lyrics`."),
     "empty_input": (400, "Paste some lyrics first."),
@@ -46,7 +48,7 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
 
 
 def size_limit_details() -> dict[str, Any]:
-    """The `details` of every `input_too_large` error: the paste limits."""
+    """The paste limits: every `input_too_large` error's `details` hold them."""
     return {
         "maxCharacters": config.MAX_CHARACTERS,
         "maxLines": config.MAX_LINES,
@@ -55,13 +57,59 @@ def size_limit_details() -> dict[str, Any]:
 
 
 class ApiError(Exception):
-    """An error the API returns to the caller as `{code, message, details?}`."""
+    """An error the API returns to the caller as `{code, message, details?}`.
 
-    def __init__(self, code: ErrorCode, details: dict[str, Any] | None = None) -> None:
+    `message` replaces the table's message for this code when given.
+    """
+
+    def __init__(
+        self,
+        code: ErrorCode,
+        details: dict[str, Any] | None = None,
+        message: str | None = None,
+    ) -> None:
         super().__init__(code)
         self.code = code
-        self.status, self.message = ERROR_TABLE[code]
+        self.status, default_message = ERROR_TABLE[code]
+        self.message = message or default_message
         self.details = details
+
+
+def limit_hit_details(
+    limit_hit: SizeLimitName, measured: int, line_number: int | None = None
+) -> dict[str, Any]:
+    """The `details` of a paste over a size limit: the limits, the one hit, what was measured."""
+    details = {**size_limit_details(), "limitHit": limit_hit, "measured": measured}
+    if line_number is not None:
+        details["lineNumber"] = line_number
+    return details
+
+
+def too_many_characters_error(measured: int) -> ApiError:
+    message = (
+        f"The lyrics are too long: {measured:,} characters."
+        f" The limit is {config.MAX_CHARACTERS:,} characters."
+    )
+    details = limit_hit_details("maxCharacters", measured)
+    return ApiError("input_too_large", details=details, message=message)
+
+
+def too_many_lines_error(measured: int) -> ApiError:
+    message = (
+        f"The lyrics have too many lines: {measured:,}. The limit is {config.MAX_LINES:,} lines."
+    )
+    details = limit_hit_details("maxLines", measured)
+    return ApiError("input_too_large", details=details, message=message)
+
+
+def line_too_long_error(line_number: int, measured: int) -> ApiError:
+    message = (
+        f"Line {line_number:,} is too long: {measured:,} characters."
+        f" The limit is {config.MAX_LINE_CHARACTERS:,} characters per line."
+        " The lyrics may have lost their line breaks."
+    )
+    details = limit_hit_details("maxLineCharacters", measured, line_number)
+    return ApiError("input_too_large", details=details, message=message)
 
 
 def error_response(error: ApiError, headers: Mapping[str, str] | None = None) -> JSONResponse:

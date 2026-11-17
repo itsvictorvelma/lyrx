@@ -8,6 +8,7 @@ from error_shape import assert_error_shape
 from fake_claude import FakeClaudeClient
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pastes import LIMIT_DETAILS, LIMIT_MESSAGE
 from raw_asgi import (
     ALLOWED_HOST_HEADER,
     JSON_CONTENT_TYPE_HEADER,
@@ -37,6 +38,24 @@ def test_ac44_body_over_64kb_is_input_too_large_before_parsing(
     assert response.status_code == 413
     assert_error_shape(response.json(), "input_too_large")
     assert fake_claude_client.messages.calls == []
+
+
+def test_ac48_body_over_64kb_keeps_the_ac45_message_and_has_no_limit_hit(
+    client: TestClient,
+) -> None:
+    """The body cap is not a paste limit: it keeps the AC-45 message and the three limits only."""
+    oversized_body = b"{" + b" " * 70_000
+
+    response = client.post(
+        VERSIONS_PATH, content=oversized_body, headers={"Content-Type": "application/json"}
+    )
+
+    assert response.status_code == 413
+    body = response.json()
+    assert_error_shape(body, "input_too_large")
+    assert body["message"] == LIMIT_MESSAGE
+    assert body["details"] == LIMIT_DETAILS
+    assert "limitHit" not in body["details"]
 
 
 def test_ac44_body_just_under_64kb_still_gets_the_normal_error(client: TestClient) -> None:

@@ -404,6 +404,151 @@ describe("App errors", () => {
   });
 });
 
+describe("App size-limit errors (AC-48)", () => {
+  const AC45_MESSAGE =
+    "The lyrics are too long. The limit is 5,000 characters, 200 lines, and 200 characters per line.";
+  const LIMITS = { maxCharacters: 5000, maxLines: 200, maxLineCharacters: 200 };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function tooLargeResponse(details?: unknown): Response {
+    return jsonResponse(413, {
+      code: "input_too_large",
+      message: "A server sentence the page builds itself.",
+      ...(details === undefined ? {} : { details }),
+    });
+  }
+
+  async function submitAndReadAlert(reply: Response): Promise<string> {
+    fakeFetch.mockResolvedValue(reply);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user);
+
+    const alert = await screen.findByRole("alert");
+    return alert.textContent;
+  }
+
+  // Makes the default number format German ("12.345"), as a de-DE browser would.
+  function useGermanNumberFormatting(): void {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("de-DE");
+    vi.spyOn(navigator, "languages", "get").mockReturnValue(["de-DE"]);
+    const RealNumberFormat = Intl.NumberFormat;
+    vi.spyOn(Intl, "NumberFormat").mockImplementation(function (
+      locales?: Intl.LocalesArgument,
+      options?: Intl.NumberFormatOptions,
+    ) {
+      return new RealNumberFormat(locales ?? "de-DE", options);
+    });
+    vi.spyOn(Number.prototype, "toLocaleString").mockImplementation(function (
+      this: number,
+      locales?: Intl.LocalesArgument,
+      options?: Intl.NumberFormatOptions,
+    ) {
+      return new RealNumberFormat(locales ?? "de-DE", options).format(this);
+    });
+  }
+
+  test.each([
+    [
+      "maxCharacters",
+      { ...LIMITS, limitHit: "maxCharacters", measured: 5002 },
+      "The lyrics are too long: 5,002 characters. The limit is 5,000 characters.",
+    ],
+    [
+      "maxLines",
+      { ...LIMITS, limitHit: "maxLines", measured: 201 },
+      "The lyrics have too many lines: 201. The limit is 200 lines.",
+    ],
+    [
+      "maxLineCharacters",
+      {
+        ...LIMITS,
+        limitHit: "maxLineCharacters",
+        measured: 2700,
+        lineNumber: 1,
+      },
+      "Line 1 is too long: 2,700 characters. The limit is 200 characters per line. The lyrics may have lost their line breaks.",
+    ],
+  ])(
+    "test_ac48_7_limit_hit_%s_shows_its_sentence_and_keeps_the_text",
+    async (_limitHit, details, message) => {
+      const alertText = await submitAndReadAlert(tooLargeResponse(details));
+
+      expect(alertText).toContain(message);
+      expect(alertText).not.toContain(AC45_MESSAGE);
+      expect(alertText).not.toContain("A server sentence");
+      expect(screen.queryByRole("list")).toBeNull();
+      expect(textArea()).toHaveProperty("value", PASTED_LYRICS);
+    },
+  );
+
+  test("test_ac48_8_measured_12345_shows_as_12_345_in_a_german_browser", async () => {
+    useGermanNumberFormatting();
+    expect((12345).toLocaleString()).toBe("12.345");
+
+    const alertText = await submitAndReadAlert(
+      tooLargeResponse({
+        ...LIMITS,
+        limitHit: "maxCharacters",
+        measured: 12345,
+      }),
+    );
+
+    expect(alertText).toContain(
+      "The lyrics are too long: 12,345 characters. The limit is 5,000 characters.",
+    );
+    expect(alertText).not.toContain("12.345");
+  });
+
+  test.each([
+    ["no details", undefined],
+    ["details with only the three max keys", { ...LIMITS }],
+    ["limitHit bytes", { ...LIMITS, limitHit: "bytes", measured: 5002 }],
+    [
+      "measured as a string",
+      { ...LIMITS, limitHit: "maxCharacters", measured: "5,002" },
+    ],
+    ["measured -3", { ...LIMITS, limitHit: "maxCharacters", measured: -3 }],
+    ["measured 2.5", { ...LIMITS, limitHit: "maxCharacters", measured: 2.5 }],
+    [
+      "maxLineCharacters with no lineNumber",
+      { ...LIMITS, limitHit: "maxLineCharacters", measured: 2700 },
+    ],
+  ])("test_ac48_9_%s_shows_the_ac45_message", async (_name, details) => {
+    const alertText = await submitAndReadAlert(tooLargeResponse(details));
+
+    expect(alertText).toContain(AC45_MESSAGE);
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(textArea()).toHaveProperty("value", PASTED_LYRICS);
+  });
+
+  test.each([
+    ["limitHit", { ...LIMITS, limitHit: "<b>x</b>", measured: 5002 }],
+    [
+      "measured",
+      { ...LIMITS, limitHit: "maxCharacters", measured: "<b>x</b>" },
+    ],
+  ])(
+    "test_ac48_10_markup_in_%s_creates_no_element_and_shows_the_ac45_message",
+    async (_field, details) => {
+      fakeFetch.mockResolvedValue(tooLargeResponse(details));
+      const user = userEvent.setup();
+      const { container } = render(<App />);
+
+      await pasteAndSubmit(user);
+      const alert = await screen.findByRole("alert");
+
+      expect(container.querySelector("b")).toBeNull();
+      expect(alert.textContent).toContain(AC45_MESSAGE);
+      expect(alert.textContent).not.toContain("<b>x</b>");
+    },
+  );
+});
+
 describe("App result heading (T9 accessibility)", () => {
   function line(index: number, original: string): Line {
     return {

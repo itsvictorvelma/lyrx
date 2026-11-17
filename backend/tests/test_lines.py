@@ -2,9 +2,8 @@
 
 import pytest
 from pastes import (
-    LIMIT_DETAILS,
-    LIMIT_MESSAGE,
     japanese_line,
+    limit_details,
     paste_of_characters,
     paste_of_lines,
 )
@@ -99,7 +98,7 @@ def test_ac6_paste_of_5001_characters_is_input_too_large() -> None:
     error = assert_refused(paste, "input_too_large")
 
     assert error.status == 413
-    assert error.details == LIMIT_DETAILS
+    assert error.details == limit_details("maxCharacters", 5001)
 
 
 def test_ac6_carriage_return_newline_counts_as_one_character() -> None:
@@ -137,7 +136,7 @@ def test_ac7_paste_of_201_lines_is_input_too_large() -> None:
     error = assert_refused(paste_of_lines(201), "input_too_large")
 
     assert error.status == 413
-    assert error.details == LIMIT_DETAILS
+    assert error.details == limit_details("maxLines", 201)
 
 
 def test_ac7_lines_are_counted_after_blank_lines_are_dropped_and_collapsed() -> None:
@@ -160,11 +159,18 @@ def test_ac7_a_blank_line_inside_the_text_counts_toward_the_limit() -> None:
     assert_refused(paste, "input_too_large")
 
 
-def test_ac45_limit_details_hold_only_the_three_limits() -> None:
+def test_ac45_ac48_limit_details_hold_the_three_limits_and_the_limit_hit() -> None:
+    """AC-48 adds `limitHit` and `measured` to the three AC-45 limits; no `lineNumber` here."""
     error = assert_refused(paste_of_lines(201), "input_too_large")
 
     assert error.details is not None
-    assert set(error.details) == {"maxCharacters", "maxLines", "maxLineCharacters"}
+    assert set(error.details) == {
+        "maxCharacters",
+        "maxLines",
+        "maxLineCharacters",
+        "limitHit",
+        "measured",
+    }
 
 
 # Line length limit (AC-45)
@@ -178,7 +184,7 @@ def test_ac45_line_of_201_characters_is_input_too_large() -> None:
     error = assert_refused(japanese_line(201), "input_too_large")
 
     assert error.status == 413
-    assert error.details == LIMIT_DETAILS
+    assert error.details == limit_details("maxLineCharacters", 201, line_number=1)
 
 
 def test_ac45_one_long_line_among_short_ones_is_input_too_large() -> None:
@@ -195,10 +201,147 @@ def test_ac45_leading_whitespace_counts_toward_the_line_length() -> None:
     assert_refused("  " + japanese_line(199), "input_too_large")
 
 
-def test_ac45_message_names_all_three_limits() -> None:
+def test_ac45_ac48_message_names_the_long_line_and_its_length() -> None:
+    """Under AC-48 the line-length refusal names the line instead of listing all three limits."""
     error = assert_refused(japanese_line(201), "input_too_large")
 
-    assert error.message == LIMIT_MESSAGE
+    assert error.message == (
+        "Line 1 is too long: 201 characters. The limit is 200 characters per line."
+        " The lyrics may have lost their line breaks."
+    )
+
+
+# Which limit was hit (AC-48)
+
+
+def test_ac48_1_character_limit_is_reported_first_with_its_measured_count() -> None:
+    """5,002 characters on one line breaks two limits; only the character limit is reported."""
+    paste = "ゆめ" * 2501
+    assert len(paste) == 5002
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.status == 413
+    assert error.details == {
+        "maxCharacters": 5000,
+        "maxLines": 200,
+        "maxLineCharacters": 200,
+        "limitHit": "maxCharacters",
+        "measured": 5002,
+    }
+    assert error.message == (
+        "The lyrics are too long: 5,002 characters. The limit is 5,000 characters."
+    )
+
+
+def test_ac48_2_line_limit_reports_the_line_count() -> None:
+    """201 short lines report `maxLines` with the line count and no line number."""
+    paste = "\n".join(["うた"] * 201)
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.status == 413
+    assert error.details == limit_details("maxLines", 201)
+    assert error.message == "The lyrics have too many lines: 201. The limit is 200 lines."
+
+
+def test_ac48_3_line_length_limit_reports_the_line_number_and_its_length() -> None:
+    """One 2,700-character line reports `maxLineCharacters`, its length, and line 1."""
+    paste = "ゆめ" * 1350
+    assert len(paste) == 2700
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.status == 413
+    assert error.details == limit_details("maxLineCharacters", 2700, line_number=1)
+    assert error.message == (
+        "Line 1 is too long: 2,700 characters. The limit is 200 characters per line."
+        " The lyrics may have lost their line breaks."
+    )
+
+
+def test_ac48_4_line_number_counts_lines_as_typed_and_length_drops_trailing_spaces() -> None:
+    """Blank lines count toward `lineNumber`, CRLF is one break, trailing spaces go unmeasured."""
+    paste = "\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   "
+    assert split_lines(paste).index("か" * 201) == 2
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details == limit_details("maxLineCharacters", 201, line_number=7)
+
+
+def test_ac48_5_line_number_is_the_first_of_two_long_lines() -> None:
+    """With two lines over the limit, the first one is reported."""
+    paste = "夜の月\n" + "か" * 201 + "\n星\n" + "ゆ" * 250
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details == limit_details("maxLineCharacters", 201, line_number=2)
+
+
+def test_ac48_measured_characters_count_the_raw_paste_like_the_limit_does() -> None:
+    """`measured` counts trailing spaces and blank lines, as the 5,000 limit does."""
+    paste = "\n".join(japanese_line(49) + " " for _ in range(100))
+    assert len(paste) == 5099
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details == limit_details("maxCharacters", 5099)
+
+
+def test_ac48_measured_characters_count_carriage_return_newline_once() -> None:
+    """CRLF is one character in `measured`, as in the limit."""
+    paste = paste_of_characters(5001, line_ending="\r\n")
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details == limit_details("maxCharacters", 5001)
+
+
+def test_ac48_measured_lines_count_lines_after_splitting_like_the_limit_does() -> None:
+    """`measured` counts lines after blank runs collapse and blank ends drop."""
+    paste = "\n\n" + paste_of_lines(100) + "\n\n\n\n" + paste_of_lines(100) + "\n\n"
+    assert len(split_lines(paste)) == 201
+
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details == limit_details("maxLines", 201)
+
+
+def test_ac48_measured_line_length_counts_leading_whitespace() -> None:
+    """Leading whitespace is part of the line, so it is part of the measured length."""
+    error = assert_refused("夜の月\n  " + japanese_line(199), "input_too_large")
+
+    assert error.details == limit_details("maxLineCharacters", 201, line_number=2)
+
+
+@pytest.mark.parametrize(
+    "paste",
+    [
+        "ゆめ" * 2501,
+        "\n".join(["うた"] * 201),
+        "ゆめ" * 1350,
+        "\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   ",
+    ],
+)
+def test_ac48_6_details_hold_only_the_listed_integers_and_the_limit_name(paste: str) -> None:
+    """No text from the paste reaches `details` or the message: only integers and a limit name."""
+    error = assert_refused(paste, "input_too_large")
+
+    assert error.details is not None
+    assert set(error.details) <= {
+        "maxCharacters",
+        "maxLines",
+        "maxLineCharacters",
+        "limitHit",
+        "measured",
+        "lineNumber",
+    }
+    assert error.details.get("limitHit") in {"maxCharacters", "maxLines", "maxLineCharacters"}
+    for key, value in error.details.items():
+        if key != "limitHit":
+            assert type(value) is int
+    assert not has_japanese(error.message)
 
 
 # Japanese detection (AC-8)

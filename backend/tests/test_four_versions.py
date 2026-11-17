@@ -14,9 +14,9 @@ from fake_claude import ErrorPoint, FakeClaudeClient, fake_message
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pastes import (
-    LIMIT_DETAILS,
-    LIMIT_MESSAGE,
+    LIMIT_DETAIL_KEYS,
     japanese_line,
+    limit_details,
     paste_of_characters,
     paste_of_lines,
 )
@@ -31,7 +31,7 @@ from raw_asgi import (
 
 from lyrx import four_versions, readings
 from lyrx.app import VERSIONS_PATH
-from lyrx.lines import count_characters, split_lines
+from lyrx.lines import count_characters, has_japanese, split_lines
 from lyrx.prompt import build_user_message
 from lyrx.romaji import to_romaji
 
@@ -94,7 +94,7 @@ def test_ac6_paste_of_5001_characters_is_input_too_large_and_claude_is_not_calle
     assert status == 413
     assert_error_shape(body, "input_too_large")
     assert isinstance(body, dict)
-    assert body["details"] == LIMIT_DETAILS
+    assert body["details"] == limit_details("maxCharacters", 5001)
     assert fake_claude_client.messages.calls == []
 
 
@@ -125,7 +125,7 @@ def test_ac7_paste_of_201_lines_is_input_too_large_and_claude_is_not_called(
     assert status == 413
     assert_error_shape(body, "input_too_large")
     assert isinstance(body, dict)
-    assert body["details"] == LIMIT_DETAILS
+    assert body["details"] == limit_details("maxLines", 201)
     assert fake_claude_client.messages.calls == []
 
 
@@ -146,8 +146,11 @@ def test_ac45_line_of_201_characters_is_input_too_large_and_claude_is_not_called
     assert status == 413
     assert_error_shape(body, "input_too_large")
     assert isinstance(body, dict)
-    assert body["details"] == LIMIT_DETAILS
-    assert body["message"] == LIMIT_MESSAGE
+    assert body["details"] == limit_details("maxLineCharacters", 201, line_number=2)
+    assert body["message"] == (
+        "Line 2 is too long: 201 characters. The limit is 200 characters per line."
+        " The lyrics may have lost their line breaks."
+    )
     assert fake_claude_client.messages.calls == []
 
 
@@ -161,6 +164,133 @@ def test_ac7_lines_are_counted_after_splitting(client: TestClient) -> None:
     lyrics = "\r\n\r\n" + paste_of_lines(100, "\r\n") + "\r\n\r\n\r\n" + paste_of_lines(99, "\r\n")
 
     assert_passed_the_limits(client, lyrics + "\r\n\r\n\r\n")
+
+
+# Which limit was hit (AC-48)
+
+AC48_CHARACTERS_PASTE = "ゆめ" * 2501
+AC48_LINES_PASTE = "\n".join(["うた"] * 201)
+AC48_LINE_LENGTH_PASTE = "ゆめ" * 1350
+AC48_TYPED_LINES_PASTE = "\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   "
+
+
+def post_refused_paste(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str
+) -> dict[str, Any]:
+    """POST a paste over the limits; check it is a 413 input_too_large and Claude was not called."""
+    status, body = post_lyrics(client, lyrics)
+
+    assert status == 413
+    assert_error_shape(body, "input_too_large")
+    assert isinstance(body, dict)
+    assert fake_claude_client.messages.calls == []
+    return body
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac48_1_character_limit_is_reported_first_and_claude_is_not_called(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """5,002 characters on one line breaks two limits; only the character limit is reported."""
+    assert len(AC48_CHARACTERS_PASTE) == 5002
+
+    body = post_refused_paste(client, fake_claude_client, AC48_CHARACTERS_PASTE)
+
+    assert body["details"] == {
+        "maxCharacters": 5000,
+        "maxLines": 200,
+        "maxLineCharacters": 200,
+        "limitHit": "maxCharacters",
+        "measured": 5002,
+    }
+    assert body["message"] == (
+        "The lyrics are too long: 5,002 characters. The limit is 5,000 characters."
+    )
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac48_2_line_limit_reports_the_line_count_and_claude_is_not_called(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """201 lines of `うた` report `maxLines`, 201, and no line number."""
+    body = post_refused_paste(client, fake_claude_client, AC48_LINES_PASTE)
+
+    assert body["details"] == limit_details("maxLines", 201)
+    assert "lineNumber" not in body["details"]
+    assert body["message"] == "The lyrics have too many lines: 201. The limit is 200 lines."
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac48_3_line_length_limit_reports_line_1_and_claude_is_not_called(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """One 2,700-character line reports `maxLineCharacters`, 2700, and line 1."""
+    assert len(AC48_LINE_LENGTH_PASTE) == 2700
+
+    body = post_refused_paste(client, fake_claude_client, AC48_LINE_LENGTH_PASTE)
+
+    assert body["details"] == limit_details("maxLineCharacters", 2700, line_number=1)
+    assert body["message"] == (
+        "Line 1 is too long: 2,700 characters. The limit is 200 characters per line."
+        " The lyrics may have lost their line breaks."
+    )
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac48_4_line_number_counts_the_lines_of_the_paste_as_typed(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """The long line is index 2 once split but line 7 as typed; trailing spaces are not measured."""
+    assert split_lines(AC48_TYPED_LINES_PASTE).index("か" * 201) == 2
+
+    body = post_refused_paste(client, fake_claude_client, AC48_TYPED_LINES_PASTE)
+
+    assert body["details"]["lineNumber"] == 7
+    assert body["details"]["measured"] == 201
+    assert body["message"] == (
+        "Line 7 is too long: 201 characters. The limit is 200 characters per line."
+        " The lyrics may have lost their line breaks."
+    )
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac48_5_line_number_is_the_first_of_two_long_lines(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """With two lines over the line-length limit, the first one is reported."""
+    lyrics = "夜の月\n" + "か" * 201 + "\n星\n" + "ゆ" * 250
+
+    body = post_refused_paste(client, fake_claude_client, lyrics)
+
+    assert body["details"] == limit_details("maxLineCharacters", 201, line_number=2)
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    "lyrics",
+    [
+        AC48_CHARACTERS_PASTE,
+        AC48_LINES_PASTE,
+        AC48_LINE_LENGTH_PASTE,
+        AC48_TYPED_LINES_PASTE,
+    ],
+)
+def test_ac48_6_body_holds_only_the_error_shape_and_no_pasted_text(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str
+) -> None:
+    """Only `code`, `message`, `details`; only the listed detail keys; no pasted text anywhere."""
+    body = post_refused_paste(client, fake_claude_client, lyrics)
+
+    assert set(body) == {"code", "message", "details"}
+    details = body["details"]
+    assert isinstance(details, dict)
+    assert "limitHit" in details
+    assert set(details) <= LIMIT_DETAIL_KEYS
+    body_text = json.dumps(body, ensure_ascii=False)
+    for line in split_lines(lyrics):
+        if line:
+            assert line not in body_text
+    assert not has_japanese(body_text)
 
 
 # No Japanese (AC-8)

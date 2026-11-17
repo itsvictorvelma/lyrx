@@ -32,9 +32,12 @@ function readReply(status: number, body: unknown): FourVersionsResult {
       ? { kind: "lines", lines: body.lines }
       : { kind: "unreadable" };
   }
-  return isErrorReply(body)
-    ? { kind: "error", code: body.code }
-    : { kind: "unreadable" };
+  if (!isErrorReply(body)) {
+    return { kind: "unreadable" };
+  }
+  return body.details !== undefined
+    ? { kind: "error", code: body.code, details: body.details }
+    : { kind: "error", code: body.code };
 }
 
 function parseJson(text: string): unknown {
@@ -72,6 +75,8 @@ function isLinesReply(value: unknown): value is { lines: Line[] } {
   );
 }
 
-function isErrorReply(value: unknown): value is { code: string } {
+function isErrorReply(
+  value: unknown,
+): value is { code: string; details?: unknown } {
   return isRecord(value) && typeof value.code === "string";
 }
