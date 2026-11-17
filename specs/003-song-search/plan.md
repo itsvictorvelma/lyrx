@@ -2,6 +2,13 @@
 
 How spec 003 is built. The spec says what; this file says which files change and how.
 
+## Two parts (amendment, 2026-11-17)
+
+Built as two PRs (see the spec's amendment). Line timings moved to spec 005, so `timings.py` and `startSeconds` are not built here.
+
+- **Part 1, branch `claude/003-song-search`:** cleanup, readings, Gemini, chunks, the paste route on the new pipeline, Claude removed, the paste side of the page, README. After it merges, pasting works with no paid AI.
+- **Part 2, branch `claude/003-song-search-part-2`** (from `main` after Part 1 merges): LRCLIB, the search and pick routes, the search page.
+
 ## Approach in one paragraph
 
 Two new routes sit next to the paste route: `POST /api/song-search` asks LRCLIB for a name and returns a ranked short list, and `POST /api/song-versions` fetches one record and runs it through the same pipeline as a paste. That shared pipeline is: clean the lines → hiragana from the local analyzer → romaji from the hiragana → English from Gemini (in chunks only when the song is very large) → the reply, with `englishError` when Gemini fails. The Claude call and its checks are deleted. Every outside call (LRCLIB, Gemini) goes through `httpx2` with a transport the tests replace, so no test touches the network.
@@ -43,8 +50,7 @@ Found in the scratch install. Both keep the spec's expected results; neither cha
 | `translation.py` | Builds the numbered message, cuts chunks, calls `gemini.py` per chunk in order, joins the English, stops at the first failure. |
 | `lrclib.py` | The two LRCLIB requests: fixed host, `https`, no redirects, no proxies, timeout, the streaming size caps, JSON and record-schema checks, and the error codes. |
 | `song_search.py` | Search rules: drop, `looksJapanese`, rank, remove duplicates, keep 10. |
-| `timings.py` | Reads synced lyrics (the anchored LRC pattern), cleans the timed lines, and matches them to the plain lines. |
-| `song_versions.py` | The pick route's pipeline: fetch the record → check → clean → looks Japanese → four versions → timings. |
+| `song_versions.py` | The pick route's pipeline: fetch the record → check → clean → looks Japanese → four versions. |
 | `looks_japanese.py` | The quarter-of-lines kana rule, shared by search and pick. |
 
 ### Backend: changed
@@ -97,7 +103,7 @@ Each gets its `*.test.ts(x)` next to it.
 
 ## Side effects and risks
 
-- **Size.** This is far above the 800-line mark: about 1,200 lines of new source across backend and frontend, about 2,500 lines of tests, and about 900 lines deleted. It is one spec because the routes share one pipeline; it is built as 11 small tasks, each reviewed on its own.
+- **Size** (approved by the user as two parts). Part 1: about 650 lines of source and 1,300 of tests, with about 900 lines of Claude code and tests deleted. Part 2: about 450 lines of source and 900 of tests. Each task is reviewed on its own.
 - **Dictionary size.** `unidic-lite` adds about 50 MB to `backend/.venv`. Nothing is added to the repo.
 - **Free-tier limits** are not published and can change. A rate-limited song still gets its readings.
 - **Analyzer readings are not perfect** (names, sung readings, counters). The spec accepts this; `readingVerified` flags the cases the code can detect.

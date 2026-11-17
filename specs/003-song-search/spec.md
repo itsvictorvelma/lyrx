@@ -2,6 +2,14 @@
 
 Status: approved
 
+## Amendment (2026-11-17, approved by the user): timings move to spec 005; built in two parts
+
+- **Line timings move to spec 005** (the audio player), where they are used. In this spec, lines have **no `startSeconds` field**, and the synced lyrics are not read. The **Timings** section and AC-20 to AC-22 are moved to spec 005 and are not built here. Every other mention of `startSeconds` or timings in this spec (the examples, the line fields, the log field "whether timings were matched", the page's reply checks, AC-70's "No time", AC-74's `startSeconds` case) is to be read with the field left out. `hasTimings` in the search results stays: it helps the learner pick a version.
+- **Built in two parts, one PR each.**
+  - **Part 1: the free pipeline for pastes.** Cleanup, readings, Gemini English, chunks, removing Claude, and the paste side of the page. ACs 23–34, 36–60 (except the song-route parts), 61, 65 (request body), 72 (paste), 73, 76.
+  - **Part 2: search and pick.** LRCLIB, both new routes, the search page, and the rest of the ACs.
+  - The status stays `approved` until Part 2 merges.
+
 ## Goal
 
 The learner types a song name, picks the right song from a short list, and gets every line in four versions: Original, Hiragana, Romaji, and English. No paid AI is used. The lyrics come from LRCLIB, the hiragana comes from a local analyzer, and the English comes from the Gemini API free tier. Pasting lyrics stays as the fallback for songs LRCLIB does not have. No real song is ever refused for being too long.
@@ -224,7 +232,7 @@ A record **looks Japanese** when at least a quarter of the non-blank lines of it
 
 There is no length check. A song of any length that passes the record cap is processed.
 
-### Timings
+### Timings (moved to spec 005, see the amendment)
 
 The plain lyrics are the text. The synced lyrics only add a start time to each line, and only when the two agree.
 
@@ -579,7 +587,7 @@ All tests use invented lyrics, invented song names, and invented artists.
 - AC-18: A long song is never refused. A record whose plain lyrics are the 150-line song returns `200` with 150 lines, in order, with indexes 0 to 149. The fake Gemini is called exactly once, and receives all 150 lines. Every line has a non-empty `english`, and `englishError` is `null`. A record of 400 lines of `うた` also returns `200` with 400 lines.
 - AC-19: The lines come from the plain lyrics through the cleanup. A record whose plain lyrics are `"君の声が\n키미노 코에가\n\n星がながれる"` gives exactly the `original` values `["君の声が", "", "星がながれる"]`, and the fake Gemini receives exactly `[0] 君の声が` and `[2] 星がながれる`.
 
-### Timings (pytest)
+### Timings (pytest) (moved to spec 005, see the amendment)
 
 - AC-20: A record with plain lyrics `"君の声が\n\n星がながれる"` and synced lyrics `"[ar:ミナト]\n[00:12.34]君の声が\n[00:15.00]\n[01:02.500]星がながれる"` gives `startSeconds` `12.34`, `null`, `62.5` for lines 0, 1, 2.
 - AC-21: Each of these gives `startSeconds` `null` on every line, and the response is still `200` with all lines:

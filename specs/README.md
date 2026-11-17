@@ -19,9 +19,9 @@ Status values: `draft` → `approved` → `done`. When the user drops a spec, it
 |---|---|---|
 | 001 | Paste lyrics, get four versions: Original, Hiragana, Romaji, English (also sets the stack) | done |
 | 002 | Lyrics from a link | shelved |
-| 003 | Song search: type a name, get the four versions (LRCLIB, local readings, Gemini English) | draft |
+| 003 | Song search: type a name, get the four versions (LRCLIB, local readings, Gemini English) | approved |
 | 004 | Song library | not started |
-| 005 | Audio player: YouTube embed with line highlighting (MP3 upload optional) | not started |
+| 005 | Audio player: YouTube embed with line highlighting from LRCLIB timings (moved from 003), MP3 upload optional | not started |
 | 006 | Hosting for invited users | not started |
 | 007 | Compact reading layout | draft |
 
