@@ -492,6 +492,12 @@ Decided by the user on 2026-11-16.
    - a load replaces the paste box text without asking;
    - logs record the host name only.
 
+### Amendment (2026-11-17, approved by the user before the build)
+
+- Whitespace at the start and end of a candidate line, full-width space (U+3000) included, is trimmed, so `lyrics` re-splits unchanged under spec 001 (AC-44). A full-width space inside a line is kept. This replaces "kept as written" for line ends in AC-41.
+- Brotli (`br`) is not supported: the fetch asks for `gzip, deflate` only. A `br` body still counts against the size cap and, being undecodable, ends as `link_no_japanese`. No new dependency.
+- A malformed link request (body not JSON, or no string field `url`) returns `400 invalid_request` with the message "The request must be JSON with a string field url." Spec 001's route keeps its own message.
+
 ## Open questions
 
 None. The user decided the last four on 2026-11-16 and approved the spec:
