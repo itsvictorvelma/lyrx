@@ -7,7 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "anthropic>=2.9.0",
     "fastapi>=0.163.1",
+    "fugashi>=1.5.2",
     "httpx2==2.16.2",
+    "unidic-lite>=1.0.8",
     "uvicorn>=0.54.0",
 ]
 
@@ -33,6 +35,11 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "C4", "RUF"]
 [tool.mypy]
 strict = true
 files = ["src", "tests"]
+
+# fugashi ships no type hints; japanese_analyzer.py is its only importer.
+[[tool.mypy.overrides]]
+module = ["fugashi"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,7 +1,9 @@
-"""Tests for spelling hiragana as modified Hepburn romaji without macrons. Invented words only."""
+"""Tests for spelling hiragana as romaji (modified Hepburn, no macrons). Invented words only."""
 
 import pytest
+from fake_analyzer import FakeAnalyzer, noun, particle
 
+from lyrx.hiragana import read_line
 from lyrx.romaji import to_romaji
 
 # Basic and combined sounds (AC-23)
@@ -15,7 +17,6 @@ def test_ac23_spec_example_combined_sounds() -> None:
     assert to_romaji("きゃ しゃ ちゃ じゃ りょ") == "kya sha cha ja ryo"
 
 
-# Each row is one word, so no row hits the whole-word は/へ particle rule.
 @pytest.mark.parametrize(
     ("hiragana", "expected"),
     [
@@ -500,11 +501,17 @@ def test_ac26_n_before_attached_punctuation_is_plain_n() -> None:
     assert to_romaji("ほん、") == "hon,"
 
 
-# Particles (AC-27)
+# Particles (spec 003 AC-48 replaces spec 001 AC-27: wa and e need the analyzer's particle tag)
 
 
-def test_ac27_spec_example_particles_in_a_line() -> None:
-    assert to_romaji("きみ は うみ へ はな を") == "kimi wa umi e hana o"
+def test_ac48_tagged_particles_in_a_line_read_wa_and_e() -> None:
+    romaji = to_romaji("きみ は うみ へ はな を", particle_word_indexes=frozenset({1, 3}))
+
+    assert romaji == "kimi wa umi e hana o"
+
+
+def test_ac48_ha_and_he_words_without_a_particle_tag_read_ha_and_he() -> None:
+    assert to_romaji("きみ は うみ へ はな を") == "kimi ha umi he hana o"
 
 
 def test_ac27_spec_example_he_inside_a_word_stays_he() -> None:
@@ -518,25 +525,36 @@ def test_ac27_ha_inside_a_word_stays_ha() -> None:
 @pytest.mark.parametrize(
     ("hiragana", "expected"),
     [
-        ("は", "wa"),
-        ("へ", "e"),
+        ("は", "ha"),
+        ("へ", "he"),
         ("を", "o"),
     ],
 )
-def test_ac27_word_that_is_exactly_a_particle(hiragana: str, expected: str) -> None:
+def test_ac48_whole_word_ha_or_he_without_a_tag_is_ha_or_he(hiragana: str, expected: str) -> None:
     assert to_romaji(hiragana) == expected
+
+
+@pytest.mark.parametrize(("hiragana", "expected"), [("は", "wa"), ("へ", "e")])
+def test_ac48_whole_word_tagged_as_particle_is_wa_or_e(hiragana: str, expected: str) -> None:
+    assert to_romaji(hiragana, particle_word_indexes=frozenset({0})) == expected
+
+
+def test_ac48_tooth_read_ha_is_ha() -> None:
+    assert to_romaji("は が") == "ha ga"
 
 
 @pytest.mark.parametrize(
-    ("hiragana", "expected"),
+    ("hiragana", "indexes", "expected"),
     [
-        ("は そら", "wa sora"),
-        ("そら は", "sora wa"),
-        ("へ うみ", "e umi"),
+        ("は そら", {0}, "wa sora"),
+        ("そら は", {1}, "sora wa"),
+        ("へ うみ", {0}, "e umi"),
     ],
 )
-def test_ac27_particle_at_the_start_or_end_of_a_line(hiragana: str, expected: str) -> None:
-    assert to_romaji(hiragana) == expected
+def test_ac48_particle_at_the_start_or_end_of_a_line(
+    hiragana: str, indexes: set[int], expected: str
+) -> None:
+    assert to_romaji(hiragana, particle_word_indexes=frozenset(indexes)) == expected
 
 
 @pytest.mark.parametrize(
@@ -561,20 +579,35 @@ def test_ac27_wo_inside_a_longer_word_is_still_o() -> None:
 
 
 @pytest.mark.parametrize(
-    ("hiragana", "expected"),
+    ("hiragana", "indexes", "expected"),
     [
-        ("は、", "wa,"),
-        ("へ。", "e."),
-        ("「は」", '"wa"'),
-        ("きみ は、 うみ へ。", "kimi wa, umi e."),
+        ("は、", {0}, "wa,"),
+        ("へ。", {0}, "e."),
+        ("「は」", {0}, '"wa"'),
+        ("きみ は、 うみ へ。", {1, 3}, "kimi wa, umi e."),
     ],
 )
-def test_ac27_particle_rule_ignores_attached_punctuation(hiragana: str, expected: str) -> None:
+def test_ac48_tagged_particle_with_attached_punctuation(
+    hiragana: str, indexes: set[int], expected: str
+) -> None:
+    assert to_romaji(hiragana, particle_word_indexes=frozenset(indexes)) == expected
+
+
+@pytest.mark.parametrize(
+    ("hiragana", "expected"),
+    [
+        ("は、", "ha,"),
+        ("「は」", '"ha"'),
+    ],
+)
+def test_ac48_untagged_ha_with_attached_punctuation_is_ha(hiragana: str, expected: str) -> None:
     assert to_romaji(hiragana) == expected
 
 
-def test_ac27_particle_separated_by_full_width_spaces() -> None:
-    assert to_romaji("きみ\u3000は\u3000うみ") == "kimi wa umi"
+def test_ac48_particle_separated_by_full_width_spaces() -> None:
+    romaji = to_romaji("きみ\u3000は\u3000うみ", particle_word_indexes=frozenset({1}))
+
+    assert romaji == "kimi wa umi"
 
 
 @pytest.mark.parametrize(
@@ -585,22 +618,25 @@ def test_ac27_particle_separated_by_full_width_spaces() -> None:
         ("は,", "wa,"),
     ],
 )
-def test_ac27_ascii_punctuation_counts_as_attached_for_particles(
+def test_ac48_ascii_punctuation_counts_as_attached_for_particles(
     hiragana: str, expected: str
 ) -> None:
-    assert to_romaji(hiragana) == expected
+    assert to_romaji(hiragana, particle_word_indexes=frozenset({0})) == expected
 
 
 @pytest.mark.parametrize(
-    ("text", "expected"),
+    ("text", "indexes", "expected"),
     [
-        ("キミ ハ ウミ ヘ", "kimi wa umi e"),
-        ("ハ", "wa"),
-        ("ヘ", "e"),
+        ("キミ ハ ウミ ヘ", {1, 3}, "kimi wa umi e"),
+        ("ハ", {0}, "wa"),
+        ("ヘ", {0}, "e"),
+        ("ハ", set(), "ha"),
     ],
 )
-def test_ac27_katakana_particle_alone_follows_the_particle_rule(text: str, expected: str) -> None:
-    assert to_romaji(text) == expected
+def test_ac48_katakana_particle_follows_the_particle_rule(
+    text: str, indexes: set[int], expected: str
+) -> None:
+    assert to_romaji(text, particle_word_indexes=frozenset(indexes)) == expected
 
 
 @pytest.mark.parametrize(
@@ -613,14 +649,18 @@ def test_ac27_katakana_particle_alone_follows_the_particle_rule(text: str, expec
         ("へ・", "e・"),
     ],
 )
-def test_ac27_particle_with_other_japanese_punctuation_attached(
+def test_ac48_particle_with_other_japanese_punctuation_attached(
     hiragana: str, expected: str
 ) -> None:
-    assert to_romaji(hiragana) == expected
+    assert to_romaji(hiragana, particle_word_indexes=frozenset({0})) == expected
 
 
 def test_ac27_punctuation_inside_a_word_is_not_stripped_for_the_particle_rule() -> None:
     assert to_romaji("は、は") == "ha,ha"
+
+
+def test_ac48_index_of_a_word_that_is_not_ha_or_he_changes_nothing() -> None:
+    assert to_romaji("きみ が", particle_word_indexes=frozenset({0, 1})) == "kimi ga"
 
 
 # Spacing and punctuation (AC-28)
@@ -676,7 +716,7 @@ def test_ac28_other_characters_pass_through_unchanged(text: str) -> None:
 
 
 def test_ac28_mixed_kana_latin_and_digits_in_one_line() -> None:
-    assert to_romaji("そら 2 ABC は") == "sora 2 ABC wa"
+    assert to_romaji("そら 2 ABC は") == "sora 2 ABC ha"
 
 
 def test_ac28_empty_input_gives_empty_output() -> None:
@@ -686,9 +726,9 @@ def test_ac28_empty_input_gives_empty_output() -> None:
 @pytest.mark.parametrize(
     ("hiragana", "expected"),
     [
-        ("きみ  は", "kimi  wa"),
-        ("きみ\u3000\u3000は", "kimi  wa"),
-        ("きみ \u3000は", "kimi  wa"),
+        ("きみ  は", "kimi  ha"),
+        ("きみ\u3000\u3000は", "kimi  ha"),
+        ("きみ \u3000は", "kimi  ha"),
         (" そら ", " sora "),
     ],
 )
@@ -705,6 +745,97 @@ def test_ac28_full_width_latin_and_digits_pass_through_unchanged() -> None:
 
 def test_ac23_same_input_always_gives_the_same_output() -> None:
     line = "きみ は がっこう へ らーめん を たべ に いく。"
+    particles = frozenset({1, 3})
 
-    assert to_romaji(line) == "kimi wa gakkou e raamen o tabe ni iku."
-    assert to_romaji(line) == to_romaji(line)
+    romaji = to_romaji(line, particle_word_indexes=particles)
+
+    assert romaji == "kimi wa gakkou e raamen o tabe ni iku."
+    assert to_romaji(line, particle_word_indexes=particles) == romaji
+
+
+# Romaji of whole lines from the readings step (spec 003 AC-38 to AC-49)
+
+
+def romaji_of_line(line: str, analyze: FakeAnalyzer | None = None) -> str:
+    """The line read by the hiragana step (real analyzer unless a fake is given), then spelled."""
+    reading = read_line(line) if analyze is None else read_line(line, analyze)
+    return to_romaji(reading.hiragana, particle_word_indexes=reading.particle_word_indexes)
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("君の声が", "kimi no koe ga"),
+        ("ラーメン", "raamen"),
+        ("君と行こう", "kimi to ikou"),
+        ("空、青い", "sora, aoi"),
+        ("Oh 君と", "Oh kimi to"),
+        ("君は空へ", "kimi wa sora e"),
+        ("君は、空へ", "kimi wa, sora e"),
+    ],
+    ids=["ac38", "ac39", "ac41-auxiliary", "ac41-comma", "ac42-latin", "ac47", "ac47-comma"],
+)
+def test_ac38_to_ac47_romaji_of_real_lines(line: str, expected: str) -> None:
+    assert romaji_of_line(line) == expected
+
+
+@pytest.mark.parametrize("line", ["2人で", "２人で"])
+def test_ac42_romaji_keeps_the_digit_as_written(line: str) -> None:
+    assert romaji_of_line(line)[0] == line[0]
+
+
+def test_ac48_ha_at_the_start_of_a_noun_is_ha_with_the_real_analyzer() -> None:
+    assert romaji_of_line("はなが咲く").startswith("hana")
+
+
+def test_ac48_tooth_tagged_as_noun_gives_ha() -> None:
+    analyzer = FakeAnalyzer({"歯が": [noun("歯", "ハ"), particle("が")]})
+
+    assert romaji_of_line("歯が", analyzer) == "ha ga"
+
+
+def test_ac48_he_tagged_as_noun_gives_he() -> None:
+    analyzer = FakeAnalyzer({"へ": [noun("へ", "ヘ")]})
+
+    assert romaji_of_line("へ", analyzer) == "he"
+
+
+def test_ac43_kanji_kept_as_written_passes_through_the_romaji() -> None:
+    unknown = "\U00020b9f"
+    analyzer = FakeAnalyzer(
+        {f"星{unknown}が": [noun("星", "ホシ"), noun(unknown, None), particle("が")]}
+    )
+
+    assert romaji_of_line(f"星{unknown}が", analyzer) == f"hoshi {unknown} ga"
+
+
+AC49_LINES = [
+    "君の声が",
+    "遠くひびく",
+    "君は空へ",
+    "君は、空へ",
+    "「君は」",
+    "ココロがひかる",
+    "そらへとんでゆく",
+    "はなが咲く",
+    "Oh 君と",
+    "星がながれる夜に",
+    "２人で歩こう",
+]
+
+
+@pytest.mark.parametrize("line", AC49_LINES)
+def test_ac49_each_romaji_word_is_the_romaji_of_its_hiragana_word(line: str) -> None:
+    reading = read_line(line)
+    hiragana_words = reading.hiragana.split(" ")
+    romaji_words = romaji_of_line(line).split(" ")
+
+    assert len(romaji_words) == len(hiragana_words)
+    for index, (hiragana_word, romaji_word) in enumerate(
+        zip(hiragana_words, romaji_words, strict=True)
+    ):
+        if index in reading.particle_word_indexes:
+            assert romaji_word == to_romaji(hiragana_word, particle_word_indexes=frozenset({0}))
+            assert romaji_word.strip('",.!?') in ("wa", "e")
+        else:
+            assert romaji_word == to_romaji(hiragana_word)

@@ -209,3 +209,8 @@ def test_ac8_text_without_hiragana_katakana_or_kanji_has_no_japanese(text: str) 
 )
 def test_ac43_iteration_marks_shime_and_extra_ideograph_blocks_have_japanese(text: str) -> None:
     assert has_japanese(text) is True
+
+
+def test_spec003_ac43_kanji_outside_the_basic_plane_is_japanese() -> None:
+    """U+20B9F, a CJK Extension B kanji; AC-43's unknown-word example uses it."""
+    assert has_japanese("\U00020b9f") is True

@@ -478,17 +478,17 @@ def test_ac29_romaji_is_spelled_in_code_from_each_hiragana(
     set_reply(
         fake_claude_client,
         [
-            {"index": 0, "reading": "きみ は うみ へ", "english": "romaji: kimi ha umi he"},
+            {"index": 0, "reading": "きみ が うみ に", "english": "romaji: kimi ha umi he"},
             {"index": 1, "reading": "がっこう で まっちゃ", "english": "romaji: gakko de macha"},
             {"index": 2, "reading": "らーめん と さんぽ", "english": "romaji: ramen to sampo"},
             {"index": 3, "reading": "きみ が いた", "english": "romaji: kimi ga iru"},
         ],
     )
 
-    lines = post_for_lines(client, "君は海へ\n学校で抹茶\nラーメンと散歩\n君がいる")
+    lines = post_for_lines(client, "君が海に\n学校で抹茶\nラーメンと散歩\n君がいる")
 
     assert [line["romaji"] for line in lines] == [
-        "kimi wa umi e",
+        "kimi ga umi ni",
         "gakkou de matcha",
         "raamen to sanpo",
         "kimi ga ita",
@@ -707,6 +707,8 @@ def test_ac33_successful_request_logs_one_line_with_counts_duration_and_tokens(
 
 def configure_failure(fake_claude_client: FakeClaudeClient, failure: str) -> tuple[str, int, str]:
     """Sets the fake up for one failure; returns (lyrics, expected status, expected code)."""
+    if failure == "empty-input":
+        return " \n\u3000\n ", 400, "empty_input"
     if failure == "no-japanese":
         return "We sing tonight\nLa la la", 400, "no_japanese"
     if failure == "invalid-reply":
@@ -734,6 +736,7 @@ def configure_failure(fake_claude_client: FakeClaudeClient, failure: str) -> tup
 
 
 FAILURES = [
+    "empty-input",
     "no-japanese",
     "invalid-reply",
     "missing-english",
@@ -763,6 +766,23 @@ def test_ac33_failed_request_logs_one_line_with_status_code_counts_and_duration(
     assert fields["code"] == expected_code
     assert fields["lines"] == str(len(split_lines(lyrics)))
     assert fields["characters"] == str(cleaned_characters(lyrics))
+    assert fields["duration_ms"].isdecimal()
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_ac33_empty_input_logs_one_line_with_zero_lines_and_zero_characters(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG)
+
+    response = client.post(VERSIONS_PATH, json={"lyrics": " \n\u3000\n "})
+
+    assert response.status_code == 400
+    fields = only_request_line(caplog)
+    assert fields["status"] == "400"
+    assert fields["code"] == "empty_input"
+    assert fields["lines"] == "0"
+    assert fields["characters"] == "0"
     assert fields["duration_ms"].isdecimal()
 
 

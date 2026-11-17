@@ -44,23 +44,23 @@ def is_unwanted(character: str) -> bool:
 
 
 def remove_empty_brackets(characters: list[str]) -> str:
-    """Drops each bracket pair holding only whitespace or punctuation, in one pass.
+    """Drops each bracket pair holding only whitespace, punctuation, or dropped pairs, in one pass.
 
-    `open_at` is where the latest opening bracket sits in `kept` while everything after it
-    is whitespace or punctuation; any other character clears it. Each character is added
-    and deleted at most once, so the pass stays linear.
+    `open_at` holds where each opening bracket sits in `kept` while everything after it is
+    whitespace, punctuation, or a pair already dropped; any other character, or a closing
+    bracket of the wrong kind, clears it. Each character is added and deleted at most once,
+    so the pass stays linear.
     """
     kept: list[str] = []
-    open_at: int | None = None
+    open_at: list[int] = []
     for character in characters:
         if character in CLOSING_BRACKET_FOR:
-            open_at = len(kept)
-        elif open_at is not None and character == CLOSING_BRACKET_FOR[kept[open_at]]:
-            del kept[open_at:]
-            open_at = None
+            open_at.append(len(kept))
+        elif open_at and character == CLOSING_BRACKET_FOR[kept[open_at[-1]]]:
+            del kept[open_at.pop() :]
             continue
         elif character in BRACKETS or not is_blank_or_punctuation(character):
-            open_at = None
+            open_at.clear()
         kept.append(character)
     return "".join(kept)
 

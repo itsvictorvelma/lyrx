@@ -198,6 +198,34 @@ def test_ac25_bracket_with_text_left_after_removing_hangul_is_kept_as_is() -> No
     assert remove_unwanted_characters(line) == f"{FULL_WIDTH_OPEN} 君{FULL_WIDTH_CLOSE}"
 
 
+NESTED_EMPTY_PAIRS = [
+    (f"君({FULL_WIDTH_OPEN}{FULL_WIDTH_CLOSE})が", "君が"),
+    ("君(「」)が", "君が"),
+    (f"【{FULL_WIDTH_OPEN}{FULL_WIDTH_CLOSE}】", ""),
+    ("君[(키미)]が", "君が"),
+]
+
+
+NESTED_IDS = ["round-in-round", "kagi-in-round", "round-in-lenticular-alone", "hangul-in-square"]
+
+
+@pytest.mark.parametrize(("line", "expected"), NESTED_EMPTY_PAIRS, ids=NESTED_IDS)
+def test_ac25_nested_empty_pairs_are_removed_in_one_pass(line: str, expected: str) -> None:
+    assert remove_unwanted_characters(line) == expected
+
+
+@pytest.mark.parametrize(("line", "_"), NESTED_EMPTY_PAIRS, ids=NESTED_IDS)
+def test_ac36_removing_again_after_nested_empty_pairs_changes_nothing(line: str, _: str) -> None:
+    removed = remove_unwanted_characters(line)
+
+    assert remove_unwanted_characters(removed) == removed
+
+
+@pytest.mark.parametrize("line", ["君(「あ」)が", f"君{FULL_WIDTH_OPEN}(la){FULL_WIDTH_CLOSE}が"])
+def test_ac25_pair_holding_a_pair_with_text_is_kept(line: str) -> None:
+    assert remove_unwanted_characters(line) == line
+
+
 @pytest.mark.parametrize(
     "line",
     ["(" * 250_000, "(" * 125_000 + ")" * 125_000, "( " * 125_000, "(가" * 125_000 + ")"],
@@ -491,6 +519,7 @@ AC36_PASTES = [
     "\n".join(["うた", "노래"] * 201),
     ("うた " * 201).rstrip(),
     "ゆめ" * 2501,
+    f"君({FULL_WIDTH_OPEN}{FULL_WIDTH_CLOSE})が\n君(「」)が\n【{FULL_WIDTH_OPEN}{FULL_WIDTH_CLOSE}】",
 ]
 
 

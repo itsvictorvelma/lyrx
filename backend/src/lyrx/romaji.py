@@ -3,8 +3,8 @@
 The text is read word by word, splitting on spaces. Katakana is turned into
 hiragana first. Each word is cut into sounds, taking a two-kana sound such as
 きゃ before a single kana. Then the marks are resolved in order: the iteration
-marks ゝ and ゞ, small っ, the long mark ー, and ん. A word that is exactly は or
-へ is a particle and reads wa or e.
+marks ゝ and ゞ, small っ, the long mark ー, and ん. A word the readings step
+marked as the particle は or へ reads wa or e; every other は and へ reads ha and he.
 """
 
 import string
@@ -100,19 +100,25 @@ ITERATION_MARK = "ゝ"
 VOICED_ITERATION_MARK = "ゞ"
 
 
-def to_romaji(text: str) -> str:
-    """Spells a line of hiragana (or katakana) as romaji, keeping its spacing."""
+def to_romaji(text: str, particle_word_indexes: frozenset[int] = frozenset()) -> str:
+    """Spells a line of hiragana (or katakana) as romaji, keeping its spacing.
+
+    `particle_word_indexes` are the positions, in `text.split(" ")`, of words the analyzer
+    tagged as the particle は or へ.
+    """
+    # ponytail: a greeting the dictionary keeps as one word, such as こんにちは, is spelled
+    # from its kana (konnichiha). A list of such greetings would give konnichiwa.
     hiragana = to_hiragana(text).replace(FULL_WIDTH_SPACE, " ")
-    return " ".join(spell_word(word) for word in hiragana.split(" "))
+    return " ".join(
+        spell_word(word, index in particle_word_indexes)
+        for index, word in enumerate(hiragana.split(" "))
+    )
 
 
-def spell_word(word: str) -> str:
-    """Spells one word, reading it as a particle when it is exactly は or へ plus punctuation."""
-    # ponytail: a word that is exactly は is always the particle wa, so the rare
-    # noun は (tooth) written alone is spelled wa too. Telling them apart needs
-    # the original kanji or grammar, which this function does not see.
+def spell_word(word: str, is_particle: bool) -> str:
+    """Spells one word; a particle は or へ, with any punctuation attached, reads wa or e."""
     particle = word.strip(ATTACHED_PUNCTUATION)
-    if particle in PARTICLE_SOUNDS:
+    if is_particle and particle in PARTICLE_SOUNDS:
         before, _, after = word.partition(particle)
         return spell_kana(before) + PARTICLE_SOUNDS[particle] + spell_kana(after)
     return spell_kana(word)

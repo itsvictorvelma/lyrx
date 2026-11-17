@@ -22,12 +22,16 @@ SHIME = (0x3006, 0x3006)  # 〆
 CJK_EXTENSION_A = (0x3400, 0x4DBF)  # 㐀 .. end of the block
 CJK_UNIFIED_IDEOGRAPHS = (0x4E00, 0x9FFF)  # 一 .. end of the block
 CJK_COMPATIBILITY_IDEOGRAPHS = (0xF900, 0xFAFF)  # 豈 .. end of the block
+# Extensions B to H in the supplementary planes; this span also holds the
+# compatibility ideographs supplement (U+2F800 .. U+2FA1F).
+CJK_SUPPLEMENTARY_IDEOGRAPHS = (0x20000, 0x3134F)
 KANJI_RANGES = (
     KANJI_REPEAT_MARK,
     SHIME,
     CJK_EXTENSION_A,
     CJK_UNIFIED_IDEOGRAPHS,
     CJK_COMPATIBILITY_IDEOGRAPHS,
+    CJK_SUPPLEMENTARY_IDEOGRAPHS,
 )
 
 # Each katakana sits 0x60 code points above its hiragana (ア U+30A2, あ U+3042).

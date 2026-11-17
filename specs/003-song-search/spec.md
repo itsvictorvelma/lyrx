@@ -127,7 +127,7 @@ Spec 001's error shape, `{ "code", "message", "details"? }`, with the codes unde
 - **Plain lyrics**: the record's lyrics as plain text, one line per line.
 - **Synced lyrics**: the record's lyrics in LRC format, where each line starts with a time, for example `[00:12.34]君の声が`.
 - **Kana**: hiragana or katakana, including the long mark `ー`.
-- **Japanese character**: as spec 001 and its AC-43 define it (kana, kanji, and the marks listed there).
+- **Japanese character**: as spec 001 and its AC-43 define it (kana, kanji, and the marks listed there). Kanji also include the CJK extension blocks in the supplementary planes, `U+20000`–`U+3134F` (clarified 2026-11-17 after the T2 review, so a rare kanji such as `𠮟` counts).
 - **Analyzer**: `fugashi` with the `unidic-lite` dictionary. It cuts a line into words (tokens) and gives each one a part of speech and a reading.
 - **Security cap**: a size limit that protects the server from a reply or request that is not a song at all. Each cap is set far above any real song, so it never triggers on lyrics.
 
@@ -316,7 +316,7 @@ The analyzer runs only on cleaned lines that have a Japanese character.
 4. **Digits** (`0`–`9` and full-width `０`–`９`) are kept as written. They are never read aloud. A counter after a number (for example `人` in `2人`) gets the dictionary's reading of that word alone, which may not be the reading a singer uses. The code marks this with a `ponytail:` comment.
 5. **Latin letters** are kept as written, case included.
 
-**Kana check.** For a word with both kanji and kana (for example `光る`), the kana at the start and at the end of the word, turned into hiragana, must also be the start and the end of its reading. If not, the reading is still used, and the line gets `readingVerified: false`. Example: `光る` with reading `ひかる` passes; with reading `ひかった` it fails, because `る` changed.
+**Kana check.** For a word with both kanji and kana (for example `光る`), the kana at the start and at the end of the word, turned into hiragana, must also be the start and the end of its reading. If not, the reading is still used, and the line gets `readingVerified: false`. Example: `光る` with reading `ひかる` passes; with reading `ひかった` it fails, because `る` changed. A small ke (`ヶ`, `ヵ`) matches `か` or `が` in this check (clarified 2026-11-17 after the T2 review: `関ヶ` read `せきが` passes).
 
 **`readingVerified`** is kept (decided by the user). It now means: every word with a kanji in this line got a dictionary reading that passed the kana check. It is `false` only for rule 3 and the kana check above. Spec 001's comparison against Claude's reading no longer exists. On the page, a line with `readingVerified: false` shows the note "Some readings may be wrong." (see **The page**).
 

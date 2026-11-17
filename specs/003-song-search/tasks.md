@@ -7,8 +7,9 @@ Line timings (spec AC-20 to AC-22) moved to spec 005 and are not built here.
 ## Part 1: the free pipeline for pastes (PR 1)
 
 - [x] T1 (AC-23 to AC-34, AC-36, AC-37, AC-65 request-body part): The cleanup. `lyric_cleanup.py`; `read_paste` returns cleaned lines; the size limits and `input_too_large` go; the body cap becomes 256 KiB with `not_lyrics`. Re-point the uncommitted spec 002 cleanup tests to these ACs. The paste route still uses Claude at this point.
-  - [ ] T1 follow-ups (from the T1 review): nested empty bracket pairs collapse in the same pass (`君(（）)が` → `君が`, spec clarification in "The shared removal"), with an idempotence test; add an `empty_input` case to the log-line tests (one log line, lines=0, characters=0). Done with T2's round.
-- [ ] T2 (AC-38 to AC-45, AC-47 to AC-49 at module level): Readings. Add `fugashi` and `unidic-lite`. `japanese_analyzer.py`, `hiragana.py`, and the romaji particle rule in `romaji.py`. `tests/fake_analyzer.py`.
+  - [x] T1 follow-ups (from the T1 review): nested empty bracket pairs collapse in the same pass (`君(（）)が` → `君が`, spec clarification in "The shared removal"), with an idempotence test; add an `empty_input` case to the log-line tests (one log line, lines=0, characters=0). Done with T2's round.
+- [x] T2 (AC-38 to AC-45, AC-47 to AC-49 at module level): Readings. Add `fugashi` and `unidic-lite`. `japanese_analyzer.py`, `hiragana.py`, and the romaji particle rule in `romaji.py`. `tests/fake_analyzer.py`.
+  - [ ] T2 follow-up (from the T2 review, do with T3's round): test-writer adds two fake-analyzer cases in tests/test_hiragana.py: `ヶ月` (suffix) read `カゲツ` → readingVerified true; `関ヶ` read `セキノ` → false.
 - [ ] T3 (AC-50, AC-51, AC-55 to AC-59 at module level): The Gemini request and reply checks in `gemini.py`, against `tests/fake_gemini.py` on the fake transport. The key goes in a header, never in a URL.
 - [ ] T4 (AC-53, AC-54 at module level): `translation.py`: the numbered message, chunks, order, stop at the first failure.
 - [ ] T5 (AC-46, AC-52 to AC-60, AC-61 server part): Switch the paste route to the new pipeline (`four_versions.py`), with `englishError`. Delete the Claude pipeline, its tests, and the `anthropic` dependency, and the unused `details` parameter of `ApiError`. `GEMINI_API_KEY` in config and `.env.example`. The paste route's log fields.
