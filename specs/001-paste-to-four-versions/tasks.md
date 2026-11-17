@@ -22,6 +22,6 @@ Each task is one test-writer → implementer → reviewer round. Server tests us
   - T7: add end-to-end tests that the 502 and 503 bodies hold no exception or reply text. Logging must never walk an exception's `__context__`, since a suppressed pydantic error still holds reply text there.
   - T7: add a test that a client disconnecting mid-body never reaches the app or Claude.
   - T7: add an AC-32 test that raises through the fake Claude client; make sure uvicorn's traceback log on a 500 can't carry lyrics or the reply (AC-33).
-- [ ] Tests layout: move the tests for `host_check.py`, `body_limit.py`, `crash_guard.py` and `request_log.py` out of `test_app.py` / `test_four_versions.py` into `test_host_check.py`, `test_body_limit.py`, `test_crash_guard.py` and `test_request_log.py` (AGENTS.md: one test file per module). Moves only, no behavior change.
+- [x] Tests layout: move the tests for `host_check.py`, `body_limit.py`, `crash_guard.py` and `request_log.py` out of `test_app.py` / `test_four_versions.py` into `test_host_check.py`, `test_body_limit.py`, `test_crash_guard.py` and `test_request_log.py` (AGENTS.md: one test file per module). Moves only, no behavior change. The end-to-end AC-33 log tests stay in `test_four_versions.py`; `test_request_log.py` holds direct unit tests of `logged_request`.
 - [ ] README: folder map, setup (key, both servers), and `scripts/check.sh`.
 - [ ] Final review of the whole diff, then the explainer's walkthrough, then the PR.

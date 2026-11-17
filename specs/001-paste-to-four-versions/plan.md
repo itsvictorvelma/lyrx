@@ -97,7 +97,7 @@
 - No exception may escape the app, since uvicorn would log its traceback and message. An outermost ASGI layer turns any unexpected exception into the `internal_error` response (if nothing has been sent yet) and logs only the exception's class name.
 - The Host check becomes a plain ASGI middleware like the body-size limit, so a client that disconnects mid-body gets no response and causes no error or traceback.
 
-**Page.** `App` holds one state: idle, waiting, result, or error. `PasteForm` and `FourVersions` are presentational. Requests use `fetch` with no router and no state library. All text renders as React children. CSS is neutral with a Japanese font stack and a visible focus outline, and no invented colors.
+**Page.** `App` holds one state: idle, waiting, result, or error. `PasteForm` and `FourVersions` are presentational. Requests use `fetch` with no router and no state library. All text renders as React children. CSS is neutral with a Japanese font stack and a visible focus outline, and no invented colors. The colors, approved by the user, are CSS variables on `:root`: text `#1a1a1a`, muted labels `#5c5c5c`, borders `#d0d0d0`, page `#ffffff`, error text `#a40000` (always with the word "Error:", never color alone), and focus `2px solid` in the text color. Under `prefers-color-scheme: dark`: text `#ececec`, muted `#a8a8a8`, border `#444444`, page `#161616`, error `#ff8a80`.
 
 **Quality tools.** `ruff format`, `ruff check`, `mypy --strict`, and `pytest` for the backend. Prettier, ESLint (typescript-eslint, react-hooks), `tsc --noEmit`, Vitest, and `vite build` for the frontend. `scripts/check.sh` runs them all and fails on the first error.
 
