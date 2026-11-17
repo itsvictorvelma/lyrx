@@ -40,6 +40,11 @@ main {
   outline-offset: 2px;
 }
 
+/* The result heading is focused by code; show the ring only for keyboard focus. */
+h2:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .paste-form {
   display: flex;
   flex-direction: column;
@@ -54,7 +59,7 @@ textarea {
   font: inherit;
   color: inherit;
   background: var(--color-page);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-muted);
 }
 
 button {

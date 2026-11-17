@@ -1,5 +1,5 @@
 // The Lyrx page: the paste form above, the four versions or an error below; holds the request state.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getFourVersions } from "./lyrics/api";
 import {
   errorMessageFor,
@@ -29,6 +29,26 @@ function toPageState(result: FourVersionsResult): PageState {
   }
 }
 
+function lineCountText(count: number): string {
+  return count === 1 ? "1 line" : `${String(count)} lines`;
+}
+
+function ResultHeading({ lines }: { lines: Line[] }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Focus tells keyboard and screen-reader users the result arrived, and keeps focus
+  // from being lost when the disabled button lets go of it.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [lines]);
+
+  return (
+    <h2 ref={headingRef} tabIndex={-1}>
+      Four versions ({lineCountText(lines.length)})
+    </h2>
+  );
+}
+
 export function App() {
   const [state, setState] = useState<PageState>({ kind: "idle" });
 
@@ -46,7 +66,12 @@ export function App() {
           void submit(lyrics);
         }}
       />
-      {state.kind === "result" && <FourVersions lines={state.lines} />}
+      {state.kind === "result" && (
+        <section>
+          <ResultHeading lines={state.lines} />
+          <FourVersions lines={state.lines} />
+        </section>
+      )}
       {state.kind === "error" && (
         <p role="alert" className="error">
           <strong>Error:</strong> {state.message}

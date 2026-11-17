@@ -14,5 +14,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Load styles.css as real text so styles.test.ts can read it with ?raw.
+    css: { include: [/\/src\/styles\.css/] },
   },
 });

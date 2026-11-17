@@ -1,5 +1,5 @@
 // Checks the whole page: paste, one request, waiting, result, and every error message.
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { App } from "./App";
@@ -402,4 +402,139 @@ describe("App errors", () => {
     expect(alert.textContent).not.toContain("Failed to fetch");
     expect(textArea()).toHaveProperty("value", PASTED_LYRICS);
   });
+});
+
+describe("App result heading", () => {
+  function line(index: number, original: string): Line {
+    return {
+      index,
+      original,
+      hiragana: "ほし",
+      romaji: "hoshi",
+      english: "Star",
+      readingVerified: true,
+    };
+  }
+
+  function resultHeading(): HTMLElement {
+    return screen.getByRole("heading", { level: 2, name: /Four versions/ });
+  }
+
+  test("test_ac37_result_heading_appears_above_the_list_and_takes_focus", async () => {
+    fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user);
+    const list = await screen.findByRole("list");
+
+    const heading = resultHeading();
+    expect(
+      heading.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(document.activeElement).toBe(heading);
+  });
+
+  test("test_ac37_result_heading_counts_two_lines", async () => {
+    fakeFetch.mockResolvedValue(
+      jsonResponse(200, { lines: [line(0, "星"), line(1, "月")] }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user, "星\n月");
+    await screen.findByRole("list");
+
+    expect(resultHeading().textContent).toContain("2 lines");
+  });
+
+  test("test_ac37_result_heading_counts_blank_lines_too", async () => {
+    fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user);
+    await screen.findByRole("list");
+
+    expect(resultLines.filter((line) => line.original === "")).toHaveLength(1);
+    expect(resultHeading().textContent).toContain("3 lines");
+  });
+
+  test("test_ac37_result_heading_says_1_line_for_one_line", async () => {
+    fakeFetch.mockResolvedValue(jsonResponse(200, { lines: [line(0, "星")] }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user, "星");
+    await screen.findByRole("list");
+
+    const text = resultHeading().textContent;
+    expect(text).toContain("1 line");
+    expect(text).not.toContain("1 lines");
+  });
+
+  test("test_ac37_no_result_heading_while_idle", () => {
+    render(<App />);
+
+    expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+  });
+
+  test("test_ac37_no_result_heading_while_waiting", async () => {
+    fakeFetch.mockReturnValue(deferredResponse().promise);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user);
+    await screen.findByText(WAITING_TEXT);
+
+    expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+  });
+
+  test("test_ac37_no_result_heading_on_error", async () => {
+    fakeFetch.mockResolvedValue(errorResponse(502, "model_refused"));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await pasteAndSubmit(user);
+    await screen.findByRole("alert");
+
+    expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+  });
+
+  test("test_ac37_second_result_moves_focus_to_the_heading_again", async () => {
+    fakeFetch
+      .mockResolvedValueOnce(jsonResponse(200, { lines: resultLines }))
+      .mockResolvedValueOnce(jsonResponse(200, { lines: [line(0, "星")] }));
+    const user = userEvent.setup();
+    render(<App />);
+    await pasteAndSubmit(user);
+    await screen.findByRole("list");
+
+    await user.click(submitButton());
+    await waitFor(() => {
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    });
+
+    expect(document.activeElement).toBe(resultHeading());
+  });
+
+  test.each(["{Enter}", " "])(
+    "test_ac37_keyboard_submit_with_%j_leaves_focus_on_the_heading",
+    async (key) => {
+      fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(textArea());
+      await user.paste(PASTED_LYRICS);
+      submitButton().focus();
+      expect(document.activeElement).toBe(submitButton());
+
+      await user.keyboard(key);
+      await screen.findByRole("list");
+
+      expect(fakeFetch).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe(resultHeading());
+    },
+  );
 });
