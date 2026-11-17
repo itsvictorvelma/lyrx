@@ -9,6 +9,10 @@
 | `.env.example` | new | Shows the one setting, `ANTHROPIC_API_KEY=`, with no value |
 | `scripts/check.sh` | new | One command for every check: ruff, mypy, pytest, Prettier, ESLint, tsc, Vitest, build |
 | `README.md` | changed | Folder map, how to set the key, run both servers, and run the checks |
+| `AGENTS.md` | changed | Adds the "Code structure" rules the user asked for; test files may be `*.test.ts` or `*.test.tsx` |
+| `.claude/agents/reviewer.md` | changed | The reviewer also checks clarity and structure |
+| `.claude/settings.json` | new | Enables the Impeccable plugin for frontend work, at project scope, as the user asked |
+| `specs/README.md` | changed | Index status, and open questions from the Impeccable critique for spec 003 |
 
 ### Backend — `backend/`
 
@@ -33,7 +37,10 @@
 | `src/lyrx/readings.py` | new | Hiragana-only hard check and kana-kept comparison (AC-17–19) |
 | `src/lyrx/romaji.py` | new | One pure `to_romaji(hiragana)` (AC-23–28) |
 | `src/lyrx/four_versions.py` | new | The pipeline: split → limits → key → call → checks → four versions (AC-2–4, 18, 22, 29, 33) |
-| `tests/conftest.py` | new | The fake Claude client and a test-app fixture |
+| `tests/conftest.py` | new | Test fixtures: the fake Claude client, the app, and the test client |
+| `tests/fake_claude.py` | new | The fake Claude client; `fake_message(...)` builds real SDK `Message` objects |
+| `tests/error_shape.py` | new | `assert_error_shape`: checks the one error shape |
+| `tests/pastes.py` | new | Invented pastes and the size-limit details tests share |
 | `tests/raw_asgi.py` | new | Calls the ASGI app directly with a scripted `receive`, as uvicorn does, and logs an escaping exception to `uvicorn.error` |
 | `tests/test_<module>.py` | new | One test file per module above |
 
@@ -48,12 +55,12 @@
 | `src/main.tsx` | new | Mounts the app |
 | `src/App.tsx` | new | Page layout: form above, result or error below; holds the request state |
 | `src/styles.css` | new | Plain readable styles, Japanese font stack, visible focus |
-| `src/lyrics/types.ts` | new | `Line` and `ApiErrorCode` types matching the server |
+| `src/lyrics/types.ts` | new | `Line` (matching the server), `PageErrorCode` (the codes with a page message), and `FourVersionsResult` (lines, error, unreachable, or unreadable) |
 | `src/lyrics/api.ts` | new | `getFourVersions(lyrics)`: one POST, returns lines or an error code |
 | `src/lyrics/errorMessages.ts` | new | Error code → message on the page |
 | `src/lyrics/PasteForm.tsx` | new | Labeled text area, button, waiting status (AC-34–36) |
 | `src/lyrics/FourVersions.tsx` | new | One group per line with the four labeled rows (AC-37, 40, 41) |
-| `src/lyrics/*.test.tsx`, `src/App.test.tsx` | new | Tests next to what they test (AC-34–41) |
+| `src/lyrics/*.test.ts(x)`, `src/App.test.tsx`, `src/styles.test.ts` | new | Tests next to what they test (AC-34–41, and the T9 accessibility checks) |
 
 ## Approach
 
@@ -92,7 +99,7 @@
 **Logging** writes one line per request: status, code, line and character counts, duration, and token usage. It never logs the lyrics, the reply, headers, or the key.
 
 **T7 decisions** (coordinator; the spec leaves them open):
-- The paste is normalized to NFC as it enters the pipeline, before splitting, so `original` is the NFC line as split. Composed and decomposed kana look the same on the page.
+- The paste is normalized to NFC as it enters the pipeline, before splitting, so `original` is the NFC line as split. Composed and decomposed kana look the same on the page. NFC also maps most CJK Compatibility Ideographs (U+F900–FAFF) to their unified forms, so such a character in `original` can differ in code point from the paste.
 - The one log line goes to the `lyrx` logger as `name=value` fields: `status`, `code` (errors only), `lines`, `characters`, `duration_ms`, `input_tokens`/`output_tokens` on success, and `exception=<ClassName>` on `internal_error` only (the class name, never the message). It covers `POST /api/versions` only. Host refusals, 404, 405 and `invalid_request` are not logged.
 - No exception may escape the app, since uvicorn would log its traceback and message. An outermost ASGI layer turns any unexpected exception into the `internal_error` response (if nothing has been sent yet) and logs only the exception's class name.
 - The Host check becomes a plain ASGI middleware like the body-size limit, so a client that disconnects mid-body gets no response and causes no error or traceback.
@@ -110,7 +117,7 @@
 ## Side effects
 
 - **Dependencies, all approved:**
-  - Backend: `fastapi`, `uvicorn`, `anthropic`; dev `pytest`, `httpx`, `ruff`, `mypy`.
-  - Frontend: `react`, `react-dom`; dev `vite`, `@vitejs/plugin-react`, `typescript`, `@types/react`, `@types/react-dom`, `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `eslint`, `typescript-eslint`, `eslint-plugin-react-hooks`, `prettier`.
-- Adds `backend/`, `frontend/`, `scripts/`, and `.env.example`.
+  - Backend: `fastapi`, `uvicorn`, `anthropic`, `httpx2` (the SDK's own HTTP library, approved by the user in T6); dev `pytest`, `httpx`, `ruff`, `mypy`.
+  - Frontend: `react`, `react-dom`; dev `vite`, `@vitejs/plugin-react`, `typescript`, `@types/react`, `@types/react-dom`, `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `eslint`, `@eslint/js`, `globals`, `typescript-eslint`, `eslint-plugin-react-hooks`, `prettier` (`@eslint/js` and `globals` approved by the user at the final review).
+- Adds `backend/`, `frontend/`, `scripts/`, `.env.example`, and `.claude/settings.json` (a third-party plugin marketplace for Impeccable, requested by the user).
 - No database, no files written at runtime, no CI change.

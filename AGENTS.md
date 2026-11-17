@@ -95,7 +95,7 @@ Limits:
 
 The code must be easy to read for someone who has never worked in this repo. The reviewer fails work that breaks these rules.
 
-- **Layout.** Backend code lives in `backend/src/lyrx/`, tests in `backend/tests/` (one `test_<module>.py` per module). Frontend code lives in `frontend/src/`, grouped by feature (`src/lyrics/`, …); tests sit next to the file they test as `*.test.tsx`. The README holds the folder map and is updated when a folder or module is added.
+- **Layout.** Backend code lives in `backend/src/lyrx/`, tests in `backend/tests/` (one `test_<module>.py` per module). Frontend code lives in `frontend/src/`, grouped by feature (`src/lyrics/`, …); tests sit next to the file they test as `*.test.ts` or `*.test.tsx`. The README holds the folder map and is updated when a folder or module is added.
 - **One job per file**, named for that job. No `utils`, `helpers`, `common`, `misc`, or `manager`. No folder for a single file.
 - **Every file opens with a one-line docstring or comment** saying what it is for.
 - **Names say what things are and do**: `split_lines`, `to_romaji`, `PasteForm`. No abbreviations a newcomer would have to guess.

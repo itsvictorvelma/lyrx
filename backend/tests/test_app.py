@@ -74,6 +74,15 @@ def test_ac42_unknown_path_with_post_is_not_found(client: TestClient) -> None:
     assert_error_shape(response.json(), "not_found")
 
 
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
+def test_ac42_api_docs_pages_are_disabled_and_not_found(client: TestClient, path: str) -> None:
+    """The docs pages would load assets from a CDN, so the app turns them off."""
+    response = client.get(path)
+
+    assert response.status_code == 404
+    assert_error_shape(response.json(), "not_found")
+
+
 def test_ac42_get_on_versions_route_is_method_not_allowed(client: TestClient) -> None:
     response = client.get(VERSIONS_PATH)
 

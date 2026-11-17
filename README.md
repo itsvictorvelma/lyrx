@@ -91,4 +91,4 @@ lyrx/
             └── FourVersions.tsx   Each line in its four labeled versions
 ```
 
-Tests sit next to what they test: `backend/tests/test_<module>.py` and `frontend/src/**/*.test.tsx`.
+Tests sit next to what they test: `backend/tests/test_<module>.py` and `frontend/src/**/*.test.ts(x)`.
