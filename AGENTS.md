@@ -19,7 +19,7 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
 
 ## Locked decisions
 
-- **Local only.** The app runs on the learner's own computer on `127.0.0.1`. No hosted server, no accounts, no login.
+- **Local for now.** The app runs on the learner's own computer on `127.0.0.1`, with no accounts or login. Hosting it for a small invited group (the user, family, friends) is planned as its own spec once the app is built; that spec adds access control, spending limits, and deployment, and turns the listen address and allowed host names into settings.
 - **One model provider: the Claude API**, called from the server only. The API key comes from the environment (`ANTHROPIC_API_KEY` in a gitignored `.env`). The browser never sees it.
 - **No chat.** The learner gives lyrics or a link; Lyrx returns the four versions. There is no conversation with the model in the UI.
 - **Stack (spec 001):** Python server in `backend/` (FastAPI, uvicorn, uv, pytest) and a React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). Model `claude-opus-5-5` through the official `anthropic` SDK. `scripts/check.sh` runs every check.
