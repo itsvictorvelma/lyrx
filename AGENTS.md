@@ -22,7 +22,7 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
 - **Local only.** The app runs on the learner's own computer on `127.0.0.1`. No hosted server, no accounts, no login.
 - **One model provider: the Claude API**, called from the server only. The API key comes from the environment (`ANTHROPIC_API_KEY` in a gitignored `.env`). The browser never sees it.
 - **No chat.** The learner gives lyrics or a link; Lyrx returns the four versions. There is no conversation with the model in the UI.
-- **The stack is chosen in spec 001** and recorded here once approved.
+- **Stack (spec 001):** Python server in `backend/` (FastAPI, uvicorn, uv, pytest) and a React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). Model `claude-opus-5-5` through the official `anthropic` SDK. `scripts/check.sh` runs every check.
 - **Never push to `main`.** Every change is a PR the user reviews and merges.
 
 ## Spec-driven development
@@ -90,6 +90,18 @@ Limits:
 - Run `git status` and `git diff --cached`.
 - Confirm no `.env*`, no audio, no database, and no `.DS_Store` is staged.
 - Scan the diff for secrets and API keys.
+
+## Code structure
+
+The code must be easy to read for someone who has never worked in this repo. The reviewer fails work that breaks these rules.
+
+- **Layout.** Backend code lives in `backend/src/lyrx/`, tests in `backend/tests/` (one `test_<module>.py` per module). Frontend code lives in `frontend/src/`, grouped by feature (`src/lyrics/`, …); tests sit next to the file they test as `*.test.ts` or `*.test.tsx`. The README holds the folder map and is updated when a folder or module is added.
+- **One job per file**, named for that job. No `utils`, `helpers`, `common`, `misc`, or `manager`. No folder for a single file.
+- **Every file opens with a one-line docstring or comment** saying what it is for.
+- **Names say what things are and do**: `split_lines`, `to_romaji`, `PasteForm`. No abbreviations a newcomer would have to guess.
+- **Short functions** that do one thing. A reader can follow a request top to bottom without jumping around.
+- **Settings in one place**: backend `config.py`, no magic numbers or strings elsewhere. Data shapes in `schemas.py` (backend) and `types.ts` (frontend).
+- **Formatting and lint are automatic.** `scripts/check.sh` runs ruff (format and lint), mypy `--strict`, and pytest for the backend; Prettier, ESLint, `tsc`, Vitest, and the build for the frontend. Nothing merges with a failing check.
 
 ## Clean code rules
 
