@@ -82,6 +82,10 @@ class FakeMessages:
     If `error` is set, it is raised at `error_point`: on the `stream(...)` call itself (the
     default), on entering the `with`, or on `get_final_message()`. The call is recorded first.
     Otherwise the stream's `get_final_message()` gives `final_message`.
+
+    `replies` is a queue for requests that make several calls: each call takes the next entry.
+    A `Message` is that call's reply; an exception is raised on that call, after it is recorded.
+    Once the queue is empty, calls fall back to `error` and `final_message` as above.
     """
 
     def __init__(self) -> None:
@@ -89,9 +93,15 @@ class FakeMessages:
         self.error: BaseException | None = None
         self.error_point: ErrorPoint = "call"
         self.final_message: Message | None = None
+        self.replies: list[Message | BaseException] = []
 
     def stream(self, **request: Any) -> FakeMessageStream:
         self.calls.append(request)
+        if self.replies:
+            reply = self.replies.pop(0)
+            if isinstance(reply, BaseException):
+                raise reply
+            return FakeMessageStream(reply)
         if self.error is not None and self.error_point == "call":
             raise self.error
         return FakeMessageStream(self.final_message, self.error, self.error_point)
@@ -103,6 +113,7 @@ class FakeClaudeClient:
     Records: `messages.calls`, one dict of keyword arguments per `messages.stream(...)` call.
     Configure: `messages.error` and `messages.error_point` (raised on call, enter, or final
     message), or `messages.final_message` (the returned reply, e.g. from `fake_message`).
+    For several calls, `messages.replies`: one reply (or exception) per call, in order.
     """
 
     def __init__(self) -> None:

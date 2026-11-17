@@ -27,6 +27,7 @@
 | `tests/pages.py` | new | Invented page bodies and candidate sets the tests share (like `pastes.py`). No real lyrics |
 | `tests/fake_claude.py` | changed | `messages.replies`: a queue of replies, one per call (selection first, then readings). `final_message` still works for spec 001 tests |
 | `tests/conftest.py` | changed | Autouse network guard with a teardown check; `fake_network` fixture; the `app` fixture also passes the fake network |
+| `tests/test_network_guard.py`, `tests/test_fake_network.py`, `tests/test_fake_claude.py` | new | Tests of the test setup (T1): the guard trips on a real lookup or connection; the fake network rebuilds links, records the dialed address and chunks as read; the fake Claude queue returns one reply per call. They test the fakes, so they cite no AC except AC-57 for the guard |
 | `tests/test_<module>.py` | new | One per new module: `test_link_check`, `test_address_check`, `test_pinned_transport`, `test_page_fetch`, `test_page_charset`, `test_page_text`, `test_candidate_lines`, `test_lyric_pick_prompt`, `test_lyric_pick`, `test_versions_from_link`; plus `test_network_guard` |
 | `tests/test_claude.py`, `tests/test_request_log.py` | changed | Cover the shared `send_completion` and the generic log fields; existing tests keep passing |
 
