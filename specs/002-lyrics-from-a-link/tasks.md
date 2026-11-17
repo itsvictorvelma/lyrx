@@ -10,6 +10,7 @@ Each task is one test-writer → implementer → reviewer round. Server tests us
   - `tests/pages.py`: invented pages.
   - Spec 001's suite still passes under the guard.
   - ~220 lines.
+- [ ] T1b (AC-58 to AC-73, user priority 2026-11-17): Paste cleanup. One shared cleanup module (Hangul and zero-width removal, empty brackets, trimming, splitting over-long lines at whitespace incl. U+00A0 then after 。！？!?) used by `read_paste` before the limits. The link-route parts of AC-70/71 are tested when T6/T8 build the candidates and the route.
 - [ ] T2 (AC-9, 10, 11, 12 link part, 13, 14, 15 unit part): Link rules.
   - `link_check.py`, `CheckedLink` in `schemas.py`, the 9 new codes and messages in `errors.py`, and the link settings in `config.py`.
   - Unit tests on `check_link`. The "fake records no lookup" clauses are asserted end-to-end in T8.

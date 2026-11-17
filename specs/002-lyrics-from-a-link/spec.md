@@ -498,9 +498,183 @@ Decided by the user on 2026-11-16.
 - Brotli (`br`) is not supported: the fetch asks for `gzip, deflate` only. A `br` body still counts against the size cap and, being undecodable, ends as `link_no_japanese`. No new dependency.
 - A malformed link request (body not JSON, or no string field `url`) returns `400 invalid_request` with the message "The request must be JSON with a string field url." Spec 001's route keeps its own message.
 
+## Amendment (2026-11-17): cleaning up pasted lyrics (approved by the user)
+
+### Why
+
+The learner has not managed to get the four versions of a single real song. Text copied from lyrics sites loses its line breaks: the whole song arrives as one long line, with the lyric lines joined by spaces. It also mixes in a Korean pronunciation and a Korean translation of each line. Spec 001 then refuses the paste with the per-line limit (AC-48). The user chose automatic cleanup of pasted text, built first, so that pasting a real song works.
+
+### Goal
+
+`POST /api/versions` cleans the paste in code before the size limits, so a paste with lost line breaks and Korean text becomes the Japanese lines, one per line. No Claude call is added.
+
+### In scope
+
+- A cleanup step for `POST /api/versions`, in code, after NFC and line splitting and before the size limits.
+- One shared module for removing Hangul, zero-width characters, and empty brackets. Spec 002's candidate step uses it too.
+- The link route builds `lyrics` with the same cleanup, so `lyrics` and `lines` still match (see **The link route**).
+
+### Out of scope
+
+- Any Claude call for cleanup, and any change to the readings call, its checks, or romaji.
+- Removing any language other than Korean. Latin-only lines (romaji guides, English) are kept, as in spec 001 AC-4.
+- Splitting lines that are within the per-line limit, even when they contain spaces.
+- Changing the limits (5,000 characters, 200 lines, 200 characters per line), the error codes, or the messages.
+- Any change to the page. The page sends the paste as typed. It does not show the cleaned text, and it does not replace the paste box text.
+- New response fields. The reply shape of both routes stays the same.
+
+### The cleanup
+
+The route runs these steps in order:
+
+1. **NFC and splitting.** Spec 001: NFC, then splitting rules 1–4.
+2. **Empty paste.** If splitting gives no lines, the request fails with `400 empty_input`, as in spec 001. This is decided before cleanup.
+3. **Clean each line.** Blank lines are skipped. For every other line:
+   1. Remove characters with the shared removal (see **The shared removal**).
+   2. If step 3.1 removed at least one character, turn each run of ASCII spaces and tabs in the line into one space. Lines where nothing was removed keep their inside spaces as typed.
+   3. Trim whitespace at both ends of the line. "Whitespace" is what Python's `str.strip()` removes; it includes the full-width space `U+3000`. A full-width space inside a line is kept.
+   4. If the line is now empty, drop it. A line that was already blank after step 1 is not dropped by this step; it stays a blank line (spec 001 AC-3).
+4. **Repair lost line breaks.** Only a line longer than the per-line limit (200 characters, measured after step 3) is split. Lines of 200 characters or fewer are never split.
+   1. Split it at every run of whitespace. Here whitespace means ASCII space, tab, and full-width space (`U+3000`).
+   2. Split each piece that is still over 200 characters after every run of these sentence-ending marks: `。`, `！`, `？`, `!`, `?`. The marks stay at the end of the piece before the split. For example, `！？` in the middle of a piece is one run, so the piece breaks once, after `？`.
+   3. Trim every piece as in step 3.3, and drop empty pieces. The pieces replace the line, in order.
+   4. A piece still over 200 characters after both splits stays as it is. The size limits then refuse it (step 6).
+   5. This applies to every long line, with or without Japanese. A long Latin line with spaces is split at its spaces too.
+5. **Tidy blank lines.** Spec 001 splitting rules 3 and 4 are applied again: blank lines at the start and the end are dropped, and a run of blank lines becomes one blank line. (Dropping a Korean-only line between two blank lines would otherwise leave two blank lines in a row.)
+6. **Size limits.** Spec 001's size limits, with AC-48's order, `details`, and messages, are measured on the **cleaned lines** (the result of step 5):
+   - characters: the cleaned lines joined by `\n`;
+   - lines: the number of cleaned lines;
+   - line length and `lineNumber`: the first cleaned line over 200 characters, numbered from 1 in the cleaned lines, blank lines included.
+7. **No Japanese.** If no cleaned line has a Japanese character, the request fails with `400 no_japanese`, and Claude is not called. A paste that cleanup empties completely is within every limit and gets `no_japanese`.
+8. **The rest of spec 001**, unchanged: the API key, the readings call, the checks, and romaji, all on the cleaned lines. Each `original` is a cleaned line, and the readings call receives the non-blank cleaned lines with their indexes.
+
+The cleanup is idempotent: cleaning the cleaned lines again gives the same lines. After step 4, a line still over 200 characters has no whitespace and no sentence-ending mark except at its end, so no step changes it a second time.
+
+### The shared removal
+
+One function in one backend module, named for its job. Both the paste cleanup (step 3.1) and spec 002's candidate step (steps 2–4 of **The candidate lines**, except removing control characters) call it. It does exactly this, on one line:
+
+1. Remove zero-width characters: `U+200B`–`U+200D`, `U+2060`, and `U+FEFF`.
+2. Remove every Hangul character:
+   - Hangul Jamo (`U+1100`–`U+11FF`);
+   - Hangul Compatibility Jamo (`U+3130`–`U+318F`);
+   - Hangul Jamo Extended-A (`U+A960`–`U+A97F`);
+   - Hangul Syllables (`U+AC00`–`U+D7AF`);
+   - Hangul Jamo Extended-B (`U+D7B0`–`U+D7FF`);
+   - half-width Hangul (`U+FFA0`–`U+FFDC`).
+3. Remove bracket pairs that, after step 2, hold only whitespace or punctuation (Unicode general category `P…`) and no other bracket character. The pairs are `()`, `（）`, `[]`, `［］`, `「」`, and `【】`. This runs once, in one pass, so its time stays linear. A pair that was already empty in the paste is removed too, as in spec 002's rule 4.
+
+Removing control characters stays in spec 002's candidate step only. It does not apply to pastes.
+
+### The link route
+
+- `lyrics` is the picked candidates in page order, joined by `\n`, then cleaned by steps 3–5 above. Every character still comes from the page.
+- So spec 002's rules still hold: `lines[i].original` equals line `i` of `lyrics`. Posting `lyrics` unchanged to `/api/versions` gives the same lines, or the same `limit` details (AC-43, AC-44). For an over-limit reply, `lineNumber` is the line number in `lyrics`.
+- Candidates already have Hangul and zero-width characters removed and their ends trimmed. In practice the cleanup only changes a picked line longer than 200 characters.
+
+### How this changes spec 001 and spec 002 for pastes
+
+Where this amendment and an earlier rule disagree, this amendment wins for `POST /api/versions`, and for `lyrics` on the link route.
+
+- **Spec 001, splitting rule 2** (leading whitespace kept): each line's leading whitespace is now trimmed (step 3.3). Spaces inside a line are kept unless step 3.2 or step 4 applies.
+- **Spec 001, splitting rule 6, and AC-2** (`original` is the split line): `original` is the cleaned line. For a paste that cleanup does not change, this is the same line.
+- **Spec 001, "Size limits"** ("checked after splitting and before anything else reads the text"): the limits are now checked after cleanup. The 64 KB request body cap (spec 001 AC-44) still runs first, before anything reads the body, so cleanup never reads more than 64 KB.
+- **Characters are counted on the cleaned lines**, not on the paste after step 1. Trailing whitespace, extra blank lines, and removed characters no longer count. AC-6 still holds for a paste with none of these.
+- **Spec 001 AC-48, `lineNumber`**: it now counts cleaned lines, not lines of the paste as typed. This replaces spec 001's decision "lineNumber counts the lines of the paste as typed, blank lines included."
+  - The AC-48.4 paste now gives `lineNumber` `3`, not `7` (see AC-67). Its `measured` stays `201`.
+  - AC-48.1, AC-48.2, AC-48.3, and AC-48.5 keep their expected results, because cleanup does not change those pastes.
+- **A long paste that cleans to Japanese within the limits is now accepted.** A paste that cleans to nothing gets `no_japanese` where it used to get `input_too_large` (see AC-69).
+- **Spec 001 AC-1, AC-3, AC-4, AC-5, AC-7, AC-8**: unchanged. AC-1 tests spec 001's splitting alone, which this amendment does not change.
+- **Spec 002, "Out of scope"** ("Cleaning up mixed-language text pasted into the paste box…") **and decision 7** ("The paste box is not cleaned") are replaced by this amendment. The page still sends the paste as typed; the server cleans it.
+- **Spec 002, "After picking"**: `lyrics` is now cleaned (see **The link route**).
+- **Spec 002 AC-38 to AC-41**: unchanged. The candidate step gives the same candidates through the shared removal.
+
+### Security
+
+- **Untrusted input.** The paste is untrusted. The 64 KB body cap runs before cleanup, so cleanup reads at most 64 KB. Every step is a single linear pass over the text: no nested repetition, no regular expression that can backtrack without bound, and the bracket step runs once. The size limits then run on the cleaned lines before anything else reads them or Claude is called. Cleanup only removes characters and inserts line breaks; it never adds text. The cleaned lines are still data for the readings call, inside its delimiter.
+- **What is sent to the Claude API:** the non-blank cleaned lines with their indexes, in spec 001's one readings call. Removed text (Hangul, zero-width characters, empty brackets) is never sent. Nothing is fetched.
+- **What is logged and what touches disk:** spec 001's log fields, with `lines` and `characters` counted on the cleaned lines. No paste text, removed text, or cleaned text is logged. Nothing is written to disk. Error bodies keep spec 001's shape and hold no paste text.
+
+### Acceptance checks
+
+All checks use invented lines. Server tests use spec 001's fake Claude client. No test calls the network or the Claude API. In the checks, `+` and `*` are Python string operations, and `\n` and `​` are Python escapes.
+
+The joined paste used in AC-58 is built from three invented triples. Each triple is a Japanese line, an invented Hangul pronunciation, and an invented Korean translation:
+
+| Japanese | Hangul pronunciation | Korean translation |
+|---|---|---|
+| `君の声が聞こえる` | `키미노 코에가 키코에루` | `너의 목소리가 들려` |
+| `遠くまでひびく` | `토오쿠마데 히비쿠` | `멀리까지 울려` |
+| `星がながれる夜に` | `호시가 나가레루 요루니` | `별이 흐르는 밤에` |
+
+The paste is these three triples repeated 10 times, in table order, with all 90 items joined by single spaces into one line.
+
+- AC-58: The joined paste returns `200`.
+  - `lines` has exactly 30 entries. Their `original` values are the three Japanese lines repeated 10 times, in order, with indexes 0 to 29.
+  - The fake Claude client is called once. The lines it receives are exactly those 30 Japanese lines, with indexes 0 to 29.
+  - No `original` and no line sent to the fake contains a Hangul character.
+- AC-59: A normal paste is unchanged. Take `"君の声が\n遠く ひびく\n\n星が  ながれる\nWe sing tonight"`. The cleaned lines equal spec 001's split lines exactly, `["君の声が", "遠く ひびく", "", "星が  ながれる", "We sing tonight"]`. The response's `original` values are those lines, and the fake receives the same non-blank lines and indexes as before this amendment.
+- AC-60: Hangul inside a line is removed:
+  - `君の声が 너의 목소리가` gives `君の声が`;
+  - `星が 별이 ながれる` gives `星が ながれる` (the two spaces left behind become one);
+  - `君の声が（키미노 코에가）` gives `君の声が` (the empty brackets go too);
+  - `君の声が【키미노】遠く` gives `君の声が遠く`;
+  - `Oh 너의 君と` gives `Oh 君と`.
+- AC-61: Zero-width characters and line ends:
+  - `"君​の声"` gives `君の声`;
+  - `"  君の声が　"` (two leading spaces, a trailing full-width space) gives `君の声が`;
+  - `君の声が　遠く` (a full-width space inside) is kept exactly.
+- AC-62: Blank lines:
+  - `"君の声が\n\n遠くひびく"` gives `["君の声が", "", "遠くひびく"]`. The blank line comes back with all four fields `""`, as in spec 001 AC-3.
+  - `"君の声が\n키미노 코에가\n너의 목소리가\n\n遠くひびく"` gives `["君の声が", "", "遠くひびく"]`.
+  - `"君の声が\n\n키미노\n\n遠くひびく"` gives `["君の声が", "", "遠くひびく"]` (one blank line, not two).
+  - `"키미노\n\n君の声が\n\n너의"` gives `["君の声が"]`.
+- AC-63: Lines within the limit are not split:
+  - `"ゆめ " * 66 + "ゆめ"` (exactly 200 characters, with spaces) stays one line, unchanged.
+  - `"ゆめ " * 59 + "ゆめ" + " " + "꿈" * 100` (280 characters as pasted, 179 after removal) gives one line, `"ゆめ " * 59 + "ゆめ"`. Length is measured after removal.
+- AC-64: Long lines are split at whitespace:
+  - `"か" * 120 + "　" + "き" * 120 + "  \t " + "く" * 10` gives `["か" * 120, "き" * 120, "く" * 10]`.
+  - The same applies to a line with no Japanese. A paste of `君の声が` on line 1 and `("la " * 80).rstrip()` (239 characters) on line 2 returns 81 lines: `君の声が`, then 80 lines of `la`. Each `la` line comes back as in spec 001 AC-4.
+- AC-65: Long lines with no whitespace are split after sentence-ending marks:
+  - `"かぜがふく。" * 50` (300 characters) gives 50 lines, each `かぜがふく。`.
+  - `"あめ" * 60 + "！？" + "あめ" * 60` gives `["あめ" * 60 + "！？", "あめ" * 60]`.
+  - `"あめ" * 60 + "!" + "あめ" * 60` gives `["あめ" * 60 + "!", "あめ" * 60]`.
+- AC-66: Whitespace comes first, then marks, and only for pieces still too long. `"か" * 150 + "。" + "か" * 150 + " " + "そら。そら"` gives `["か" * 150 + "。", "か" * 150, "そら。そら"]`. The short piece `そら。そら` is not split at its `。`.
+- AC-67: A line still too long after both splits is refused by spec 001 AC-48, numbered in the cleaned lines. Claude is not called in any of these cases.
+  - `"ゆめ" * 150` (300 characters, no whitespace or marks) returns `413 input_too_large` with `limitHit` `"maxLineCharacters"`, `measured` `300`, `lineNumber` `1`, and the message "Line 1 is too long: 300 characters. The limit is 200 characters per line. The lyrics may have lost their line breaks."
+  - `"か" * 250 + " " + "そら"` returns `limitHit` `"maxLineCharacters"`, `measured` `250`, `lineNumber` `1`.
+  - `"君の声が\n키미노 코에가\n" + "か" * 201` returns `lineNumber` `2`.
+  - The spec 001 AC-48.4 paste, `"\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   "`, returns `lineNumber` `3` and `measured` `201`. This replaces AC-48.4's expected `lineNumber` of `7`.
+- AC-68: The size limits are measured on the cleaned lines:
+  - 120 lines, each `"うたう " + "노래" * 20` (5,399 characters as pasted), return `200`. The fake receives 120 lines, each `うたう`.
+  - 400 lines alternating `うた` and `노래` return `200` with 200 lines. 402 such lines return `413` with `limitHit` `"maxLines"` and `measured` `201`.
+  - `("うた " * 201).rstrip()` on one line returns `413` with `limitHit` `"maxLines"` and `measured` `201`.
+  - `"ゆめ" * 2500 + "   \n\n\n"` returns `413` with `limitHit` `"maxLineCharacters"`, `measured` `5000`, and `lineNumber` `1`. Before this amendment it was refused as `"maxCharacters"` with `measured` `5006`.
+  - The spec 001 AC-48.1 paste (`"ゆめ" * 2501`) still returns `limitHit` `"maxCharacters"` with `measured` `5002`.
+- AC-69: When cleanup leaves no Japanese:
+  - `"키미노 코에가\n너의 목소리가"` returns `400 no_japanese`, not `empty_input`, and the fake is not called.
+  - `"꿈" * 10000` on one line returns `400 no_japanese`, not `413 input_too_large`, and the fake is not called.
+  - `"​"` alone returns `400 no_japanese`.
+  - A paste of only spaces and newlines still returns `400 empty_input` (spec 001 AC-5).
+- AC-70: Links and pastes clean the same way.
+  - For each input line in AC-60 and AC-61, the candidate spec 002 makes from it (served as a `text/plain` page line) equals the cleaned paste line.
+  - Spec 002 AC-38 to AC-41 still pass.
+  - The reviewer checks that one function in one module does the removal, and that both routes call it.
+- AC-71: `lyrics` from a link is cleaned. On a page whose candidates are `君の声が` and `"かぜがふく。" * 50`, a fake selection of `[0, 1]` gives:
+  - `lyrics` of 51 lines: `君の声が`, then 50 lines of `かぜがふく。`;
+  - `lines` with 51 entries, where `lines[i].original` equals line `i` of `lyrics`;
+  - a readings call that receives exactly those 51 lines.
+  Spec 002 AC-43 and AC-44 still pass.
+- AC-72: The cleanup is idempotent. For every paste in AC-58 to AC-68, cleaning the cleaned lines again gives the same lines.
+- AC-73: Logs and error bodies. For the AC-58 paste, and for the AC-67 paste `"君の声が\n키미노 코에가\n" + "か" * 201`:
+  - the captured logs and the response bodies contain no Hangul character and no pasted line;
+  - the logged `lines` and `characters` are those of the cleaned lines (for AC-58: `30` and `259`).
+
 ## Open questions
 
-None. The user decided the last four on 2026-11-16 and approved the spec:
+For the 2026-11-17 amendment, the user approved it as written on 2026-11-17, with one change: the non-breaking space (`U+00A0`) is also a split point and is treated like an ASCII space when collapsing spaces (test it in AC-64). The other points stand as written: `lineNumber` counts cleaned lines; the link route's `lyrics` is cleaned; splitting at every whitespace run is accepted; space runs collapse only where something was removed; leading whitespace is trimmed; characters are counted on the cleaned lines; control characters are not removed from pastes; the bracket rule is one pass.
+
+Decided before the amendment. The user decided these four on 2026-11-16 and approved the spec:
 - The selection call uses effort `low`.
 - Repeated or out-of-order selection numbers are sorted and de-duplicated, not refused (rule 5, AC-49b).
 - The cost cap is 400 candidate lines and 16,000 characters, refused when over.
