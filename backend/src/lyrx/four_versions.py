@@ -1,35 +1,32 @@
-"""The pipeline for one paste: from the split lyrics to the four versions of every line."""
+"""The pipeline for one paste: from the cleaned lines to the four versions of every line."""
 
 from lyrx import claude, config
 from lyrx.claude import ClaudeClient
 from lyrx.errors import ApiError
-from lyrx.lines import check_limits, has_japanese
+from lyrx.lines import has_japanese
 from lyrx.readings import reading_is_allowed, reading_keeps_kana, tidy_reading
 from lyrx.romaji import to_romaji
-from lyrx.schemas import Paste, ReplyLine, TokenUsage, VersionLine, VersionsResponse
+from lyrx.schemas import ReplyLine, TokenUsage, VersionLine, VersionsResponse
 
 
 def make_four_versions(
-    paste: Paste, claude_client: ClaudeClient | None
+    lines: list[str], claude_client: ClaudeClient | None
 ) -> tuple[VersionsResponse, TokenUsage]:
     """Every line in its four versions, and the tokens the call used.
 
     Every refusal happens before a Claude client is built or called.
     """
-    check_limits(paste.text, paste.lines)
-    if not any(has_japanese(line) for line in paste.lines):
+    if not any(has_japanese(line) for line in lines):
         raise ApiError("no_japanese")
     api_key = config.read_api_key()
     if api_key is None:
         raise ApiError("server_not_configured")
     # Called through the module so tests can replace `claude.make_client`.
     client = claude_client if claude_client is not None else claude.make_client(api_key)
-    sent_lines = [(index, line) for index, line in enumerate(paste.lines) if line]
+    sent_lines = [(index, line) for index, line in enumerate(lines) if line]
     readings = claude.request_readings(client, sent_lines)
-    replies = allowed_replies(paste.lines, readings.lines)
-    versions = [
-        make_line(index, line, replies.get(index)) for index, line in enumerate(paste.lines)
-    ]
+    replies = allowed_replies(lines, readings.lines)
+    versions = [make_line(index, line, replies.get(index)) for index, line in enumerate(lines)]
     return VersionsResponse(lines=versions), readings.usage
 
 

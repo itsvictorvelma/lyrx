@@ -12,7 +12,7 @@ from lyrx.crash_guard import CrashGuard
 from lyrx.errors import ApiError, ErrorCode, error_response
 from lyrx.four_versions import make_four_versions
 from lyrx.host_check import HostCheck
-from lyrx.lines import count_characters, read_paste
+from lyrx.lines import read_paste
 from lyrx.request_log import logged_request
 from lyrx.schemas import VersionsRequest, VersionsResponse
 
@@ -41,13 +41,13 @@ async def handle_invalid_request(request: Request, error: Exception) -> JSONResp
 
 
 def create_versions(body: VersionsRequest, request: Request) -> VersionsResponse:
-    """Reads the paste once, then runs the pipeline inside its one log line."""
+    """Reads and cleans the paste, then runs the pipeline, all inside its one log line."""
     # A sync `def` on purpose: FastAPI runs it in its threadpool, so the CPU-bound
-    # reading checks never block the event loop.
-    paste = read_paste(body.lyrics)
-    characters = count_characters(paste.text)
-    with logged_request(lines=len(paste.lines), characters=characters) as log:
-        response, usage = make_four_versions(paste, request.app.state.claude_client)
+    # cleanup and reading checks never block the event loop.
+    with logged_request() as log:
+        lines = read_paste(body.lyrics)
+        log.count_lines(lines)
+        response, usage = make_four_versions(lines, request.app.state.claude_client)
         log.add_tokens(usage)
         return response
 

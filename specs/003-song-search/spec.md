@@ -292,7 +292,7 @@ One function in one backend module, named for its job. The cleanup (step 3.1) ca
    - Hangul Syllables (`U+AC00`–`U+D7AF`);
    - Hangul Jamo Extended-B (`U+D7B0`–`U+D7FF`);
    - half-width Hangul (`U+FFA0`–`U+FFDC`).
-3. Remove bracket pairs that, after step 2, hold only whitespace or punctuation (Unicode general category `P…`) and no other bracket character. The pairs are `()`, `（）`, `[]`, `［］`, `「」`, and `【】`. This runs once, in one pass, so its time stays linear. A pair that was already empty is removed too.
+3. Remove bracket pairs that, after step 2, hold only whitespace or punctuation (Unicode general category `P…`), or only pairs removed by this same rule, and no other bracket character. The pairs are `()`, `（）`, `[]`, `［］`, `「」`, and `【】`. This runs once, in one pass with a stack, so its time stays linear and nested empty pairs go at once: `君(（）)が` gives `君が`. A pair that was already empty is removed too. (Clarified 2026-11-17 by the coordinator after the T1 review, so the cleanup stays idempotent.)
 
 Control characters are not removed.
 

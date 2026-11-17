@@ -13,13 +13,6 @@ from error_shape import assert_error_shape
 from fake_claude import ErrorPoint, FakeClaudeClient, fake_message
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pastes import (
-    LIMIT_DETAIL_KEYS,
-    japanese_line,
-    limit_details,
-    paste_of_characters,
-    paste_of_lines,
-)
 from raw_asgi import (
     ALLOWED_HOST_HEADER,
     JSON_CONTENT_TYPE_HEADER,
@@ -31,7 +24,7 @@ from raw_asgi import (
 
 from lyrx import four_versions, readings
 from lyrx.app import VERSIONS_PATH
-from lyrx.lines import count_characters, has_japanese, split_lines
+from lyrx.lines import split_lines
 from lyrx.prompt import build_user_message
 from lyrx.romaji import to_romaji
 
@@ -54,19 +47,6 @@ def post_lyrics(client: TestClient, lyrics: str) -> tuple[int, object]:
     return response.status_code, response.json()
 
 
-def assert_passed_the_limits(client: TestClient, lyrics: str) -> None:
-    """With no key set, a paste that passes split and limits stops at the key check.
-
-    The pipeline checks the key right after the limits and before Claude, so
-    `server_not_configured` proves the limits accepted the paste. This holds at
-    every task, before and after the Claude call exists.
-    """
-    status, body = post_lyrics(client, lyrics)
-
-    assert status == 503
-    assert_error_shape(body, "server_not_configured")
-
-
 # Empty input (AC-5)
 
 
@@ -80,217 +60,6 @@ def test_ac5_whitespace_only_paste_is_empty_input_and_claude_is_not_called(
     assert status == 400
     assert_error_shape(body, "empty_input")
     assert fake_claude_client.messages.calls == []
-
-
-# Character limit (AC-6)
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac6_paste_of_5001_characters_is_input_too_large_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    status, body = post_lyrics(client, paste_of_characters(5001))
-
-    assert status == 413
-    assert_error_shape(body, "input_too_large")
-    assert isinstance(body, dict)
-    assert body["details"] == limit_details("maxCharacters", 5001)
-    assert fake_claude_client.messages.calls == []
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac6_paste_of_exactly_5000_characters_passes_the_limits(client: TestClient) -> None:
-    assert_passed_the_limits(client, paste_of_characters(5000))
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac6_carriage_return_newline_counts_once_toward_the_character_limit(
-    client: TestClient,
-) -> None:
-    lyrics = paste_of_characters(5000, line_ending="\r\n")
-    assert len(lyrics) > 5000
-
-    assert_passed_the_limits(client, lyrics)
-
-
-# Line limit (AC-7)
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac7_paste_of_201_lines_is_input_too_large_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    status, body = post_lyrics(client, paste_of_lines(201))
-
-    assert status == 413
-    assert_error_shape(body, "input_too_large")
-    assert isinstance(body, dict)
-    assert body["details"] == limit_details("maxLines", 201)
-    assert fake_claude_client.messages.calls == []
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac7_paste_of_exactly_200_lines_passes_the_limits(client: TestClient) -> None:
-    assert_passed_the_limits(client, paste_of_lines(200))
-
-
-# Line length limit (AC-45)
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac45_line_of_201_characters_is_input_too_large_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    status, body = post_lyrics(client, "夜の月\n" + japanese_line(201))
-
-    assert status == 413
-    assert_error_shape(body, "input_too_large")
-    assert isinstance(body, dict)
-    assert body["details"] == limit_details("maxLineCharacters", 201, line_number=2)
-    assert body["message"] == (
-        "Line 2 is too long: 201 characters. The limit is 200 characters per line."
-        " The lyrics may have lost their line breaks."
-    )
-    assert fake_claude_client.messages.calls == []
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac45_line_of_exactly_200_characters_passes_the_limits(client: TestClient) -> None:
-    assert_passed_the_limits(client, japanese_line(200))
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac7_lines_are_counted_after_splitting(client: TestClient) -> None:
-    lyrics = "\r\n\r\n" + paste_of_lines(100, "\r\n") + "\r\n\r\n\r\n" + paste_of_lines(99, "\r\n")
-
-    assert_passed_the_limits(client, lyrics + "\r\n\r\n\r\n")
-
-
-# Which limit was hit (AC-48)
-
-AC48_CHARACTERS_PASTE = "ゆめ" * 2501
-AC48_LINES_PASTE = "\n".join(["うた"] * 201)
-AC48_LINE_LENGTH_PASTE = "ゆめ" * 1350
-AC48_TYPED_LINES_PASTE = "\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   "
-
-
-def post_refused_paste(
-    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str
-) -> dict[str, Any]:
-    """POST a paste over the limits; check it is a 413 input_too_large and Claude was not called."""
-    status, body = post_lyrics(client, lyrics)
-
-    assert status == 413
-    assert_error_shape(body, "input_too_large")
-    assert isinstance(body, dict)
-    assert fake_claude_client.messages.calls == []
-    return body
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac48_1_character_limit_is_reported_first_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    """5,002 characters on one line breaks two limits; only the character limit is reported."""
-    assert len(AC48_CHARACTERS_PASTE) == 5002
-
-    body = post_refused_paste(client, fake_claude_client, AC48_CHARACTERS_PASTE)
-
-    assert body["details"] == {
-        "maxCharacters": 5000,
-        "maxLines": 200,
-        "maxLineCharacters": 200,
-        "limitHit": "maxCharacters",
-        "measured": 5002,
-    }
-    assert body["message"] == (
-        "The lyrics are too long: 5,002 characters. The limit is 5,000 characters."
-    )
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac48_2_line_limit_reports_the_line_count_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    """201 lines of `うた` report `maxLines`, 201, and no line number."""
-    body = post_refused_paste(client, fake_claude_client, AC48_LINES_PASTE)
-
-    assert body["details"] == limit_details("maxLines", 201)
-    assert "lineNumber" not in body["details"]
-    assert body["message"] == "The lyrics have too many lines: 201. The limit is 200 lines."
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac48_3_line_length_limit_reports_line_1_and_claude_is_not_called(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    """One 2,700-character line reports `maxLineCharacters`, 2700, and line 1."""
-    assert len(AC48_LINE_LENGTH_PASTE) == 2700
-
-    body = post_refused_paste(client, fake_claude_client, AC48_LINE_LENGTH_PASTE)
-
-    assert body["details"] == limit_details("maxLineCharacters", 2700, line_number=1)
-    assert body["message"] == (
-        "Line 1 is too long: 2,700 characters. The limit is 200 characters per line."
-        " The lyrics may have lost their line breaks."
-    )
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac48_4_line_number_counts_the_lines_of_the_paste_as_typed(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    """The long line is index 2 once split but line 7 as typed; trailing spaces are not measured."""
-    assert split_lines(AC48_TYPED_LINES_PASTE).index("か" * 201) == 2
-
-    body = post_refused_paste(client, fake_claude_client, AC48_TYPED_LINES_PASTE)
-
-    assert body["details"]["lineNumber"] == 7
-    assert body["details"]["measured"] == 201
-    assert body["message"] == (
-        "Line 7 is too long: 201 characters. The limit is 200 characters per line."
-        " The lyrics may have lost their line breaks."
-    )
-
-
-@pytest.mark.usefixtures("with_api_key")
-def test_ac48_5_line_number_is_the_first_of_two_long_lines(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    """With two lines over the line-length limit, the first one is reported."""
-    lyrics = "夜の月\n" + "か" * 201 + "\n星\n" + "ゆ" * 250
-
-    body = post_refused_paste(client, fake_claude_client, lyrics)
-
-    assert body["details"] == limit_details("maxLineCharacters", 201, line_number=2)
-
-
-@pytest.mark.usefixtures("with_api_key")
-@pytest.mark.parametrize(
-    "lyrics",
-    [
-        AC48_CHARACTERS_PASTE,
-        AC48_LINES_PASTE,
-        AC48_LINE_LENGTH_PASTE,
-        AC48_TYPED_LINES_PASTE,
-    ],
-)
-def test_ac48_6_body_holds_only_the_error_shape_and_no_pasted_text(
-    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str
-) -> None:
-    """Only `code`, `message`, `details`; only the listed detail keys; no pasted text anywhere."""
-    body = post_refused_paste(client, fake_claude_client, lyrics)
-
-    assert set(body) == {"code", "message", "details"}
-    details = body["details"]
-    assert isinstance(details, dict)
-    assert "limitHit" in details
-    assert set(details) <= LIMIT_DETAIL_KEYS
-    body_text = json.dumps(body, ensure_ascii=False)
-    for line in split_lines(lyrics):
-        if line:
-            assert line not in body_text
-    assert not has_japanese(body_text)
 
 
 # No Japanese (AC-8)
@@ -335,17 +104,6 @@ def test_ac22_empty_api_key_counts_as_unset(
 
     assert status == 503
     assert_error_shape(body, "server_not_configured")
-    assert fake_claude_client.messages.calls == []
-
-
-@pytest.mark.usefixtures("without_api_key")
-def test_ac22_size_limits_are_checked_before_the_api_key(
-    client: TestClient, fake_claude_client: FakeClaudeClient
-) -> None:
-    status, body = post_lyrics(client, paste_of_lines(201))
-
-    assert status == 413
-    assert_error_shape(body, "input_too_large")
     assert fake_claude_client.messages.calls == []
 
 
@@ -435,13 +193,16 @@ def test_ac2_valid_paste_returns_exactly_the_spec_example_response(
 
 
 @pytest.mark.usefixtures("with_api_key")
-def test_ac2_indexes_run_from_0_with_no_gaps_and_originals_follow_the_split(
+def test_ac2_indexes_run_from_0_with_no_gaps_and_originals_follow_the_cleaned_lines(
     client: TestClient, fake_claude_client: FakeClaudeClient
 ) -> None:
-    """One entry per split line, in order, each with all six fields and `readingVerified: true`."""
+    """One entry per cleaned line, in order, each with all six fields and `readingVerified: true`.
+
+    Spec 003 cleanup step 3.3: the leading spaces of `  星の夜に` are trimmed from its `original`.
+    """
     lyrics = "\r\n\r\n  星の夜に  \r\n\r\n\r\n風が ふく\r\nLa la la\r\n\r\n月 ひかる\r\n\r\n"
-    split = split_lines(lyrics)
-    assert split == ["  星の夜に", "", "風が ふく", "La la la", "", "月 ひかる"]
+    assert split_lines(lyrics)[0] == "  星の夜に"
+    cleaned = ["星の夜に", "", "風が ふく", "La la la", "", "月 ひかる"]
     set_reply(
         fake_claude_client,
         [
@@ -454,8 +215,8 @@ def test_ac2_indexes_run_from_0_with_no_gaps_and_originals_follow_the_split(
 
     lines = post_for_lines(client, lyrics)
 
-    assert [line["index"] for line in lines] == list(range(len(split)))
-    assert [line["original"] for line in lines] == split
+    assert [line["index"] for line in lines] == list(range(len(cleaned)))
+    assert [line["original"] for line in lines] == cleaned
     for line in lines:
         assert set(line) == LINE_FIELDS
         assert isinstance(line["index"], int)
@@ -882,6 +643,14 @@ PRIVATE_HEADER_VALUE = "header-value-never-logged"
 PRIVATE_HEADERS = {"X-Private-Note": PRIVATE_HEADER_VALUE, "User-Agent": "agent-never-logged"}
 
 
+def cleaned_characters(lyrics: str) -> int:
+    """The logged character count: the cleaned lines joined by `\\n` (spec 003 AC-37).
+
+    Only used for pastes that cleanup leaves as split, so the split lines are the cleaned lines.
+    """
+    return len("\n".join(split_lines(lyrics)))
+
+
 def lyrx_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
     return [
         record
@@ -930,7 +699,7 @@ def test_ac33_successful_request_logs_one_line_with_counts_duration_and_tokens(
     fields = only_request_line(caplog)
     assert fields["status"] == "200"
     assert fields["lines"] == str(len(split_lines(VALID_PASTE)))
-    assert fields["characters"] == str(count_characters(VALID_PASTE))
+    assert fields["characters"] == str(cleaned_characters(VALID_PASTE))
     assert fields["duration_ms"].isdecimal()
     assert fields["input_tokens"] == "100"
     assert fields["output_tokens"] == "50"
@@ -940,8 +709,6 @@ def configure_failure(fake_claude_client: FakeClaudeClient, failure: str) -> tup
     """Sets the fake up for one failure; returns (lyrics, expected status, expected code)."""
     if failure == "no-japanese":
         return "We sing tonight\nLa la la", 400, "no_japanese"
-    if failure == "too-large":
-        return paste_of_lines(201), 413, "input_too_large"
     if failure == "invalid-reply":
         fake_claude_client.messages.final_message = fake_message(f"not json {REPLY_MARKER}")
         return SENSITIVE_LYRICS, 502, "model_output_invalid"
@@ -968,7 +735,6 @@ def configure_failure(fake_claude_client: FakeClaudeClient, failure: str) -> tup
 
 FAILURES = [
     "no-japanese",
-    "too-large",
     "invalid-reply",
     "missing-english",
     "refusal",
@@ -996,7 +762,7 @@ def test_ac33_failed_request_logs_one_line_with_status_code_counts_and_duration(
     assert fields["status"] == str(expected_status)
     assert fields["code"] == expected_code
     assert fields["lines"] == str(len(split_lines(lyrics)))
-    assert fields["characters"] == str(count_characters(lyrics))
+    assert fields["characters"] == str(cleaned_characters(lyrics))
     assert fields["duration_ms"].isdecimal()
 
 
@@ -1071,3 +837,372 @@ def test_ac33_requests_that_never_reach_the_pipeline_write_no_lyrx_log_record(
 
     assert response.status_code == expected_status
     assert lyrx_records(caplog) == []
+
+
+# Cleaning up the lyrics (spec 003, AC-23 to AC-34 and AC-37), end to end.
+# At T1 the paste route still calls Claude, so the fake Claude client stands in for the fake
+# Gemini: "the fake Gemini receives lines X" is checked as the numbered lines Claude is sent.
+
+FULL_WIDTH_SPACE = "\u3000"
+FULL_WIDTH_OPEN = "\uff08"
+FULL_WIDTH_CLOSE = "\uff09"
+ZERO_WIDTH_SPACE = "\u200b"
+
+# The AC-23 paste: three invented triples (Japanese, Hangul pronunciation, Korean translation),
+# repeated 10 times, all 90 items joined by single spaces into one line.
+AC23_TRIPLES = [
+    ("君の声が聞こえる", "키미노 코에가 키코에루", "너의 목소리가 들려"),
+    ("遠くまでひびく", "토오쿠마데 히비쿠", "멀리까지 울려"),
+    ("星がながれる夜に", "호시가 나가레루 요루니", "별이 흐르는 밤에"),
+]
+AC23_PASTE = " ".join(item for _ in range(10) for triple in AC23_TRIPLES for item in triple)
+AC23_LINES = [japanese for _ in range(10) for japanese, _, _ in AC23_TRIPLES]
+AC32_KOREAN_PASTE = "君の声が\n키미노 코에가\n" + "か" * 201
+
+# Readings for the kanji lines below; a kana-only or Latin line is its own reading.
+KANJI_READINGS = {
+    "君の声が聞こえる": "きみ の こえ が きこえる",
+    "遠くまでひびく": "とおく まで ひびく",
+    "星がながれる夜に": "ほし が ながれる よる に",
+    "君の声が": "きみ の こえ が",
+    "君の声": "きみ の こえ",
+    "遠くひびく": "とおく ひびく",
+    "遠く ひびく": "とおく ひびく",
+    "星が ながれる": "ほし が ながれる",
+    "星が  ながれる": "ほし が ながれる",
+    "君の声が遠く": "きみ の こえ が とおく",
+    f"君の声が{FULL_WIDTH_SPACE}遠く": "きみ の こえ が とおく",
+    "Oh 君と": "Oh きみ と",
+}
+
+
+def numbered(lines: list[str]) -> list[tuple[int, str]]:
+    """The non-blank lines with their indexes: what the readings call should receive."""
+    return [(index, line) for index, line in enumerate(lines) if line]
+
+
+def set_reply_for(fake_claude_client: FakeClaudeClient, lines: list[str]) -> None:
+    """A valid reply for exactly these cleaned lines."""
+    items = [
+        {"index": index, "reading": KANJI_READINGS.get(line, line), "english": f"Line {index}"}
+        for index, line in numbered(lines)
+    ]
+    set_reply(fake_claude_client, items)
+
+
+def assert_cleaned_to(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str, cleaned: list[str]
+) -> list[dict[str, Any]]:
+    """The paste returns 200 with one entry per cleaned line, and Claude gets those lines."""
+    set_reply_for(fake_claude_client, cleaned)
+
+    lines = post_for_lines(client, lyrics)
+
+    assert [line["original"] for line in lines] == cleaned
+    assert [line["index"] for line in lines] == list(range(len(cleaned)))
+    assert sent_user_message(fake_claude_client) == build_user_message(numbered(cleaned))
+    return lines
+
+
+def has_hangul(text: str) -> bool:
+    hangul_ranges = [
+        (0x1100, 0x11FF),
+        (0x3130, 0x318F),
+        (0xA960, 0xA97F),
+        (0xAC00, 0xD7AF),
+        (0xD7B0, 0xD7FF),
+        (0xFFA0, 0xFFDC),
+    ]
+    return any(
+        first <= ord(character) <= last for character in text for first, last in hangul_ranges
+    )
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac23_joined_paste_returns_the_thirty_japanese_lines(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lines = assert_cleaned_to(client, fake_claude_client, AC23_PASTE, AC23_LINES)
+
+    assert len(lines) == 30
+    assert len(fake_claude_client.messages.calls) == 1
+    assert not any(has_hangul(line["original"]) for line in lines)
+    assert not has_hangul(sent_user_message(fake_claude_client))
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac24_normal_paste_is_sent_and_returned_unchanged(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lyrics = "君の声が\n遠く ひびく\n\n星が  ながれる\nWe sing tonight"
+    cleaned = ["君の声が", "遠く ひびく", "", "星が  ながれる", "We sing tonight"]
+    assert split_lines(lyrics) == cleaned
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, cleaned)
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    ("lyrics", "expected"),
+    [
+        ("君の声が 너의 목소리가", "君の声が"),
+        ("星が 별이 ながれる", "星が ながれる"),
+        (f"君の声が{FULL_WIDTH_OPEN}키미노 코에가{FULL_WIDTH_CLOSE}", "君の声が"),
+        ("君の声が【키미노】遠く", "君の声が遠く"),
+        ("Oh 너의 君と", "Oh 君と"),
+        (f"君{ZERO_WIDTH_SPACE}の声", "君の声"),
+        (f"  君の声が{FULL_WIDTH_SPACE}", "君の声が"),
+        (f"君の声が{FULL_WIDTH_SPACE}遠く", f"君の声が{FULL_WIDTH_SPACE}遠く"),
+    ],
+    ids=[
+        "korean-after",
+        "korean-between",
+        "korean-in-brackets",
+        "korean-in-lenticular-brackets",
+        "korean-after-latin",
+        "zero-width",
+        "line-ends",
+        "full-width-space-inside",
+    ],
+)
+def test_spec003_ac25_ac26_each_line_comes_back_cleaned(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str, expected: str
+) -> None:
+    assert_cleaned_to(client, fake_claude_client, lyrics, [expected])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac27_blank_line_comes_back_with_all_four_fields_empty(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lines = assert_cleaned_to(
+        client, fake_claude_client, "君の声が\n\n遠くひびく", ["君の声が", "", "遠くひびく"]
+    )
+
+    assert lines[1] == {
+        "index": 1,
+        "original": "",
+        "hiragana": "",
+        "romaji": "",
+        "english": "",
+        "readingVerified": True,
+    }
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    ("lyrics", "expected"),
+    [
+        (
+            "君の声が\n키미노 코에가\n너의 목소리가\n\n遠くひびく",
+            ["君の声が", "", "遠くひびく"],
+        ),
+        ("君の声が\n\n키미노\n\n遠くひびく", ["君の声が", "", "遠くひびく"]),
+        ("키미노\n\n君の声が\n\n너의", ["君の声が"]),
+    ],
+    ids=["korean-lines-dropped", "blank-run-collapsed", "blank-ends-dropped"],
+)
+def test_spec003_ac27_korean_only_lines_are_dropped_and_blank_lines_tidied(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str, expected: list[str]
+) -> None:
+    assert_cleaned_to(client, fake_claude_client, lyrics, expected)
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac28_line_of_200_characters_with_spaces_is_not_split(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    line = "ゆめ " * 66 + "ゆめ"
+    assert len(line) == 200
+
+    assert_cleaned_to(client, fake_claude_client, line, [line])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac28_line_length_is_measured_after_removal(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lyrics = "ゆめ " * 59 + "ゆめ" + " " + "꿈" * 100
+    assert len(lyrics) == 280
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, ["ゆめ " * 59 + "ゆめ"])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac29_long_line_is_split_at_whitespace(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lyrics = "か" * 120 + FULL_WIDTH_SPACE + "き" * 120 + "  \t " + "く" * 10
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, ["か" * 120, "き" * 120, "く" * 10])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac29_long_line_is_split_at_a_no_break_space(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    """User decision 2026-11-17: U+00A0 is a split point too."""
+    lyrics = "か" * 120 + "\u00a0" + "き" * 120
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, ["か" * 120, "き" * 120])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac29_long_latin_line_is_split_and_each_piece_comes_back_as_in_ac4(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    latin_line = ("la " * 80).rstrip()
+    assert len(latin_line) == 239
+
+    lines = assert_cleaned_to(
+        client, fake_claude_client, "君の声が\n" + latin_line, ["君の声が"] + ["la"] * 80
+    )
+
+    assert len(lines) == 81
+    for line in lines[1:]:
+        assert (line["hiragana"], line["romaji"], line["english"]) == ("la", "la", "la")
+        assert line["readingVerified"] is True
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac30_long_line_is_split_after_sentence_ending_marks(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    assert_cleaned_to(client, fake_claude_client, "かぜがふく。" * 50, ["かぜがふく。"] * 50)
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize("marks", ["\uff01\uff1f", "!"], ids=["full-width-run", "ascii"])
+def test_spec003_ac30_a_run_of_marks_splits_once_after_the_run(
+    client: TestClient, fake_claude_client: FakeClaudeClient, marks: str
+) -> None:
+    lyrics = "あめ" * 60 + marks + "あめ" * 60
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, ["あめ" * 60 + marks, "あめ" * 60])
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac31_whitespace_first_then_marks_only_for_pieces_still_too_long(
+    client: TestClient, fake_claude_client: FakeClaudeClient
+) -> None:
+    lyrics = "か" * 150 + "。" + "か" * 150 + " " + "そら。そら"
+    expected = ["か" * 150 + "。", "か" * 150, "そら。そら"]
+
+    assert_cleaned_to(client, fake_claude_client, lyrics, expected)
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    ("lyrics", "cleaned"),
+    [
+        ("ゆめ" * 150, ["ゆめ" * 150]),
+        ("か" * 250 + " " + "そら", ["か" * 250, "そら"]),
+        (AC32_KOREAN_PASTE, ["君の声が", "か" * 201]),
+        (
+            "\r\n\r\n星がながれる\r\n\r\n\r\n\r\n" + "か" * 201 + "   ",
+            ["星がながれる", "", "か" * 201],
+        ),
+    ],
+    ids=["no-split-point", "long-piece", "after-korean-line", "after-blank-lines"],
+)
+def test_spec003_ac32_line_still_over_200_after_both_splits_is_kept_not_refused(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str, cleaned: list[str]
+) -> None:
+    assert_cleaned_to(client, fake_claude_client, lyrics, cleaned)
+
+
+LIMIT_DETAIL_WORDS = ["input_too_large", "limitHit", "measured", "lineNumber"]
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    ("lyrics", "cleaned"),
+    [
+        ("\n".join(["うたう " + "노래" * 20] * 120), ["うたう"] * 120),
+        ("\n".join(["うた", "노래"] * 201), ["うた"] * 201),
+        (("うた " * 201).rstrip(), ["うた"] * 201),
+        ("ゆめ" * 2501, ["ゆめ" * 2501]),
+    ],
+    ids=["5399-characters", "402-alternating-lines", "201-words", "5002-characters"],
+)
+def test_spec003_ac33_there_are_no_limits_on_characters_or_lines(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str, cleaned: list[str]
+) -> None:
+    set_reply_for(fake_claude_client, cleaned)
+
+    response = client.post(VERSIONS_PATH, json={"lyrics": lyrics})
+
+    assert response.status_code == 200, response.text[:200]
+    assert [line["original"] for line in response.json()["lines"]] == cleaned
+    assert sent_user_message(fake_claude_client) == build_user_message(numbered(cleaned))
+    for word in LIMIT_DETAIL_WORDS:
+        assert word not in response.text
+
+
+@pytest.mark.usefixtures("with_api_key")
+@pytest.mark.parametrize(
+    "lyrics",
+    ["키미노 코에가\n너의 목소리가", "꿈" * 10000, ZERO_WIDTH_SPACE],
+    ids=["korean-lines", "long-korean-line", "zero-width-only"],
+)
+def test_spec003_ac34_paste_that_cleans_to_no_japanese_is_no_japanese_and_claude_is_not_called(
+    client: TestClient, fake_claude_client: FakeClaudeClient, lyrics: str
+) -> None:
+    status, body = post_lyrics(client, lyrics)
+
+    assert status == 400
+    assert_error_shape(body, "no_japanese")
+    assert fake_claude_client.messages.calls == []
+
+
+def assert_no_paste_text(text: str, lyrics: str) -> None:
+    """No Hangul and no line of the paste as typed appears in `text`."""
+    assert not has_hangul(text)
+    assert not has_hangul(json.dumps(text))
+    for line in split_lines(lyrics):
+        if line:
+            assert line not in text
+            assert json.dumps(line)[1:-1] not in text
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac37_cleaned_paste_logs_cleaned_counts_and_no_paste_text(
+    client: TestClient, fake_claude_client: FakeClaudeClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    """For the AC-23 paste: `lines=30` and `characters=259`, and no pasted or cleaned text."""
+    caplog.set_level(logging.DEBUG)
+    set_reply_for(fake_claude_client, AC23_LINES)
+
+    response = client.post(VERSIONS_PATH, json={"lyrics": AC23_PASTE})
+
+    assert response.status_code == 200
+    assert_no_paste_text(response.text, AC23_PASTE)
+    fields = only_request_line(caplog)
+    assert fields["lines"] == "30"
+    assert fields["characters"] == "259"
+    log_text = every_log_text(caplog)
+    assert_no_paste_text(log_text, AC23_PASTE)
+    for line in AC23_LINES:
+        assert line not in log_text
+
+
+@pytest.mark.usefixtures("with_api_key")
+def test_spec003_ac37_long_line_paste_logs_cleaned_counts_and_no_paste_text(
+    client: TestClient, fake_claude_client: FakeClaudeClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    """For the AC-32 paste: 2 cleaned lines of 206 characters; no Hangul in the body or logs."""
+    caplog.set_level(logging.DEBUG)
+    set_reply_for(fake_claude_client, ["君の声が", "か" * 201])
+
+    response = client.post(VERSIONS_PATH, json={"lyrics": AC32_KOREAN_PASTE})
+
+    assert response.status_code == 200, response.text[:200]
+    assert not has_hangul(response.text)
+    fields = only_request_line(caplog)
+    assert fields["status"] == "200"
+    assert fields["lines"] == "2"
+    assert fields["characters"] == "206"
+    log_text = every_log_text(caplog)
+    assert_no_paste_text(log_text, AC32_KOREAN_PASTE)
+    for line in ["君の声が", "か" * 201]:
+        assert line not in log_text

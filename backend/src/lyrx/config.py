@@ -8,14 +8,12 @@ HOST = "127.0.0.1"
 PORT = 8000
 ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
 
-MAX_CHARACTERS = 5000
-MAX_LINES = 200
-MAX_LINE_CHARACTERS = 200
+# A line longer than this many characters, after cleanup, is split at whitespace and marks.
+CLEANUP_SPLIT_LENGTH = 200
 # A reading longer than this many times its original line is refused (AC-46).
 MAX_READING_LENGTH_FACTOR = 6
-# Above any valid paste: even 5,000 astral characters JSON-escaped as \uXXXX\uXXXX
-# (12 bytes each) plus the `{"lyrics":""}` wrapper is 60,013 bytes, under 65,536.
-MAX_BODY_BYTES = 64 * 1024
+# A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
+MAX_BODY_BYTES = 256 * 1024
 
 # The lyrx loggers write at this level; other libraries stay at Python's default (warnings).
 LOG_LEVEL = logging.INFO

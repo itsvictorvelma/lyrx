@@ -62,14 +62,6 @@ class ClaudeReply(BaseModel):
 
 
 @dataclass(frozen=True)
-class Paste:
-    """The pasted lyrics normalized to NFC, and the same text split into lines."""
-
-    text: str
-    lines: list[str]
-
-
-@dataclass(frozen=True)
 class TokenUsage:
     """The tokens Claude reports for the one call."""
 

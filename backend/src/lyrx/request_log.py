@@ -24,6 +24,11 @@ class RequestLog:
         self.started = time.monotonic()
         self.fields: LogFields = {"lines": lines, "characters": characters}
 
+    def count_lines(self, lines: list[str]) -> None:
+        """The counts of the cleaned lines; characters as if joined by one `\\n` each."""
+        self.fields["lines"] = len(lines)
+        self.fields["characters"] = len("\n".join(lines))
+
     def add_tokens(self, usage: TokenUsage) -> None:
         self.fields["input_tokens"] = usage.input_tokens
         self.fields["output_tokens"] = usage.output_tokens
@@ -35,8 +40,10 @@ class RequestLog:
 
 
 @contextmanager
-def logged_request(lines: int, characters: int) -> Iterator[RequestLog]:
+def logged_request(lines: int = 0, characters: int = 0) -> Iterator[RequestLog]:
     """Times the `with` block and writes its one log line, whether it succeeds or fails.
+
+    The counts start at `lines` and `characters`; `count_lines` replaces them once known.
 
     An `ApiError` is logged with its status and code, then re-raised. Any other exception
     becomes `internal_error`, logged with only its class name, never its message. The

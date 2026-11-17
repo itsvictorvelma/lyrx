@@ -1,4 +1,4 @@
-"""Refuses a request body over `MAX_BODY_BYTES` before anything parses it (AC-44)."""
+"""Refuses a request body over `MAX_BODY_BYTES` before anything parses it (spec 003 AC-65)."""
 
 from typing import Literal
 
@@ -6,7 +6,7 @@ from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from lyrx import config
-from lyrx.errors import ApiError, error_response, size_limit_details
+from lyrx.errors import ApiError, error_response
 
 BodyRefusal = Literal["too_large", "disconnected"]
 
@@ -29,7 +29,7 @@ class BodySizeLimit:
         if body == "disconnected":
             return
         if body == "too_large":
-            too_large = error_response(ApiError("input_too_large", details=size_limit_details()))
+            too_large = error_response(ApiError("not_lyrics"))
             await too_large(scope, receive, send)
             return
         await self.app(scope, replay_body(body, receive), send)
