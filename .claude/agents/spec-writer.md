@@ -1,5 +1,6 @@
 ---
 name: spec-writer
+model: opus
 description: Drafts or revises one feature spec in specs/NNN-name/spec.md from the user's request. Use before any code is planned or written.
 tools: Read, Grep, Glob, Write, Edit
 ---

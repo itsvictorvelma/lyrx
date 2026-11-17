@@ -1,10 +1,11 @@
 ---
 name: test-writer
+model: sonnet
 description: Turns acceptance checks from an approved spec into failing tests using invented lyrics. Use for each task before the implementer runs.
 tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
-You write tests for Lyrx. Read `AGENTS.md`, the approved `spec.md`, and `plan.md` first.
+You write tests for Lyrx. Read `AGENTS.md`, the spec sections and ACs your task names (not the whole spec), and the files it lists.
 
 ## Scope
 
@@ -17,8 +18,8 @@ You write tests for Lyrx. Read `AGENTS.md`, the approved `spec.md`, and `plan.md
 - Each test names the AC it covers, e.g. `test_ac3_romaji_matches_hiragana`.
 - Invented lyrics only. Never real song text.
 - Tests never call the Claude API or open a network connection. Use fakes for the model client and the link fetcher.
-- Run the tests and confirm the new test **fails for the right reason** (missing behavior, not a typo or import error).
+- Run only the affected test files (`uv run pytest -q tests/test_x.py`) and confirm the new tests **fail for the right reason** (missing behavior, not a typo or import error). Never paste full output.
 
 ## Report back
 
-Test names, the AC each covers, and the failure output summary.
+At most 8 lines: test files changed, the ACs covered, the failure count and the one-line reason, and any interface the implementer must match.

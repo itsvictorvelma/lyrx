@@ -47,15 +47,20 @@ The main session is the **coordinator**. It plans, delegates, and reports; it do
 | test-writer | test files | Turn each AC into a failing test with invented data |
 | implementer | source files | Write the minimum code that makes the tests pass |
 | reviewer | nothing (read-only) | Check work against the spec and this file; pass or fail with findings |
-| explainer | the walkthrough note in the lead's Obsidian vault (outside the repo) | Explain the finished code: how it works, why, and its limits |
+| explainer | the walkthrough note in the lead's Obsidian vault (outside the repo) | After a PR merges, update the walkthrough from the merged diff: how it works, why, and its limits |
 
 The loop for one spec:
 
 1. User requests a feature → spec-writer drafts `spec.md` → **user approves**.
 2. Coordinator writes `plan.md` and `tasks.md`, explains them, creates branch `claude/NNN-name`.
-3. For each task: test-writer (test fails) → implementer (test passes) → run the tests → reviewer. A failed review goes back to the implementer. **After 3 failed rounds on one task, stop and ask the user.**
-4. All ACs pass → reviewer checks the whole diff → explainer writes the walkthrough → pre-commit checks → open PR (summarizing the walkthrough) → **user reviews**.
+3. For each task: test-writer (test fails) → implementer (test passes) → `scripts/check-quiet.sh` → reviewer. The reviewer gives one complete list and a verdict, APPROVE or REQUEST CHANGES. A failed review goes back to the implementer. **After 2 failed review rounds on one task, stop and ask the user.**
+4. All ACs pass → reviewer checks the whole diff → pre-commit checks → open PR (summarizing what changed) → **user reviews and merges** → explainer updates the walkthrough from the merged diff.
 5. Set the spec to `done` and update `specs/README.md`.
+
+Token budget:
+- Agents use `scripts/check-quiet.sh`: one line on success, only the failing step's tail on failure. Never paste full test output.
+- Each task prompt carries only its own ACs and the files to touch. Agents read only the spec sections they need and reply with short summaries.
+- Models: spec-writer and reviewer on Opus; implementer and test-writer on Sonnet; explainer on Haiku (set in each agent's frontmatter).
 
 Limits:
 - Before writing any file, say what it is and why.
