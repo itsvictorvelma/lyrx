@@ -99,6 +99,11 @@
 
 **Page.** `App` holds one state: idle, waiting, result, or error. `PasteForm` and `FourVersions` are presentational. Requests use `fetch` with no router and no state library. All text renders as React children. CSS is neutral with a Japanese font stack and a visible focus outline, and no invented colors. The colors, approved by the user, are CSS variables on `:root`: text `#1a1a1a`, muted labels `#5c5c5c`, borders `#d0d0d0`, page `#ffffff`, error text `#a40000` (always with the word "Error:", never color alone), and focus `2px solid` in the text color. Under `prefers-color-scheme: dark`: text `#ececec`, muted `#a8a8a8`, border `#444444`, page `#161616`, error `#ff8a80`.
 
+**T8 decisions** (coordinator; the spec leaves them open):
+- The `server_not_configured` message is shown as plain text, without the backticks the spec table uses for code style.
+- A reply that arrives but is not the error shape (non-JSON, or no string `code`) shows "Something went wrong. Try again.", as the spec's "any other code" row says. Only a rejected `fetch` shows the server-unreachable message.
+- A reply the page cannot trust is its own result, `unreadable`, and shows the same fallback message. That covers a reply that isn't the error shape, a 200 whose `lines` are not valid `Line`s (including indexes that don't run 0, 1, 2… in order), and a body that fails to read after the response arrived (AGENTS.md: validate at every boundary).
+
 **Quality tools.** `ruff format`, `ruff check`, `mypy --strict`, and `pytest` for the backend. Prettier, ESLint (typescript-eslint, react-hooks), `tsc --noEmit`, Vitest, and `vite build` for the frontend. `scripts/check.sh` runs them all and fails on the first error.
 
 ## Side effects

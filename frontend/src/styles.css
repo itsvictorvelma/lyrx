@@ -1,14 +1,28 @@
-/* Base page styles: readable text, a Japanese font stack, and a visible focus outline. */
+/* Page styles: the approved neutral colors, a Japanese font stack, and a visible focus outline. */
 :root {
+  --color-text: #1a1a1a;
+  --color-muted: #5c5c5c;
+  --color-border: #d0d0d0;
+  --color-page: #ffffff;
+  --color-error: #a40000;
+
+  color-scheme: light dark;
+  color: var(--color-text);
+  background: var(--color-page);
   font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    "Hiragino Sans",
-    "Noto Sans JP",
-    "Yu Gothic",
-    sans-serif;
+    system-ui, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+    "Noto Sans JP", "Meiryo", sans-serif;
   line-height: 1.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text: #ececec;
+    --color-muted: #a8a8a8;
+    --color-border: #444444;
+    --color-page: #161616;
+    --color-error: #ff8a80;
+  }
 }
 
 body {
@@ -16,12 +30,66 @@ body {
 }
 
 main {
-  max-width: 72rem;
+  max-width: 48rem;
   margin: 0 auto;
   padding: 1.5rem;
 }
 
 :focus-visible {
-  outline: 2px solid;
+  outline: 2px solid var(--color-text);
   outline-offset: 2px;
+}
+
+.paste-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+  color: inherit;
+  background: var(--color-page);
+  border: 1px solid var(--color-border);
+}
+
+button {
+  padding: 0.4rem 1rem;
+  font: inherit;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.four-versions {
+  padding-left: 2rem;
+}
+
+.four-versions > li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.blank-line {
+  min-height: 1.5rem;
+}
+
+.version-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.version-label {
+  flex: 0 0 5.5rem;
+  color: var(--color-muted);
+}
+
+.reading-note {
+  margin-left: 0.75rem;
+  color: var(--color-muted);
 }
