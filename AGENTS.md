@@ -58,6 +58,7 @@ The loop for one spec:
 5. Set the spec to `done` and update `specs/README.md`.
 
 Token budget:
+- **One task per session.** When a task is reviewed, committed, and ticked in `tasks.md`, the coordinator stops and reports to the user: what was done, the commit, and the exact line to paste after `/clear`, for example `continue spec 003 from tasks.md (next: T3)`. It does not start the next task in the same session. Never stop for a refresh in the middle of a task.
 - Agents use `scripts/check-quiet.sh`: one line on success, only the failing step's tail on failure. Never paste full test output.
 - Each task prompt carries only its own ACs and the files to touch. Agents read only the spec sections they need and reply with short summaries.
 - Models: spec-writer and reviewer on Opus; implementer and test-writer on Sonnet; explainer on Haiku (set in each agent's frontmatter).
