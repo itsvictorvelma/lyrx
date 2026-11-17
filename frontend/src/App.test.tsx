@@ -404,7 +404,7 @@ describe("App errors", () => {
   });
 });
 
-describe("App result heading", () => {
+describe("App result heading (T9 accessibility)", () => {
   function line(index: number, original: string): Line {
     return {
       index,
@@ -420,7 +420,7 @@ describe("App result heading", () => {
     return screen.getByRole("heading", { level: 2, name: /Four versions/ });
   }
 
-  test("test_ac37_result_heading_appears_above_the_list_and_takes_focus", async () => {
+  test("test_t9_a11y_result_heading_appears_above_the_list_and_takes_focus", async () => {
     fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
     const user = userEvent.setup();
     render(<App />);
@@ -435,7 +435,7 @@ describe("App result heading", () => {
     expect(document.activeElement).toBe(heading);
   });
 
-  test("test_ac37_result_heading_counts_two_lines", async () => {
+  test("test_t9_a11y_result_heading_counts_two_lines", async () => {
     fakeFetch.mockResolvedValue(
       jsonResponse(200, { lines: [line(0, "星"), line(1, "月")] }),
     );
@@ -448,7 +448,7 @@ describe("App result heading", () => {
     expect(resultHeading().textContent).toContain("2 lines");
   });
 
-  test("test_ac37_result_heading_counts_blank_lines_too", async () => {
+  test("test_t9_a11y_result_heading_counts_blank_lines_too", async () => {
     fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
     const user = userEvent.setup();
     render(<App />);
@@ -460,7 +460,7 @@ describe("App result heading", () => {
     expect(resultHeading().textContent).toContain("3 lines");
   });
 
-  test("test_ac37_result_heading_says_1_line_for_one_line", async () => {
+  test("test_t9_a11y_result_heading_says_1_line_for_one_line", async () => {
     fakeFetch.mockResolvedValue(jsonResponse(200, { lines: [line(0, "星")] }));
     const user = userEvent.setup();
     render(<App />);
@@ -473,13 +473,13 @@ describe("App result heading", () => {
     expect(text).not.toContain("1 lines");
   });
 
-  test("test_ac37_no_result_heading_while_idle", () => {
+  test("test_t9_a11y_no_result_heading_while_idle", () => {
     render(<App />);
 
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
   });
 
-  test("test_ac37_no_result_heading_while_waiting", async () => {
+  test("test_t9_a11y_no_result_heading_while_waiting", async () => {
     fakeFetch.mockReturnValue(deferredResponse().promise);
     const user = userEvent.setup();
     render(<App />);
@@ -490,7 +490,7 @@ describe("App result heading", () => {
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
   });
 
-  test("test_ac37_no_result_heading_on_error", async () => {
+  test("test_t9_a11y_no_result_heading_on_error", async () => {
     fakeFetch.mockResolvedValue(errorResponse(502, "model_refused"));
     const user = userEvent.setup();
     render(<App />);
@@ -501,7 +501,7 @@ describe("App result heading", () => {
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
   });
 
-  test("test_ac37_second_result_moves_focus_to_the_heading_again", async () => {
+  test("test_t9_a11y_second_result_moves_focus_to_the_heading_again", async () => {
     fakeFetch
       .mockResolvedValueOnce(jsonResponse(200, { lines: resultLines }))
       .mockResolvedValueOnce(jsonResponse(200, { lines: [line(0, "星")] }));
@@ -519,7 +519,7 @@ describe("App result heading", () => {
   });
 
   test.each(["{Enter}", " "])(
-    "test_ac37_keyboard_submit_with_%j_leaves_focus_on_the_heading",
+    "test_t9_a11y_keyboard_submit_with_%j_leaves_focus_on_the_heading",
     async (key) => {
       fakeFetch.mockResolvedValue(jsonResponse(200, { lines: resultLines }));
       const user = userEvent.setup();
@@ -535,6 +535,54 @@ describe("App result heading", () => {
       expect(fakeFetch).toHaveBeenCalledTimes(1);
       expect(document.activeElement).not.toBe(document.body);
       expect(document.activeElement).toBe(resultHeading());
+    },
+  );
+});
+
+describe("App focus after an error (T9 accessibility)", () => {
+  test.each([
+    ["an error reply", () => errorResponse(400, "no_japanese")],
+    [
+      "a rejected fetch",
+      () => Promise.reject(new TypeError("Failed to fetch")),
+    ],
+  ])(
+    "test_t9_a11y_mouse_submit_then_%s_focuses_the_paste_box",
+    async (_name, reply) => {
+      fakeFetch.mockImplementation(() => Promise.resolve(reply()));
+      const user = userEvent.setup();
+      render(<App />);
+
+      await pasteAndSubmit(user);
+      await screen.findByRole("alert");
+
+      expect(document.activeElement).toBe(textArea());
+      expect(textArea()).toHaveProperty("value", PASTED_LYRICS);
+    },
+  );
+
+  test.each([
+    ["an error reply", () => errorResponse(400, "no_japanese")],
+    [
+      "a rejected fetch",
+      () => Promise.reject(new TypeError("Failed to fetch")),
+    ],
+  ])(
+    "test_t9_a11y_keyboard_submit_then_%s_focuses_the_paste_box",
+    async (_name, reply) => {
+      fakeFetch.mockImplementation(() => Promise.resolve(reply()));
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(textArea());
+      await user.paste(PASTED_LYRICS);
+      submitButton().focus();
+
+      await user.keyboard("{Enter}");
+      await screen.findByRole("alert");
+
+      expect(fakeFetch).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(textArea());
+      expect(textArea()).toHaveProperty("value", PASTED_LYRICS);
     },
   );
 });

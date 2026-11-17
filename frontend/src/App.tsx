@@ -51,6 +51,15 @@ function ResultHeading({ lines }: { lines: Line[] }) {
 
 export function App() {
   const [state, setState] = useState<PageState>({ kind: "idle" });
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus is lost when the button disables; on an error, return it to the paste box
+  // so the learner fixes the text where they left off.
+  useEffect(() => {
+    if (state.kind === "error") {
+      textAreaRef.current?.focus();
+    }
+  }, [state]);
 
   async function submit(lyrics: string) {
     setState({ kind: "waiting" });
@@ -62,6 +71,7 @@ export function App() {
       <h1>Lyrx</h1>
       <PasteForm
         waiting={state.kind === "waiting"}
+        textAreaRef={textAreaRef}
         onSubmit={(lyrics) => {
           void submit(lyrics);
         }}

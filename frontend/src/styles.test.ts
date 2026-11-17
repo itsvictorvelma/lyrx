@@ -10,7 +10,7 @@ function ruleBody(selector: string): string {
   return match[1] ?? "";
 }
 
-test("test_ac34_paste_box_border_uses_the_muted_color", () => {
+test("test_t9_a11y_paste_box_border_uses_the_muted_color", () => {
   const border = /(?:^|;|\s)border\s*:\s*([^;]*);/.exec(ruleBody("textarea"));
 
   expect(border?.[1]).toContain("var(--color-muted)");
