@@ -1,6 +1,6 @@
 # 001 — Paste lyrics, get four versions
 
-Status: approved
+Status: done
 
 ## Goal
 
