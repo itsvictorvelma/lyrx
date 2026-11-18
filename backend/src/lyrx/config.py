@@ -9,8 +9,6 @@ HOST = "127.0.0.1"
 PORT = 8000
 ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
 
-# A line longer than this many characters, after cleanup, is split at whitespace and marks.
-CLEANUP_SPLIT_LENGTH = 200
 # A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
 MAX_BODY_BYTES = 256 * 1024
 

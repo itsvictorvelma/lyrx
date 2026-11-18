@@ -13,12 +13,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from lyrx import config, library
-from lyrx.body_limit import BodySizeLimit
-from lyrx.crash_guard import CrashGuard
 from lyrx.errors import ApiError, ErrorCode, error_response
-from lyrx.host_check import HostCheck
-from lyrx.http_clients import make_gemini_client, make_groq_client, make_lrclib_client
-from lyrx.request_log import RequestLog, logged_request
+from lyrx.lyrics.lrclib import make_lrclib_client
+from lyrx.lyrics.search import search_songs
 from lyrx.schemas import (
     SavedSongsResponse,
     SongSearchRequest,
@@ -26,9 +23,14 @@ from lyrx.schemas import (
     SongVersionsRequest,
     SongVersionsResponse,
 )
-from lyrx.song_search import search_songs
-from lyrx.song_versions import open_song
-from lyrx.translators import ready_translators
+from lyrx.server.body_limit import BodySizeLimit
+from lyrx.server.crash_guard import CrashGuard
+from lyrx.server.host_check import HostCheck
+from lyrx.server.request_log import RequestLog, logged_request
+from lyrx.song import open_song
+from lyrx.translation.chain import ready_translators
+from lyrx.translation.gemini import make_gemini_client
+from lyrx.translation.groq import make_groq_client
 
 SONG_SEARCH_PATH = "/api/song-search"
 SONG_VERSIONS_PATH = "/api/song-versions"
@@ -58,7 +60,7 @@ async def handle_invalid_request(request: Request, error: Exception) -> JSONResp
 
 
 # The routes are sync `def`s on purpose: FastAPI runs them in its threadpool, so the
-# blocking HTTP calls and the cleanup never block the event loop.
+# blocking HTTP calls and the database never block the event loop.
 
 
 def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
@@ -121,6 +123,8 @@ def create_app(
     groq_transport: httpx2.BaseTransport | None = None,
 ) -> FastAPI:
     """The app; tests pass fake transports so nothing reaches the network."""
+    # One long-lived client per outside service, shared by every request and thread and closed
+    # only when the app stops: closing a client closes its connection pool.
     lrclib_client = make_lrclib_client(lrclib_transport or httpx2.HTTPTransport())
     translator_clients = {
         "gemini": make_gemini_client(gemini_transport or httpx2.HTTPTransport()),

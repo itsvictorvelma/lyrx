@@ -8,6 +8,18 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 [AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
 
+## What works today
+
+- **Find a song:** type a title, an artist, or both. The best match opens; "Not this song?" lists the others.
+- **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available".
+- **Your songs:** every song you open is saved and reopens instantly.
+
+## Coming next
+
+1. Synced playback: a YouTube video or your own MP3, with the current line highlighted.
+2. One cohesive design for the whole app.
+3. Personal accounts, so family and friends can use a hosted copy.
+
 ## Setup
 
 You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free API key from Groq, Gemini, or both (both is best: when one is busy, the other answers).
@@ -23,7 +35,7 @@ You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with n
    ```
    Put the keys after `GROQ_API_KEY=` and `GEMINI_API_KEY=` in `.env`. One key is enough; with both, a busy translator hands over to the other. The file is gitignored, so the keys are never committed.
 
-Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about 2 songs a minute); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
+Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about one long song a minute; Gemini takes over when it runs out); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
 
 ## Run
 
@@ -60,32 +72,32 @@ lyrx/
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
 │   │   ├── __main__.py        Starts the server on 127.0.0.1
-│   │   ├── app.py             Builds the app: the routes and the error handlers
-│   │   ├── song_search.py     Search: typed text → ranked LRCLIB results
-│   │   ├── song_versions.py   Open a song: LRCLIB id → four versions
-│   │   ├── library.py         Saved songs in one SQLite file
-│   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
-│   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
-│   │   ├── chunks.py          Cuts a song into chunks sent to the translators at the same time
-│   │   ├── retries.py         Retries an overloaded or failed request after a short wait
-│   │   ├── http_clients.py    The shared Groq, Gemini, and LRCLIB clients, built once per app
-│   │   ├── translators.py     The translator chain: Groq, then Gemini when Groq is busy
-│   │   ├── translation_prompt.py  What every translator is asked, and the reply shape
-│   │   ├── reply_checks.py    The checks on a reply: its JSON, then each line
-│   │   ├── groq.py            One Groq request and its reply text
-│   │   ├── gemini.py          One Gemini request and its reply text
-│   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
-│   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines
-│   │   ├── looks_japanese.py  Whether lyrics look Japanese (enough lines with kana)
-│   │   ├── kana.py            Which characters are kana and kanji
-│   │   ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
-│   │   ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
-│   │   ├── crash_guard.py     Turns any unexpected error into a plain 500
-│   │   ├── request_log.py     One log line per request (no lyrics, no key)
-│   │   ├── schemas.py         Data shapes
+│   │   ├── app.py             Builds the app: the routes, error handlers, and shared clients
+│   │   ├── config.py          Every setting in one place
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
-│   │   └── config.py          Every setting in one place
-│   └── tests/             One test_<module>.py per module, plus fake Groq, Gemini, and LRCLIB
+│   │   ├── schemas.py         What the page sends and receives
+│   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
+│   │   ├── library.py         Saved songs in one SQLite file
+│   │   ├── lyrics/            Finding and preparing lyrics
+│   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record shape
+│   │   │   ├── search.py          Typed text → a short ranked list of songs
+│   │   │   ├── lines.py           Plain lyrics → trimmed lines, one blank line between verses
+│   │   │   └── japanese.py        Kana and kanji, and whether lyrics look Japanese
+│   │   ├── translation/       Lines → hiragana, romaji, and English
+│   │   │   ├── chain.py           Groq first, Gemini when Groq is busy
+│   │   │   ├── chunks.py          Splits a song, sends the chunks at once, retries
+│   │   │   ├── prompt.py          What every translator is asked, and the reply shape
+│   │   │   ├── checks.py          The checks on every reply: its JSON, then each line
+│   │   │   ├── groq.py            Groq: client, one request, reply shape
+│   │   │   ├── gemini.py          Gemini: client, one request, reply shape
+│   │   │   └── results.py         The internal result shapes
+│   │   └── server/            Guards and logging around every request
+│   │       ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
+│   │       ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
+│   │       ├── crash_guard.py     Turns any unexpected error into a plain 500
+│   │       └── request_log.py     One log line per request (no lyrics, no key)
+│   └── tests/             The same folders as src/lyrx, one test_<module>.py per module,
+│                          plus fake Groq, Gemini, and LRCLIB at the top
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
