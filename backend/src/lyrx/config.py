@@ -45,9 +45,11 @@ LOOKS_JAPANESE_FRACTION = 0.25
 
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 # Flash-Lite: the free tier allows far more requests a day than Flash (about 500 against 20).
-GEMINI_MODEL = "gemini-3.5-flash-lite"
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+# Each model has its own limit and its own load, so when one is overloaded (503) or out of
+# quota (429), the same request goes to the next.
+GEMINI_MODELS = ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
+GEMINI_URL_TEMPLATE = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 # Seconds before one Gemini request gives up; it is then retried (see the waits below).
 GEMINI_TIMEOUT_SECONDS = 45

@@ -85,7 +85,7 @@ def test_one_post_with_lyrics_as_numbered_data_and_the_key_in_a_header() -> None
 
     request = fake.requests[0]
     assert request.method == "POST"
-    assert request.url == config.GEMINI_URL
+    assert request.url == config.GEMINI_URL_TEMPLATE.format(model=config.GEMINI_MODELS[0])
     assert set(request.timeout.values()) == {config.GEMINI_TIMEOUT_SECONDS}
     assert request.body["contents"][0]["parts"][0]["text"] == EXPECTED_USER_TEXT
     system_text = request.body["systemInstruction"]["parts"][0]["text"]
@@ -218,6 +218,57 @@ def test_an_outage_is_translation_unavailable_with_a_reason_but_no_error_text(
     assert error.reason == reason
     assert "fake-secret" not in repr(error)
     assert error.__cause__ is None
+
+
+TWO_MODELS = ("model-a", "model-b")
+
+
+def run_with_two_models(
+    monkeypatch: pytest.MonkeyPatch, *replies: ScriptedReply
+) -> tuple[FakeGemini, ChunkReply | ApiError]:
+    """Runs one request with two models configured; returns the fake and the result or error."""
+    monkeypatch.setattr(config, "GEMINI_MODELS", TWO_MODELS)
+    fake = FakeGemini()
+    fake.script(*replies)
+    try:
+        return fake, call(fake)
+    except ApiError as error:
+        return fake, error
+
+
+def models_called(fake: FakeGemini) -> list[str]:
+    return [request.url.rsplit("/", 1)[-1].split(":")[0] for request in fake.requests]
+
+
+@pytest.mark.parametrize("busy", [503, 429])
+def test_an_overloaded_or_exhausted_model_hands_the_request_to_the_next(
+    monkeypatch: pytest.MonkeyPatch, busy: int
+) -> None:
+    fake, result = run_with_two_models(monkeypatch, status(busy), success(VERSIONS))
+
+    assert models_called(fake) == ["model-a", "model-b"]
+    assert isinstance(result, ChunkReply)
+    assert result.bad_indexes == []
+
+
+@pytest.mark.parametrize(
+    ("busy", "code"), [(503, "translation_unavailable"), (429, "translation_rate_limited")]
+)
+def test_when_every_model_is_busy_the_last_error_counts(
+    monkeypatch: pytest.MonkeyPatch, busy: int, code: str
+) -> None:
+    fake, result = run_with_two_models(monkeypatch, status(busy), status(busy))
+
+    assert models_called(fake) == ["model-a", "model-b"]
+    assert isinstance(result, ApiError)
+    assert result.code == code
+
+
+def test_a_refused_request_does_not_try_the_next_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake, result = run_with_two_models(monkeypatch, status(400))
+
+    assert models_called(fake) == ["model-a"]
+    assert isinstance(result, ApiError)
 
 
 def test_the_log_reason_names_the_finish_reason_only_if_it_looks_like_one() -> None:

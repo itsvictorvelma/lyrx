@@ -26,7 +26,7 @@ def test_spec003_ac33_spec_001_size_limits_are_gone(removed: str) -> None:
 def test_lrclib_and_gemini_addresses_are_fixed_https_hosts() -> None:
     assert config.LRCLIB_SEARCH_URL == "https://lrclib.net/api/search"
     assert config.LRCLIB_RECORD_URL == "https://lrclib.net/api/get/{id}"
-    assert config.GEMINI_URL.startswith("https://generativelanguage.googleapis.com/")
+    assert config.GEMINI_URL_TEMPLATE.startswith("https://generativelanguage.googleapis.com/")
 
 
 def test_an_empty_gemini_key_counts_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:

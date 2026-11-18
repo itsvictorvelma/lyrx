@@ -32,6 +32,12 @@ def temporary_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
+def one_gemini_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One model, so a scripted failure is one request; test_gemini tests the fallback."""
+    monkeypatch.setattr(config, "GEMINI_MODELS", config.GEMINI_MODELS[:1])
+
+
+@pytest.fixture(autouse=True)
 def no_retry_waits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Retries happen at once in tests; the number of retries stays the configured one."""
     waits = tuple(0.0 for _ in config.GEMINI_RETRY_WAIT_SECONDS)
