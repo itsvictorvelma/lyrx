@@ -462,3 +462,21 @@ def test_ac44_small_ke_at_the_end_of_a_kanji_word_matches_ka_or_ga_in_the_readin
 
     assert result.hiragana == "せきが"
     assert result.reading_verified is True
+
+
+def test_ac44_small_ke_as_its_own_suffix_word_passes_the_kana_check() -> None:
+    analyzer = FakeAnalyzer({"三ヶ月": [noun("三", "サン"), word("ヶ月", SUFFIX, "カゲツ")]})
+
+    result = read_line("三ヶ月", analyzer)
+
+    assert result.hiragana == "さんかげつ"
+    assert result.reading_verified is True
+
+
+def test_ac44_small_ke_at_the_end_of_a_kanji_word_fails_on_another_kana() -> None:
+    analyzer = FakeAnalyzer({"関ヶ": [noun("関ヶ", "セキノ")]})
+
+    result = read_line("関ヶ", analyzer)
+
+    assert result.hiragana == "せきの"
+    assert result.reading_verified is False

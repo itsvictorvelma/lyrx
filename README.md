@@ -71,6 +71,7 @@ lyrx/
 │   │   ├── lines.py           Reads and splits the paste and checks the size limits
 │   │   ├── prompt.py          The system prompt and the message sent to Claude
 │   │   ├── claude.py          The one Claude call and the checks on its reply
+│   │   ├── gemini.py          The Gemini English request and the checks on its reply
 │   │   ├── readings.py        Checks Claude's hiragana reading against the line
 │   │   ├── romaji.py          Spells romaji from hiragana (modified Hepburn)
 │   │   ├── kana.py            Which characters are kana and kanji

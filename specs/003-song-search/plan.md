@@ -46,8 +46,8 @@ Found in the scratch install. Both keep the spec's expected results; neither cha
 | `lyric_cleanup.py` | The shared removal and the cleanup steps 3–5 (`remove_unwanted_characters`, `clean_lines`). Used by pastes, LRCLIB records, and the timed lines. |
 | `japanese_analyzer.py` | Wraps `fugashi`: one locked tagger; turns a run of text into `Word(surface, part_of_speech, conjunctive, reading)`; the full-width digit mapping. The only module that imports `fugashi`. |
 | `hiragana.py` | One line → its hiragana and `readingVerified`: one piece per word, the kana check, the joining rules, and which words are particles `は`/`へ`. |
-| `gemini.py` | The one Gemini HTTPS request and the checks on its reply. Returns the English by index or raises a `TranslationFailed(code)`. |
-| `translation.py` | Builds the numbered message, cuts chunks, calls `gemini.py` per chunk in order, joins the English, stops at the first failure. |
+| `gemini.py` | The one Gemini HTTPS request (system instruction, the numbered user message, the reply schema) and the checks on its reply. Returns the English by index or raises a `TranslationFailed(code)`. |
+| `translation.py` | Cuts chunks, calls `gemini.py` per chunk in order, joins the English, stops at the first failure. |
 | `lrclib.py` | The two LRCLIB requests: fixed host, `https`, no redirects, no proxies, timeout, the streaming size caps, JSON and record-schema checks, and the error codes. |
 | `song_search.py` | Search rules: drop, `looksJapanese`, rank, remove duplicates, keep 10. |
 | `song_versions.py` | The pick route's pipeline: fetch the record → check → clean → looks Japanese → four versions. |

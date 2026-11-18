@@ -30,6 +30,17 @@ MAX_TOKENS = 32000
 # Seconds before a Claude request gives up; the call then fails with model_unavailable.
 REQUEST_TIMEOUT_SECONDS = 120
 
+GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_URL = (
+    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+)
+# Seconds before a Gemini request gives up; the call then fails with translation_unavailable.
+GEMINI_TIMEOUT_SECONDS = 120
+# Room for the English of one full chunk (about 6,000 tokens for 200 lines) and the thinking.
+GEMINI_MAX_OUTPUT_TOKENS = 32768
+# Low thinking: translation needs context, not long reasoning.
+GEMINI_THINKING_LEVEL = "LOW"
+
 
 def read_api_key() -> str | None:
     """The Claude API key, read at call time. An empty value counts as unset."""
