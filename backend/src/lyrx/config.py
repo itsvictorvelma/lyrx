@@ -44,7 +44,8 @@ DUPLICATE_DURATION_SECONDS = 2
 LOOKS_JAPANESE_FRACTION = 0.25
 
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
-GEMINI_MODEL = "gemini-3.6-flash"
+# Flash-Lite: the free tier allows far more requests a day than Flash (about 500 against 20).
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 )
