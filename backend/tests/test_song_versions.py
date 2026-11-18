@@ -5,7 +5,7 @@ import logging
 import httpx2
 import pytest
 from error_shape import assert_error_shape
-from fake_gemini import FakeGemini, sent_indexes, status, success, success_for
+from fake_gemini import FakeGemini, sent_indexes, status, stopped, success, success_for
 from fake_lrclib import ENGLISH_LYRICS, FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
@@ -137,28 +137,35 @@ def test_ac9_a_song_that_is_not_japanese_never_reaches_gemini(
 
 @pytest.mark.usefixtures("gemini_key")
 @pytest.mark.parametrize(
-    ("reply", "status_code", "code"),
+    ("reply", "status_code", "code", "calls", "reason"),
     [
-        (status(429), 429, "translation_rate_limited"),
-        (status(500), 503, "translation_unavailable"),
+        (status(429), 429, "translation_rate_limited", 1, "http_429"),
+        (stopped("RECITATION"), 502, "translation_blocked", 1, "finish_RECITATION"),
+        (status(503), 503, "translation_unavailable", 3, "http_503"),
     ],
 )
-def test_ac10_gemini_failures_give_their_code_after_one_call(
+def test_ac10_gemini_failures_give_their_code_and_log_the_reason(
     client: TestClient,
     fake_lrclib: FakeLrclib,
     fake_gemini: FakeGemini,
+    caplog: pytest.LogCaptureFixture,
     reply: httpx2.Response,
     status_code: int,
     code: str,
+    calls: int,
+    reason: str,
 ) -> None:
+    caplog.set_level(logging.INFO)
     fake_lrclib.script(json_reply(record()))
-    fake_gemini.script(reply)
+    fake_gemini.script(reply, reply, reply)
 
     response = open_song(client)
 
     assert response.status_code == status_code
     assert_error_shape(response.json(), code)
-    assert len(fake_gemini.requests) == 1
+    assert len(fake_gemini.requests) == calls
+    assert f"reason={reason}" in caplog.text
+    assert reason not in response.text
 
 
 @pytest.mark.usefixtures("gemini_key")

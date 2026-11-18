@@ -23,7 +23,7 @@ You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with n
    ```
    Put your key after `GEMINI_API_KEY=` in `.env`. The file is gitignored, so the key is never committed.
 
-The free tier has daily limits (shown in AI Studio). One song is normally one call. When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
+The free tier has daily and per-minute limits (shown in AI Studio). A song is a few small calls sent at once (about one per 15 lines). When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
 
 ## Run
 
@@ -65,7 +65,8 @@ lyrx/
 │   │   ├── song_versions.py   Open a song: LRCLIB id → four versions
 │   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
 │   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
-│   │   ├── chunks.py          Splits a very long song into chunks, one Gemini call each
+│   │   ├── chunks.py          Cuts a song into small chunks sent to Gemini at the same time
+│   │   ├── retries.py         Retries an overloaded or failed Gemini request after a short wait
 │   │   ├── gemini.py          The Gemini request and the checks on its reply
 │   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
 │   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines
@@ -90,5 +91,6 @@ lyrx/
             ├── SearchForm.tsx     The search box and Find button
             ├── OtherMatches.tsx   "Not this song?": the other results
             ├── VersionsTable.tsx  The four-column table
+            ├── WaitingStatus.tsx  The waiting line with its seconds counter
             └── PasteForm.tsx      The paste fallback
 ```

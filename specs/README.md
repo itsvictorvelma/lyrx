@@ -28,3 +28,5 @@ Status values: `draft` → `approved` → `done`, or `shelved` when dropped (the
 - Study mode: hide a column (for example English) to test yourself.
 - Show seconds elapsed during a long wait, and allow cancelling.
 - Make the Japanese columns visually primary; English muted.
+- Something to look at or do while a song is processing (a visualizer, or a small kana game).
+- Show lines as they arrive instead of all at the end.

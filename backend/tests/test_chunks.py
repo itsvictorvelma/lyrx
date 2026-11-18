@@ -1,10 +1,21 @@
-"""Tests for chunks.py: a song's lines split into chunks, one Gemini call each, in order."""
+"""Tests for chunks.py: small chunks sent at the same time, retries, and asking bad lines again."""
 
 import pytest
-from fake_gemini import FakeGemini, sent_indexes, status, success_for
+from fake_gemini import (
+    FakeGemini,
+    ScriptedReply,
+    SeenGeminiRequest,
+    answer_with_placeholders,
+    context_indexes,
+    placeholder_versions,
+    sent_indexes,
+    status,
+    success,
+    success_for,
+)
 
 from lyrx import config
-from lyrx.chunks import request_in_chunks
+from lyrx.chunks import MISSING, request_in_chunks
 from lyrx.errors import ApiError
 from lyrx.schemas import GeminiVersions
 
@@ -14,63 +25,47 @@ INDEXES = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
 LINES = [(index, f"空の歌{index}") for index in INDEXES]
 
 
-def english_for(indexes: list[int]) -> dict[int, str]:
-    return {index: f"English {index}" for index in indexes}
-
-
-def english_of(result: GeminiVersions) -> dict[int, str]:
-    return {index: line.english for index, line in result.lines.items()}
-
-
-def chunks_sent(fake: FakeGemini) -> list[list[int]]:
-    return [sent_indexes(request) for request in fake.requests]
-
-
-def script_chunks(fake: FakeGemini, chunks: list[list[int]]) -> None:
-    for chunk in chunks:
-        reply = success_for(chunk)
-        fake.script(reply)
-
-
-def translate(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> GeminiVersions:
+def run(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> GeminiVersions:
     return request_in_chunks(lines, API_KEY, fake.make_transport())
 
 
-def test_default_chunk_sizes() -> None:
-    assert config.GEMINI_CHUNK_LINES == 100
-    assert config.GEMINI_CHUNK_CHARACTERS == 4000
+def chunks_sent(fake: FakeGemini) -> list[list[int]]:
+    return sorted(sent_indexes(request) for request in fake.requests)
 
 
-def test_chunks_keep_order_and_indexes_across_a_gap(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_settings() -> None:
+    assert config.GEMINI_CHUNK_LINES == 15
+    assert config.GEMINI_PARALLEL_REQUESTS == 4
+    assert config.GEMINI_TIMEOUT_SECONDS == 45
+
+
+def test_chunks_cover_every_line_once_and_each_carries_the_whole_song(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 4)
-    fake = FakeGemini()
-    expected = [[0, 1, 2, 3], [4, 6, 7, 8], [9, 10]]
-    script_chunks(fake, expected)
+    fake = FakeGemini(answer=answer_with_placeholders)
 
-    result = translate(fake)
+    result = run(fake)
 
-    assert chunks_sent(fake) == expected
-    assert english_of(result) == english_for(INDEXES)
-
-
-def test_a_song_at_the_chunk_size_makes_one_call(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", len(LINES))
-    fake = FakeGemini()
-    script_chunks(fake, [INDEXES])
-
-    result = translate(fake)
-
-    assert chunks_sent(fake) == [INDEXES]
-    assert english_of(result) == english_for(INDEXES)
+    assert chunks_sent(fake) == [[0, 1, 2, 3], [4, 6, 7, 8], [9, 10]]
+    assert all(context_indexes(request) == INDEXES for request in fake.requests)
+    assert {index: line.english for index, line in result.lines.items()} == {
+        index: f"English {index}" for index in INDEXES
+    }
+    assert result.calls == 3
+    assert result.usage.input_tokens == 360
 
 
-def test_a_song_under_the_chunk_size_makes_one_call() -> None:
-    fake = FakeGemini()
-    script_chunks(fake, [INDEXES])
+def test_a_very_long_song_sends_each_chunk_without_the_whole_song(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 5)
+    monkeypatch.setattr(config, "GEMINI_CONTEXT_MAX_CHARACTERS", 10)
+    fake = FakeGemini(answer=answer_with_placeholders)
 
-    translate(fake)
+    run(fake)
 
-    assert len(fake.requests) == 1
+    assert all(context_indexes(r) == sent_indexes(r) for r in fake.requests)
 
 
 def test_a_line_longer_than_the_character_size_goes_in_a_chunk_alone(
@@ -78,62 +73,70 @@ def test_a_line_longer_than_the_character_size_goes_in_a_chunk_alone(
 ) -> None:
     monkeypatch.setattr(config, "GEMINI_CHUNK_CHARACTERS", 10)
     lines = [(0, "短い"), (1, "とても長い長い長い長い長い歌詞の行"), (2, "短い"), (3, "短い")]
-    fake = FakeGemini()
-    script_chunks(fake, [[0], [1], [2, 3]])
+    fake = FakeGemini(answer=answer_with_placeholders)
 
-    result = translate(fake, lines)
+    run(fake, lines)
 
     assert chunks_sent(fake) == [[0], [1], [2, 3]]
-    assert english_of(result) == english_for([0, 1, 2, 3])
 
 
-def test_chunks_are_packed_as_full_as_the_character_size_allows(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Texts joined by "\n": three 3-character lines take 3 + 1 + 3 + 1 + 3 = 11 characters.
-    monkeypatch.setattr(config, "GEMINI_CHUNK_CHARACTERS", 11)
-    lines = [(index, "あいう") for index in range(7)]
+def test_an_overloaded_request_is_retried_and_then_works() -> None:
     fake = FakeGemini()
-    script_chunks(fake, [[0, 1, 2], [3, 4, 5], [6]])
+    fake.script(status(503), status(503), success_for(INDEXES))
 
-    translate(fake, lines)
+    result = run(fake)
 
-    assert chunks_sent(fake) == [[0, 1, 2], [3, 4, 5], [6]]
+    assert len(fake.requests) == 3
+    assert result.retries == 2
+    assert result.missing_lines == 0
 
 
-def test_chunks_are_packed_as_full_as_the_line_size_allows(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 3)
+def test_after_all_retries_the_song_fails_with_the_last_error() -> None:
     fake = FakeGemini()
-    script_chunks(fake, [[0, 1, 2], [3, 4, 6], [7, 8, 9], [10]])
-
-    translate(fake)
-
-    assert chunks_sent(fake) == [[0, 1, 2], [3, 4, 6], [7, 8, 9], [10]]
-
-
-def test_token_usage_is_summed_over_the_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 4)
-    fake = FakeGemini()
-    script_chunks(fake, [[0, 1, 2, 3], [4, 6, 7, 8], [9, 10]])
-
-    result = translate(fake)
-
-    assert result.usage.input_tokens == 360
-    assert result.usage.output_tokens == 135
-    assert result.calls == 3
-
-
-def test_a_failing_chunk_stops_the_song_and_returns_nothing(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 4)
-    fake = FakeGemini()
-    fake.script(success_for([0, 1, 2, 3]), status(429))
+    fake.script(status(503), status(503), status(503))
 
     with pytest.raises(ApiError) as caught:
-        translate(fake)
+        run(fake)
 
-    assert caught.value.code == "translation_rate_limited"
-    assert len(fake.requests) == 2
+    assert caught.value.code == "translation_unavailable"
+    assert len(fake.requests) == 1 + len(config.GEMINI_RETRY_WAIT_SECONDS)
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"), [(429, "translation_rate_limited"), (400, "translation_unavailable")]
+)
+def test_a_rate_limit_or_a_refused_request_is_never_retried(code: int, expected: str) -> None:
+    fake = FakeGemini()
+    fake.script(status(code))
+
+    with pytest.raises(ApiError) as caught:
+        run(fake)
+
+    assert caught.value.code == expected
+    assert len(fake.requests) == 1
+
+
+def test_bad_lines_are_asked_again_on_their_own() -> None:
+    first = {index: placeholder_versions(index) for index in INDEXES}
+    first[2] = ("空", "sora", "Sky")  # kanji in the hiragana
+    fake = FakeGemini()
+    fake.script(success(first), success({2: ("そら", "sora", "Sky")}))
+
+    result = run(fake)
+
+    assert [sent_indexes(request) for request in fake.requests] == [INDEXES, [2]]
+    assert result.lines[2].hiragana == "そら"
+    assert result.missing_lines == 0
+
+
+def test_a_line_still_bad_after_asking_again_is_shown_without_versions() -> None:
+    first = {index: placeholder_versions(index) for index in INDEXES if index != 2}
+
+    def answer(request: SeenGeminiRequest) -> ScriptedReply:
+        return success({}) if sent_indexes(request) == [2] else success(first)
+
+    result = run(FakeGemini(answer=answer))
+
+    assert result.lines[2] == MISSING
+    assert result.missing_lines == 1
+    assert result.lines[3].english == "English 3"

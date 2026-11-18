@@ -40,16 +40,23 @@ GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 )
-# Seconds before a Gemini request gives up; the call then fails with translation_unavailable.
-GEMINI_TIMEOUT_SECONDS = 120
-# Room for one full chunk's three versions (about 9,000 tokens for 100 lines) and the thinking.
-GEMINI_MAX_OUTPUT_TOKENS = 32768
-# Low thinking: the versions need context, not long reasoning.
-GEMINI_THINKING_LEVEL = "LOW"
-# Most lines in one Gemini request; a longer song is sent in chunks of this size.
-GEMINI_CHUNK_LINES = 100
-# Most characters in one chunk (its texts joined by "\n"), so its reply fits in one answer.
-GEMINI_CHUNK_CHARACTERS = 4000
+# Seconds before one Gemini request gives up; it is then retried (see the waits below).
+GEMINI_TIMEOUT_SECONDS = 45
+# Room for one chunk's three versions (about 1,500 tokens for 15 lines), with a wide margin.
+GEMINI_MAX_OUTPUT_TOKENS = 8192
+# Minimal thinking: the versions need context, not reasoning, and thinking adds wait time.
+GEMINI_THINKING_LEVEL = "MINIMAL"
+# A song is cut into chunks of at most this many lines and characters (texts joined by "\n").
+# The chunks are sent at the same time, so smaller chunks make a song come back sooner.
+GEMINI_CHUNK_LINES = 15
+GEMINI_CHUNK_CHARACTERS = 1500
+# How many chunk requests run at once; the free tier limits requests per minute.
+GEMINI_PARALLEL_REQUESTS = 4
+# Each chunk request also carries the whole song as context, unless the song is longer than this.
+GEMINI_CONTEXT_MAX_CHARACTERS = 12000
+# Seconds to wait before each retry of an overloaded, timed-out, or unusable request.
+# Its length is the number of retries. A rate limit (429) or a block is never retried.
+GEMINI_RETRY_WAIT_SECONDS = (1.0, 3.0)
 
 
 def read_gemini_key() -> str | None:

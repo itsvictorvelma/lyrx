@@ -19,6 +19,13 @@ ALLOWED_TEST_BASE_URL = "http://127.0.0.1:8000"
 TEST_GEMINI_KEY = "fake-gemini-key-not-real-0123"
 
 
+@pytest.fixture(autouse=True)
+def no_retry_waits(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Retries happen at once in tests; the number of retries stays the configured one."""
+    waits = tuple(0.0 for _ in config.GEMINI_RETRY_WAIT_SECONDS)
+    monkeypatch.setattr(config, "GEMINI_RETRY_WAIT_SECONDS", waits)
+
+
 @pytest.fixture
 def fake_gemini() -> FakeGemini:
     return FakeGemini()

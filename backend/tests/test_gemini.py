@@ -1,4 +1,4 @@
-"""Tests for gemini.py: the one request for three versions, and the checks on its reply."""
+"""Tests for gemini.py: one request for some lines of a song, and the checks on its reply."""
 
 import json
 from typing import Any
@@ -10,8 +10,10 @@ from fake_gemini import (
     ScriptedReply,
     blocked_prompt,
     candidate_reply,
+    context_indexes,
     lines_text,
     raw_envelope,
+    sent_indexes,
     status,
     stopped,
     success,
@@ -20,7 +22,7 @@ from fake_gemini import (
 from lyrx import config
 from lyrx.errors import ApiError
 from lyrx.gemini import request_versions
-from lyrx.schemas import GeminiVersions, LineVersions, TokenUsage
+from lyrx.schemas import ChunkReply, LineVersions, TokenUsage
 
 API_KEY = "fake-gemini-key-not-real-0123"
 # Non-blank lines of an invented song; index 1 was blank and is not sent. Index 3 has no Japanese.
@@ -30,14 +32,20 @@ VERSIONS = {
     2: ("そら へ とぶ", "sora e tobu", "Flying to the sky"),
     3: ("We sing tonight", "We sing tonight", "We sing tonight"),
 }
-EXPECTED_USER_TEXT = "<lyrics>\n[0] 君の声が\n[2] 空へ飛ぶ\n[3] We sing tonight\n</lyrics>"
+EXPECTED_USER_TEXT = (
+    "<lyrics>\n[0] 君の声が\n[2] 空へ飛ぶ\n[3] We sing tonight\n</lyrics>\nLine numbers: 0, 2, 3"
+)
 
 
-def call(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> GeminiVersions:
-    return request_versions(lines, API_KEY, fake.make_transport())
+def call(
+    fake: FakeGemini,
+    wanted: list[tuple[int, str]] = LINES,
+    context: list[tuple[int, str]] | None = None,
+) -> ChunkReply:
+    return request_versions(context or wanted, wanted, API_KEY, fake.make_transport())
 
 
-def run_once(reply: ScriptedReply) -> tuple[FakeGemini, GeminiVersions]:
+def run_once(reply: ScriptedReply) -> tuple[FakeGemini, ChunkReply]:
     fake = FakeGemini()
     fake.script(reply)
     result = call(fake)
@@ -85,11 +93,23 @@ def test_one_post_with_lyrics_as_numbered_data_and_the_key_in_a_header() -> None
     assert API_KEY not in json.dumps(request.body)
 
 
-def test_asks_for_json_lines_with_exactly_index_hiragana_romaji_english() -> None:
+def test_the_song_is_sent_as_context_and_only_the_wanted_lines_are_asked_for() -> None:
+    fake = FakeGemini()
+    fake.script(success({2: VERSIONS[2]}))
+
+    result = call(fake, wanted=[(2, "空へ飛ぶ")], context=LINES)
+
+    assert context_indexes(fake.requests[0]) == [0, 2, 3]
+    assert sent_indexes(fake.requests[0]) == [2]
+    assert list(result.lines) == [2]
+
+
+def test_asks_for_json_lines_with_minimal_thinking() -> None:
     fake, _ = run_once(success(VERSIONS))
 
     generation = fake.requests[0].body["generationConfig"]
     assert generation["responseMimeType"] == "application/json"
+    assert generation["thinkingConfig"] == {"thinkingLevel": "MINIMAL"}
     item = generation["responseJsonSchema"]["properties"]["lines"]["items"]
     assert sorted(item["required"]) == ["english", "hiragana", "index", "romaji"]
     assert item["additionalProperties"] is False
@@ -103,7 +123,7 @@ def test_an_instruction_in_the_lyrics_is_sent_only_as_data() -> None:
     call(fake, [(0, injected)])
 
     body = fake.requests[0].body
-    assert body["contents"][0]["parts"][0]["text"] == f"<lyrics>\n[0] {injected}\n</lyrics>"
+    assert body["contents"][0]["parts"][0]["text"].startswith(f"<lyrics>\n[0] {injected}\n")
     assert injected not in body["systemInstruction"]["parts"][0]["text"]
 
 
@@ -115,28 +135,45 @@ def test_success_returns_the_versions_by_index_and_the_tokens() -> None:
 
     assert result.lines[0] == LineVersions("きみ の こえ が", "kimi no koe ga", "Your voice")
     assert result.lines[2].romaji == "sora e tobu"
+    assert result.bad_indexes == []
     assert result.usage == TokenUsage(input_tokens=321, output_tokens=54)
 
 
-def test_a_line_with_no_japanese_keeps_its_own_text_whatever_gemini_says() -> None:
-    _, result = run_once(with_line(3, hiragana="", romaji="", english="Something else"))
+def test_a_line_with_no_japanese_keeps_its_own_text_even_if_gemini_skips_it() -> None:
+    _, result = run_once(success({0: VERSIONS[0], 2: VERSIONS[2]}))
 
     assert result.lines[3] == LineVersions("We sing tonight", "We sing tonight", "We sing tonight")
+    assert result.bad_indexes == []
 
 
-# --- Bad replies (AC-10) ----------------------------------------------------------------------
+# --- A reply with some bad lines: only those lines are reported, the rest is kept --------------
+
+BAD_LINE_REPLIES: dict[str, ScriptedReply] = {
+    "missing-line": success({0: VERSIONS[0], 3: VERSIONS[3]}),
+    "wrong-index": success({0: VERSIONS[0], 7: VERSIONS[2], 3: VERSIONS[3]}),
+    "extra-field": with_line(2, reading="そら"),
+    "index-not-an-integer": with_line(2, index="2"),
+    "kanji-in-hiragana": with_line(2, hiragana="空 へ とぶ"),
+    "kana-in-romaji": with_line(2, romaji="sora へ tobu"),
+    "blank-hiragana": with_line(2, hiragana=" "),
+    "blank-romaji": with_line(2, romaji=""),
+    "blank-english": with_line(2, english="　"),
+}
+
+
+@pytest.mark.parametrize("reply", BAD_LINE_REPLIES.values(), ids=BAD_LINE_REPLIES.keys())
+def test_a_bad_line_is_listed_and_the_good_lines_are_kept(reply: ScriptedReply) -> None:
+    _, result = run_once(reply)
+
+    assert result.bad_indexes == [2]
+    assert set(result.lines) == {0, 3}
+
+
+# --- Unusable replies (AC-10) -----------------------------------------------------------------
 
 INVALID_REPLIES: dict[str, ScriptedReply] = {
     "not-json": candidate_reply("not json"),
-    "wrong-indexes": success({0: VERSIONS[0], 1: VERSIONS[2], 3: VERSIONS[3]}),
-    "missing-line": success({0: VERSIONS[0], 3: VERSIONS[3]}),
-    "extra-field": with_line(0, reading="きみ"),
-    "index-not-an-integer": with_line(0, index="0"),
-    "kanji-in-hiragana": with_line(0, hiragana="君 の こえ が"),
-    "kana-in-romaji": with_line(0, romaji="kimi の koe ga"),
-    "blank-hiragana": with_line(0, hiragana=" "),
-    "blank-romaji": with_line(2, romaji=""),
-    "blank-english": with_line(2, english="　"),
+    "no-lines-array": candidate_reply('{"items": []}'),
     "cut-off": stopped("MAX_TOKENS", "{"),
     "no-candidates": raw_envelope(b"{}"),
     "envelope-not-json": raw_envelope(b"<html>"),
@@ -145,7 +182,7 @@ INVALID_REPLIES: dict[str, ScriptedReply] = {
 
 
 @pytest.mark.parametrize("reply", INVALID_REPLIES.values(), ids=INVALID_REPLIES.keys())
-def test_an_invalid_reply_is_translation_invalid(reply: ScriptedReply) -> None:
+def test_an_unusable_reply_is_translation_invalid(reply: ScriptedReply) -> None:
     assert fail_once(reply).code == "translation_invalid"
 
 
@@ -157,20 +194,29 @@ def test_a_blocked_reply_is_translation_blocked(reply: ScriptedReply) -> None:
     assert fail_once(reply).code == "translation_blocked"
 
 
-def test_a_rate_limit_is_translation_rate_limited_and_never_retried() -> None:
+def test_a_rate_limit_is_translation_rate_limited() -> None:
     assert fail_once(status(429)).code == "translation_rate_limited"
 
 
 @pytest.mark.parametrize(
-    "reply",
-    [status(500), httpx2.ConnectError("fake-secret"), httpx2.ReadTimeout("fake-secret")],
+    ("reply", "reason"),
+    [
+        (status(503), "http_503"),
+        (httpx2.ConnectError("fake-secret"), "connect_error"),
+        (httpx2.ReadTimeout("fake-secret"), "timeout"),
+    ],
 )
-def test_an_outage_is_translation_unavailable_without_the_error_text(
-    reply: ScriptedReply,
+def test_an_outage_is_translation_unavailable_with_a_reason_but_no_error_text(
+    reply: ScriptedReply, reason: str
 ) -> None:
     error = fail_once(reply)
 
     assert error.code == "translation_unavailable"
+    assert error.reason == reason
     assert "fake-secret" not in repr(error)
     assert error.__cause__ is None
-    assert error.__suppress_context__ or not isinstance(reply, httpx2.RequestError)
+
+
+def test_the_log_reason_names_the_finish_reason_only_if_it_looks_like_one() -> None:
+    assert fail_once(stopped("RECITATION")).reason == "finish_RECITATION"
+    assert fail_once(stopped("weird text; rm -rf")).reason == "finish_OTHER"

@@ -1,30 +1,91 @@
-"""Cuts a song's lines into chunks and asks Gemini for each chunk's versions, in order."""
+"""Cuts a song into small chunks and asks Gemini for them at the same time, with retries."""
+
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 import httpx2
 
 from lyrx import config
 from lyrx.gemini import NumberedLines, request_versions
+from lyrx.retries import with_retries
 from lyrx.schemas import GeminiVersions, LineVersions, TokenUsage
+
+# A line that still fails the checks after it was asked again is shown without versions.
+MISSING = LineVersions(hiragana="", romaji="", english="")
+
+
+@dataclass
+class ChunkResult:
+    """One chunk's lines and what it took: calls, retries, tokens, missing lines."""
+
+    lines: dict[int, LineVersions]
+    calls: int
+    retries: int
+    input_tokens: int
+    output_tokens: int
+    missing_lines: int
 
 
 def request_in_chunks(
     lines: NumberedLines, api_key: str, transport: httpx2.BaseTransport
 ) -> GeminiVersions:
-    """One Gemini call per chunk, in order; the first failure propagates and nothing is kept."""
+    """All chunks at once; if any chunk fails for good, the whole song fails with its error."""
+    started = time.monotonic()
+    context = song_context(lines)
+
+    def request_chunk(chunk: NumberedLines) -> ChunkResult:
+        return request_one_chunk(chunk if context is None else context, chunk, api_key, transport)
+
+    with ThreadPoolExecutor(max_workers=config.GEMINI_PARALLEL_REQUESTS) as pool:
+        results = list(pool.map(request_chunk, split_into_chunks(lines)))
     versions: dict[int, LineVersions] = {}
-    input_tokens = 0
-    output_tokens = 0
-    chunks = split_into_chunks(lines)
-    for chunk in chunks:
-        result = request_versions(chunk, api_key, transport)
+    for result in results:
         versions.update(result.lines)
-        input_tokens += result.usage.input_tokens
-        output_tokens += result.usage.output_tokens
     return GeminiVersions(
         lines=versions,
-        usage=TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens),
-        calls=len(chunks),
+        usage=TokenUsage(
+            input_tokens=sum(result.input_tokens for result in results),
+            output_tokens=sum(result.output_tokens for result in results),
+        ),
+        calls=sum(result.calls for result in results),
+        retries=sum(result.retries for result in results),
+        missing_lines=sum(result.missing_lines for result in results),
+        elapsed_ms=round((time.monotonic() - started) * 1000),
     )
+
+
+def song_context(lines: NumberedLines) -> NumberedLines | None:
+    """The whole song, sent with every chunk for context, unless it is very long."""
+    characters = len("\n".join(text for _, text in lines))
+    return lines if characters <= config.GEMINI_CONTEXT_MAX_CHARACTERS else None
+
+
+def request_one_chunk(
+    context: NumberedLines,
+    chunk: NumberedLines,
+    api_key: str,
+    transport: httpx2.BaseTransport,
+) -> ChunkResult:
+    """The chunk's lines; lines that fail the checks are asked once more, on their own."""
+    first, first_retries = with_retries(
+        lambda: request_versions(context, chunk, api_key, transport)
+    )
+    lines = dict(first.lines)
+    calls, retries = 1 + first_retries, first_retries
+    input_tokens, output_tokens = first.usage.input_tokens, first.usage.output_tokens
+    bad = [line for line in chunk if line[0] in first.bad_indexes]
+    if bad:
+        second, second_retries = with_retries(
+            lambda: request_versions(context, bad, api_key, transport)
+        )
+        lines.update(second.lines)
+        calls, retries = calls + 1 + second_retries, retries + second_retries
+        input_tokens += second.usage.input_tokens
+        output_tokens += second.usage.output_tokens
+    missing = [index for index, _ in chunk if index not in lines]
+    lines.update(dict.fromkeys(missing, MISSING))
+    return ChunkResult(lines, calls, retries, input_tokens, output_tokens, len(missing))
 
 
 def split_into_chunks(lines: NumberedLines) -> list[list[tuple[int, str]]]:

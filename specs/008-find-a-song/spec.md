@@ -10,7 +10,7 @@ The learner types a song name in one box and, a few seconds later, reads every l
 
 - **One search box.** The learner types a title, an artist, or both, in any order.
 - **Best match automatically.** The server asks LRCLIB and ranks the matches; the page opens the best one right away. A "Not this song?" list shows the other matches; clicking one opens it instead.
-- **The four versions from Gemini.** One Gemini call per song returns hiragana, romaji, and English for every line (chunked only for a very large song, existing `translation.py`).
+- **The four versions from Gemini.** The song is cut into small chunks (15 lines) sent at the same time, up to 4 at once; each request carries the whole song as context and asks for its own lines. Amended 2026-11-18 (user): the old single call was slow and failed often.
 - **Columns layout.** One table row per lyric line, four columns. A blank line in the song shows as a gap between verses, not an empty row.
 - **Paste fallback.** When no match is found, a "Paste the lyrics instead" link opens the existing paste form, which goes through the same pipeline.
 - **Deleting code.** Removed with their tests: the Claude pipeline (`claude.py`, `prompt.py`, `anthropic`, `ANTHROPIC_API_KEY`, the `model_…` codes) and the local readings (`fugashi`, `unidic-lite`, `japanese_analyzer.py`, `hiragana.py`, `readings.py`, `romaji.py`, and whatever of `kana.py` nothing else uses). `GEMINI_API_KEY` goes in `config.py` and `.env.example`.
@@ -22,7 +22,7 @@ The learner types a song name in one box and, a few seconds later, reads every l
 - Showing the original lyrics when Gemini fails. A Gemini failure is an error with a clear message; the learner tries again.
 - Saving songs (next spec), playback and timings, accounts, hosting.
 - Lyrics from anywhere but LRCLIB and pastes. AI to understand the search text.
-- Retrying Gemini automatically.
+- Showing lines while the rest are still coming (streaming).
 
 ## Inputs and outputs
 
@@ -54,15 +54,16 @@ Errors use the existing `{ "code", "message" }` shape.
 
 ### The four versions (shared pipeline)
 1. Gemini gets the numbered non-blank lines as data, never instructions, and replies with JSON: one `{ "index", "hiragana", "romaji", "english" }` per sent line. The system instruction asks for: hiragana for the whole line with spaces between words, kana already in the line kept as written; romaji in modified Hepburn spelled from that hiragana, particles は/へ/を as wa/e/o; natural English using the lines around it as context.
-2. The reply is checked: exact schema, the indexes exactly the sent ones in order, and for a Japanese line a non-blank `hiragana`, `romaji`, and `english`, `hiragana` with no kanji, and `romaji` with no kana or kanji. Any failure is `502 translation_invalid` and nothing is shown.
+2. The reply must be a JSON object with a `lines` array; otherwise the request is unusable. Each line is checked on its own: for a Japanese line a non-blank `hiragana`, `romaji`, and `english`, `hiragana` with no kanji, and `romaji` with no kana or kanji. Lines that fail, or are missing, are asked again once in their own request. A line that still fails is shown with empty versions, and the page says "Not available".
 3. A line with no Japanese keeps its original text in all four columns; a blank line stays blank. Line count and order match the input.
-4. Gemini failures: `429` → `429 translation_rate_limited` ("The free Gemini limit was reached. Try again later."); blocked → `502 translation_blocked`; connection error, timeout, or `5xx` → `503 translation_unavailable`; invalid reply → `502 translation_invalid`. No retry.
+4. **Retries** (amended 2026-11-18): an overloaded or failed request (`5xx`, connection error, timeout after 45 s, or an unusable reply) is retried up to 2 times, after 1 s and 3 s. A `429` and a block are never retried.
+5. Gemini failures after the retries fail the song: `429` → `429 translation_rate_limited`; blocked → `502 translation_blocked`; outage → `503 translation_unavailable`; unusable reply → `502 translation_invalid`. Thinking is set to minimal.
 
 ### Talking to LRCLIB
 Fixed host, `https` only, no redirects, no proxy from the environment, 10 s timeout, size caps enforced while streaming (2 MiB search, 512 KiB record), a fixed User-Agent with only the app name and version. The Gemini client also ignores proxies from the environment.
 
 ### The page
-- One labeled input "Song name or artist" and a "Find" button, disabled while empty or while a request runs. A status line says "Finding the song…", then "Getting the lyrics and translating…".
+- One labeled input "Song name or artist" and a "Find" button, disabled while empty or while a request runs. A status line says "Finding the song…", then "Getting the lyrics and translating…", each followed by the seconds elapsed (hidden from screen readers).
 - On success: a line "TRACK — ARTIST (lyrics from LRCLIB)", then the table with column headers Original, Hiragana, Romaji, English.
 - "Not this song?" lists the other results as buttons ("TRACK — ARTIST, m:ss"), with "Not Japanese" as text where it applies.
 - `song_not_found` → "No song found for that name." and the "Paste the lyrics instead" link. Other errors show their message.
@@ -74,7 +75,7 @@ Fixed host, `https` only, no redirects, no proxy from the environment, 10 s time
 - **Untrusted input:** the query, the id, pasted lyrics, LRCLIB replies, and Gemini replies. Body cap 256 KiB before parsing. The query only becomes a URL-encoded query value; the id is a checked integer before it enters the path.
 - **Prompt injection:** lyrics are delimited data; a hostile song can at worst spoil its own versions, which must still pass the reply checks and are rendered as text.
 - **Outside calls:** LRCLIB (search text or id only, no cookies or personal data) and Gemini (the numbered non-blank lines only, the key in a header). Nothing else is fetched.
-- **Logged:** route, status, error code, result count, LRCLIB id, line and character counts, chunk count, duration, Gemini token counts. Never the search text, lyrics, reply text, URLs with queries, headers, or the key.
+- **Logged:** route, status, error code, a short fixed reason (such as `http_503`, `timeout`, `finish_RECITATION`), result count, LRCLIB id, line and character counts, Gemini calls, retries, time, missing lines, and token counts. Never the search text, lyrics, reply text, URLs with queries, headers, or the key.
 - **Disk:** nothing is written. The server reads `.env`, which stays gitignored.
 - The Host check, crash guard, and `127.0.0.1` bind cover the new routes.
 
@@ -91,7 +92,7 @@ Backend (pytest, fake LRCLIB and fake Gemini; no network):
 - AC-7: No key → `503 server_not_configured`, LRCLIB and Gemini not called; setting the key after start makes the next request work.
 - AC-8: LRCLIB `404` → `404 song_not_found`; a `500` or an id mismatch → `502 lyrics_source_unavailable`.
 - AC-9: A record that does not look Japanese → `422 song_not_japanese`, Gemini not called.
-- AC-10: Gemini `429`, a block, a `500`, and invalid replies (wrong indexes, kanji in `hiragana`, kana in `romaji`, blank `english` on a Japanese line) give the matching error code, with exactly one call.
+- AC-10: Gemini `429` and a block give their code after one call; a `503` is retried twice, then gives its code; the log names the reason. Bad lines are asked again once, then shown as "Not available".
 - AC-11: The paste route returns the same line shape through the same pipeline.
 - AC-12: `anthropic`, `fugashi`, `unidic-lite`, and the deleted modules are gone and nothing imports them.
 - AC-13: Log lines hold the listed fields and never the query text or any lyric.

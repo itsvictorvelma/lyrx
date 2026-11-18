@@ -6,6 +6,7 @@ import { PasteForm } from "./lyrics/PasteForm";
 import { SearchForm } from "./lyrics/SearchForm";
 import type { ApiResult, Line, SearchResult, Song } from "./lyrics/types";
 import { VersionsTable } from "./lyrics/VersionsTable";
+import { WaitingStatus } from "./lyrics/WaitingStatus";
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
 export const SERVER_UNREACHABLE_MESSAGE =
@@ -98,10 +99,15 @@ export function App() {
           void find(query);
         }}
       />
-      <p role="status" aria-live="polite" className="muted">
-        {status === "finding" && FINDING_TEXT}
-        {status === "opening" && OPENING_TEXT}
-      </p>
+      <WaitingStatus
+        text={
+          status === "finding"
+            ? FINDING_TEXT
+            : status === "opening"
+              ? OPENING_TEXT
+              : null
+        }
+      />
       {error !== null && (
         <p role="alert" className="error">
           <strong>Error:</strong> {error}

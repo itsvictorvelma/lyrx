@@ -49,11 +49,16 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
 
 
 class ApiError(Exception):
-    """An error the API returns to the caller as `{code, message}`."""
+    """An error the API returns to the caller as `{code, message}`.
 
-    def __init__(self, code: ErrorCode) -> None:
+    `reason` is a short fixed word for the server log only (such as `http_503`); it is never
+    sent to the browser.
+    """
+
+    def __init__(self, code: ErrorCode, reason: str | None = None) -> None:
         super().__init__(code)
         self.code = code
+        self.reason = reason
         self.status, self.message = ERROR_TABLE[code]
 
 

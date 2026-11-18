@@ -1,12 +1,14 @@
-"""A fake Gemini API: scripted replies served in order through an `httpx2.MockTransport`.
+"""A fake Gemini API served through an `httpx2.MockTransport`.
 
-`FakeGemini.script(...)` queues one reply per expected request; `make_transport()` gives the
-transport the Gemini client sends through. Every request is recorded (URL, headers, timeout,
-parsed JSON body) before it is answered, so a test can count calls. A request with no reply
-left fails the test: Lyrx never retries, so an extra call is always a bug.
+`FakeGemini.script(...)` queues one reply per expected request, used in order. For chunks sent
+at the same time, `answer` replies by the request's content instead. Every request is recorded
+(URL, headers, timeout, parsed JSON body) before it is answered. A request with no scripted
+reply and no `answer` fails the test, so an unexpected extra call is caught.
 """
 
 import json
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -37,6 +39,9 @@ class FakeGemini:
 
     requests: list[SeenGeminiRequest] = field(default_factory=list)
     replies: list[ScriptedReply] = field(default_factory=list)
+    # Replies to any request once the script is used up, chosen from the request itself.
+    answer: Callable[["SeenGeminiRequest"], ScriptedReply] | None = None
+    lock: threading.Lock = field(default_factory=threading.Lock)
 
     def script(self, *replies: ScriptedReply) -> None:
         """Queues one reply per expected request."""
@@ -47,18 +52,21 @@ class FakeGemini:
 
     def handle(self, request: httpx2.Request) -> httpx2.Response:
         timeout = request.extensions.get("timeout")
-        self.requests.append(
-            SeenGeminiRequest(
-                method=request.method,
-                url=str(request.url),
-                headers=request.headers,
-                timeout=dict(timeout) if isinstance(timeout, dict) else {},
-                body=json.loads(request.content),
-            )
+        seen = SeenGeminiRequest(
+            method=request.method,
+            url=str(request.url),
+            headers=request.headers,
+            timeout=dict(timeout) if isinstance(timeout, dict) else {},
+            body=json.loads(request.content),
         )
-        if not self.replies:
-            raise UnscriptedGeminiCallError(f"unscripted Gemini call #{len(self.requests)}")
-        reply = self.replies.pop(0)
+        with self.lock:
+            self.requests.append(seen)
+            if self.replies:
+                reply = self.replies.pop(0)
+            elif self.answer is not None:
+                reply = self.answer(seen)
+            else:
+                raise UnscriptedGeminiCallError(f"unscripted Gemini call #{len(self.requests)}")
         if isinstance(reply, httpx2.RequestError):
             raise reply
         return reply
@@ -122,10 +130,26 @@ def success_for(indexes: list[int]) -> httpx2.Response:
     return success({index: placeholder_versions(index) for index in indexes})
 
 
+def user_text(request: "SeenGeminiRequest") -> str:
+    return str(request.body["contents"][0]["parts"][0]["text"])
+
+
 def sent_indexes(request: "SeenGeminiRequest") -> list[int]:
-    """The line indexes in a request's user message, in order."""
-    text = request.body["contents"][0]["parts"][0]["text"]
-    return [int(line[1 : line.index("]")]) for line in text.split("\n") if line.startswith("[")]
+    """The line numbers a request asks for, from the user message's last line."""
+    last_line = user_text(request).rsplit("\n", 1)[-1]
+    numbers = last_line.removeprefix("Line numbers: ")
+    return [int(number) for number in numbers.split(", ")]
+
+
+def context_indexes(request: "SeenGeminiRequest") -> list[int]:
+    """The line numbers of the song lines sent as context inside the lyrics delimiter."""
+    lines = user_text(request).split("\n")
+    return [int(line[1 : line.index("]")]) for line in lines if line.startswith("[")]
+
+
+def answer_with_placeholders(request: "SeenGeminiRequest") -> httpx2.Response:
+    """For `FakeGemini.answer`: valid placeholder versions for whatever lines were asked."""
+    return success_for(sent_indexes(request))
 
 
 def blocked_prompt(reason: str = "SAFETY") -> httpx2.Response:

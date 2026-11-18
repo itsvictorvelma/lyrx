@@ -205,3 +205,37 @@ test("the server being down says so", async () => {
     "Could not reach the Lyrx server.",
   );
 });
+
+test("a line Gemini could not do says Not available", async () => {
+  fakeFetch
+    .mockResolvedValueOnce(jsonResponse(200, { results: [bestMatch] }))
+    .mockResolvedValueOnce(
+      songReply(bestMatch, [
+        { ...firstLine, hiragana: "", romaji: "", english: "" },
+      ]),
+    );
+
+  await findSong();
+
+  await screen.findByRole("table");
+  expect(screen.getAllByText("Not available")).toHaveLength(3);
+});
+
+test("the waiting line counts the seconds", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  let finish: (response: Response) => void = () => undefined;
+  fakeFetch.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+
+  await findSong();
+  await vi.advanceTimersByTimeAsync(3000);
+
+  const status = screen.getByRole("status");
+  expect(status.textContent).toContain("Finding the song…");
+  expect(status.textContent).toContain("3 s");
+  finish(jsonResponse(200, { results: [] }));
+  vi.useRealTimers();
+});

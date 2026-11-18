@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from error_shape import assert_error_shape
-from fake_gemini import FakeGemini, success_for
+from fake_gemini import FakeGemini, answer_with_placeholders
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from raw_asgi import (
@@ -21,7 +21,6 @@ from raw_asgi import (
 from starlette.types import Message
 
 from lyrx.app import VERSIONS_PATH
-from lyrx.chunks import split_into_chunks
 
 REQUEST_LOGGER = "lyrx.request_log"
 
@@ -117,9 +116,7 @@ def test_spec003_ac65_paste_of_exactly_256_kib_of_valid_lyrics_is_not_refused_by
     client: TestClient, fake_gemini: FakeGemini, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
-    sent = [(index, line) for index, line in enumerate(SONG_LINES) if line]
-    for chunk in split_into_chunks(sent):
-        fake_gemini.script(success_for([index for index, _ in chunk]))
+    fake_gemini.answer = answer_with_placeholders
     body = paste_body_of_exactly_the_cap()
     assert len(body) == BODY_CAP_BYTES
 

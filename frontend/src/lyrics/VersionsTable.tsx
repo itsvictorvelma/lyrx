@@ -1,6 +1,8 @@
 // The four versions as a table: one row per lyric line, a gap between verses instead of blank rows.
 import type { Line } from "./types";
 
+export const NOT_AVAILABLE_TEXT = "Not available";
+
 interface VersionsTableProps {
   lines: Line[];
 }
@@ -22,15 +24,30 @@ export function VersionsTable({ lines }: VersionsTableProps) {
             {verse.map((line) => (
               <tr key={line.index}>
                 <td lang="ja">{line.original}</td>
-                <td lang="ja">{line.hiragana}</td>
-                <td>{line.romaji}</td>
-                <td>{line.english}</td>
+                <td lang="ja">
+                  <VersionCell text={line.hiragana} />
+                </td>
+                <td>
+                  <VersionCell text={line.romaji} />
+                </td>
+                <td>
+                  <VersionCell text={line.english} />
+                </td>
               </tr>
             ))}
           </tbody>
         ))}
       </table>
     </div>
+  );
+}
+
+// A lyric line Gemini could not do comes back with empty versions; say so in words.
+function VersionCell({ text }: { text: string }) {
+  return text === "" ? (
+    <span className="muted">{NOT_AVAILABLE_TEXT}</span>
+  ) : (
+    text
   );
 }
 

@@ -156,14 +156,6 @@ class GeminiLine(BaseModel):
     english: str
 
 
-class GeminiReply(BaseModel):
-    """Gemini's reply text as JSON: one entry per sent line. Strict, no extra fields."""
-
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    lines: list[GeminiLine]
-
-
 # The shapes below are internal: the server builds them from text it has already checked,
 # so they are plain frozen dataclasses, never validated, unlike the Pydantic shapes above.
 
@@ -186,9 +178,24 @@ class LineVersions:
 
 
 @dataclass(frozen=True)
+class ChunkReply:
+    """One Gemini reply after its checks: the good lines, and the lines to ask again."""
+
+    lines: dict[int, LineVersions]
+    bad_indexes: list[int]
+    usage: TokenUsage
+
+
+@dataclass(frozen=True)
 class GeminiVersions:
-    """Gemini's checked versions by line index, the tokens used, and how many calls it took."""
+    """Gemini's versions for a song by line index, and what it took, for the log.
+
+    `missing_lines` failed the checks even when asked again; they are shown without versions.
+    """
 
     lines: dict[int, LineVersions]
     usage: TokenUsage
     calls: int = 1
+    retries: int = 0
+    missing_lines: int = 0
+    elapsed_ms: int = 0

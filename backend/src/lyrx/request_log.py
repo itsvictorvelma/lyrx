@@ -33,6 +33,9 @@ class RequestLog:
     def add_gemini(self, versions: GeminiVersions) -> None:
         """The number of Gemini calls and the tokens they used."""
         self.fields["gemini_calls"] = versions.calls
+        self.fields["gemini_retries"] = versions.retries
+        self.fields["gemini_ms"] = versions.elapsed_ms
+        self.fields["missing_lines"] = versions.missing_lines
         self.fields["input_tokens"] = versions.usage.input_tokens
         self.fields["output_tokens"] = versions.usage.output_tokens
 
@@ -66,11 +69,16 @@ def logged_request(route: str, lines: int = 0, characters: int = 0) -> Iterator[
     try:
         yield log
     except ApiError as error:
-        log.write(error.status, {"code": error.code})
+        outcome: LogFields = {"code": error.code}
+        if error.reason is not None:
+            outcome["reason"] = error.reason
+        log.write(error.status, outcome)
         raise
     except Exception as error:
         internal_error = ApiError("internal_error")
-        outcome: LogFields = {"code": internal_error.code, "exception": type(error).__name__}
-        log.write(internal_error.status, outcome)
+        log.write(
+            internal_error.status,
+            {"code": internal_error.code, "exception": type(error).__name__},
+        )
         raise internal_error from None
     log.write(HTTPStatus.OK.value, {})
