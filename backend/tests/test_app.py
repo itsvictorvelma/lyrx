@@ -8,12 +8,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from lyrx.app import SONG_SEARCH_PATH, SONG_VERSIONS_PATH, VERSIONS_PATH
+from lyrx.app import SAVED_SONG_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
 
 
 def test_ac9_body_that_is_not_json_is_invalid_request(client: TestClient) -> None:
     response = client.post(
-        VERSIONS_PATH,
+        SONG_SEARCH_PATH,
         content=b"{not json at all",
         headers={"Content-Type": "application/json"},
     )
@@ -22,18 +22,16 @@ def test_ac9_body_that_is_not_json_is_invalid_request(client: TestClient) -> Non
     assert_error_shape(response.json(), "invalid_request")
 
 
-def test_ac9_body_without_lyrics_is_invalid_request(client: TestClient) -> None:
-    response = client.post(VERSIONS_PATH, json={"text": "ほしが ひかる"})
+def test_body_without_query_is_invalid_request(client: TestClient) -> None:
+    response = client.post(SONG_SEARCH_PATH, json={"text": "ほしが ひかる"})
 
     assert response.status_code == 400
     assert_error_shape(response.json(), "invalid_request")
 
 
-@pytest.mark.parametrize("lyrics", [42, 3.5, None, ["ほしが ひかる"], {"line": "そら"}])
-def test_ac9_lyrics_that_is_not_a_string_is_invalid_request(
-    client: TestClient, lyrics: object
-) -> None:
-    response = client.post(VERSIONS_PATH, json={"lyrics": lyrics})
+@pytest.mark.parametrize("query", [42, 3.5, None, ["ほしが ひかる"], {"line": "そら"}])
+def test_query_that_is_not_a_string_is_invalid_request(client: TestClient, query: object) -> None:
+    response = client.post(SONG_SEARCH_PATH, json={"query": query})
 
     assert response.status_code == 400
     assert_error_shape(response.json(), "invalid_request")
@@ -66,7 +64,7 @@ def test_ac42_unknown_path_is_not_found_in_the_error_shape(client: TestClient) -
 
 
 def test_ac42_unknown_path_with_post_is_not_found(client: TestClient) -> None:
-    response = client.post("/api/no-such-route", json={"lyrics": "夜の月"})
+    response = client.post("/api/no-such-route", json={"query": "夜の月"})
 
     assert response.status_code == 404
     assert_error_shape(response.json(), "not_found")
@@ -81,8 +79,8 @@ def test_ac42_api_docs_pages_are_disabled_and_not_found(client: TestClient, path
     assert_error_shape(response.json(), "not_found")
 
 
-def test_ac42_get_on_versions_route_is_method_not_allowed(client: TestClient) -> None:
-    response = client.get(VERSIONS_PATH)
+def test_ac42_get_on_search_route_is_method_not_allowed(client: TestClient) -> None:
+    response = client.get(SONG_SEARCH_PATH)
 
     assert response.status_code == 405
     assert_error_shape(response.json(), "method_not_allowed")
@@ -116,7 +114,9 @@ def test_ac44_other_http_exceptions_map_to_the_error_shape_without_their_detail(
 # The routes run in FastAPI's threadpool.
 
 
-@pytest.mark.parametrize("path", [VERSIONS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH])
+@pytest.mark.parametrize(
+    "path", [SONG_SEARCH_PATH, SONG_VERSIONS_PATH, SAVED_SONGS_PATH, SAVED_SONG_PATH]
+)
 def test_routes_are_sync_functions_so_blocking_calls_run_off_the_event_loop(
     app: FastAPI, path: str
 ) -> None:

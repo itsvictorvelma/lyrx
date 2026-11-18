@@ -21,6 +21,8 @@ BLOCKED_FINISH_REASONS = frozenset(
     {"SAFETY", "RECITATION", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII"}
 )
 HTTP_RATE_LIMITED = 429
+# Statuses that one model's load or quota explains, so the next model may still answer.
+TRY_NEXT_MODEL_STATUSES = frozenset({HTTP_RATE_LIMITED, 503})
 # Gemini's reason words go into the log only if they look like its own UPPER_CASE names.
 REASON_WORD = re.compile(r"[A-Z_]{1,40}")
 
@@ -126,26 +128,38 @@ def send_request(
     api_key: str,
     client: httpx2.Client,
 ) -> httpx2.Response:
-    """Exactly one POST. Any failure becomes a code and a short log reason, never error text."""
+    """One POST per model, moving on only when a model is overloaded or out of quota.
+
+    Any failure becomes a code and a short log reason, never error text.
+    """
     # ponytail: the reply is read with no byte cap. It is bounded by maxOutputTokens and comes
     # from a fixed host; stream it with a cap if that ever changes.
     # ponytail: the timeout applies to each step (connect, read), not the whole request, so a
     # reply that trickles in can take longer than 45 s; add a total deadline if that shows up.
-    try:
-        response = client.post(
-            config.GEMINI_URL,
-            headers={"x-goog-api-key": api_key},
-            content=json.dumps(build_body(context, wanted)),
-        )
-    except httpx2.TimeoutException:
-        raise ApiError("translation_unavailable", reason="timeout") from None
-    except httpx2.RequestError:
-        raise ApiError("translation_unavailable", reason="connect_error") from None
+    content = json.dumps(build_body(context, wanted))
+    for model in config.GEMINI_MODELS:
+        response = post_once(model, content, api_key, client)
+        if response.status_code not in TRY_NEXT_MODEL_STATUSES:
+            break
     if response.status_code == HTTP_RATE_LIMITED:
         raise ApiError("translation_rate_limited", reason="http_429")
     if not response.is_success:
         raise ApiError("translation_unavailable", reason=f"http_{response.status_code}")
     return response
+
+
+def post_once(model: str, content: str, api_key: str, client: httpx2.Client) -> httpx2.Response:
+    """One POST to one model; a network failure becomes a code and a log reason."""
+    try:
+        return client.post(
+            config.GEMINI_URL_TEMPLATE.format(model=model),
+            headers={"x-goog-api-key": api_key},
+            content=content,
+        )
+    except httpx2.TimeoutException:
+        raise ApiError("translation_unavailable", reason="timeout") from None
+    except httpx2.RequestError:
+        raise ApiError("translation_unavailable", reason="connect_error") from None
 
 
 def parse_envelope(response: httpx2.Response) -> GeminiEnvelope:

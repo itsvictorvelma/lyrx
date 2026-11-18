@@ -30,6 +30,7 @@ export function OtherMatches({ results, busy, onPick }: OtherMatchesProps) {
             {result.looksJapanese ? null : (
               <span className="muted"> Not Japanese</span>
             )}
+            {result.saved ? <span className="muted"> Saved</span> : null}
           </li>
         ))}
       </ul>

@@ -39,8 +39,8 @@ class RequestLog:
         self.fields["input_tokens"] = versions.usage.input_tokens
         self.fields["output_tokens"] = versions.usage.output_tokens
 
-    def add(self, name: str, value: int) -> None:
-        """One more count for the line, such as `results` or `lrclib_id`."""
+    def add(self, name: str, value: int | str) -> None:
+        """One more field for the line: a count, such as `results`, or a fixed word."""
         self.fields[name] = value
 
     def write(self, status: int, outcome: LogFields) -> None:

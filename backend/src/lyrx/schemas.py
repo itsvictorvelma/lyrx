@@ -4,13 +4,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
-class VersionsRequest(BaseModel):
-    """The body of `POST /api/versions`. A non-string `lyrics` is rejected, not coerced."""
-
-    model_config = ConfigDict(strict=True)
-
-    lyrics: str
+from lyrx.config import MAX_SONG_ID
 
 
 class SongSearchRequest(BaseModel):
@@ -26,7 +20,7 @@ class SongVersionsRequest(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    id: int = Field(ge=1)
+    id: int = Field(ge=1, le=MAX_SONG_ID)
 
 
 class VersionLine(BaseModel):
@@ -37,12 +31,6 @@ class VersionLine(BaseModel):
     hiragana: str
     romaji: str
     english: str
-
-
-class VersionsResponse(BaseModel):
-    """The body of a successful `POST /api/versions`: every line, in order."""
-
-    lines: list[VersionLine]
 
 
 class Song(BaseModel):
@@ -56,9 +44,10 @@ class Song(BaseModel):
 
 
 class SearchResult(Song):
-    """One search result: the song, and whether its lyrics look Japanese."""
+    """One search result: the song, whether its lyrics look Japanese, and whether it is saved."""
 
     looks_japanese: bool = Field(serialization_alias="looksJapanese")
+    saved: bool = False
 
 
 class SongSearchResponse(BaseModel):
@@ -67,11 +56,18 @@ class SongSearchResponse(BaseModel):
     results: list[SearchResult]
 
 
+class SavedSongsResponse(BaseModel):
+    """The body of `GET /api/songs`: the saved songs, most recently opened first."""
+
+    songs: list[Song]
+
+
 class SongVersionsResponse(BaseModel):
-    """The body of a successful `POST /api/song-versions`."""
+    """The body of a successful `POST /api/song-versions`; `fromLibrary` when it was saved."""
 
     song: Song
     lines: list[VersionLine]
+    from_library: bool = Field(default=False, serialization_alias="fromLibrary")
 
 
 class ErrorResponse(BaseModel):
@@ -84,7 +80,7 @@ class ErrorResponse(BaseModel):
 class LrclibRecord(BaseModel):
     """One LRCLIB record, from search or by id. Fields Lyrx does not read are ignored."""
 
-    id: int = Field(strict=True, ge=1)
+    id: int = Field(strict=True, ge=1, le=MAX_SONG_ID)
     track_name: str = Field(alias="trackName", strict=True)
     artist_name: str = Field(alias="artistName", strict=True)
     album_name: str | None = Field(default=None, alias="albumName", strict=True)

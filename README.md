@@ -2,7 +2,7 @@
 
 An app for learning a Japanese song. Type the song's name, and Lyrx shows every line in four columns: Original, Hiragana, Romaji, and English.
 
-The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). One call to the Gemini API free tier makes the hiragana, romaji, and English for every line. The server checks that reply before showing it. If LRCLIB has no match, you can paste the lyrics instead.
+The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). The Gemini API free tier makes the hiragana, romaji, and English for every line, and the server checks its reply before showing it. Every song you open is saved on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no Gemini quota.
 
 It runs on your own computer, on `127.0.0.1`, for now.
 
@@ -23,7 +23,7 @@ You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with n
    ```
    Put your key after `GEMINI_API_KEY=` in `.env`. The file is gitignored, so the key is never committed.
 
-The free tier has daily and per-minute limits (shown in AI Studio). A song is a few small calls sent at once (about one per 15 lines). When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
+The free tier has daily and per-minute limits (shown in AI Studio). Lyrx uses Gemini Flash-Lite, which has the highest free daily limit of the Gemini models (about 500 requests). A song is one call per 40 lines, sent at the same time, so most songs take 1 or 2 calls. When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
 
 ## Run
 
@@ -60,9 +60,10 @@ lyrx/
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
 │   │   ├── __main__.py        Starts the server on 127.0.0.1
-│   │   ├── app.py             Builds the app: three routes and the error handlers
+│   │   ├── app.py             Builds the app: the routes and the error handlers
 │   │   ├── song_search.py     Search: typed text → ranked LRCLIB results
 │   │   ├── song_versions.py   Open a song: LRCLIB id → four versions
+│   │   ├── library.py         Saved songs in one SQLite file
 │   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
 │   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
 │   │   ├── chunks.py          Cuts a song into small chunks sent to Gemini at the same time
@@ -84,14 +85,14 @@ lyrx/
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
-        ├── App.tsx            The page and its state: find, open, paste, errors
+        ├── App.tsx            The page and its state: find, open, saved songs, errors
         ├── styles.css         Neutral colors, Japanese font stack, visible focus
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
-            ├── api.ts             The three requests, and the checks on their replies
+            ├── api.ts             The requests to the server, and the checks on their replies
             ├── SearchForm.tsx     The search box and Find button
             ├── OtherMatches.tsx   "Not this song?": the other results
             ├── VersionsTable.tsx  The four-column table
             ├── WaitingStatus.tsx  The waiting line with its seconds counter
-            └── PasteForm.tsx      The paste fallback
+            └── SavedSongs.tsx     "Your songs": open or remove a saved song
 ```

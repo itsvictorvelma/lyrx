@@ -6,7 +6,7 @@ import logging
 from fastapi import FastAPI
 from starlette.types import Message, Scope
 
-from lyrx.app import VERSIONS_PATH
+from lyrx.app import SONG_SEARCH_PATH
 
 ALLOWED_HOST_HEADER = (b"host", b"127.0.0.1:8000")
 JSON_CONTENT_TYPE_HEADER = (b"content-type", b"application/json")
@@ -14,7 +14,7 @@ JSON_CONTENT_TYPE_HEADER = (b"content-type", b"application/json")
 UVICORN_ERROR_LOGGER = "uvicorn.error"
 
 
-def post_scope(headers: list[tuple[bytes, bytes]], path: str = VERSIONS_PATH) -> Scope:
+def post_scope(headers: list[tuple[bytes, bytes]], path: str = SONG_SEARCH_PATH) -> Scope:
     return {
         "type": "http",
         "asgi": {"version": "3.0"},
@@ -43,7 +43,7 @@ def run_like_uvicorn(
     app: FastAPI,
     headers: list[tuple[bytes, bytes]],
     incoming: list[Message],
-    path: str = VERSIONS_PATH,
+    path: str = SONG_SEARCH_PATH,
 ) -> list[Message]:
     """Runs one POST to `path` and returns every message the app sent.
 

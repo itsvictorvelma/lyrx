@@ -1,6 +1,6 @@
 # 008 — Find a song: type a name, read it in four columns
 
-Status: approved (by the user in chat, 2026-11-17, with "Option 1": Gemini makes every version)
+Status: done (merged 2026-11-18, PR #25)
 
 ## Goal
 
@@ -10,7 +10,7 @@ The learner types a song name in one box and, a few seconds later, reads every l
 
 - **One search box.** The learner types a title, an artist, or both, in any order.
 - **Best match automatically.** The server asks LRCLIB and ranks the matches; the page opens the best one right away. A "Not this song?" list shows the other matches; clicking one opens it instead.
-- **The four versions from Gemini.** The song is cut into small chunks (15 lines) sent at the same time, up to 4 at once; each request carries the whole song as context and asks for its own lines. Amended 2026-11-18 (user): the old single call was slow and failed often.
+- **The four versions from Gemini.** The song is cut into chunks (15 lines, raised to 40 on 2026-11-18 by the user to spend fewer free-tier requests) sent at the same time, up to 4 at once; each request carries the whole song as context and asks for its own lines. Amended 2026-11-18 (user): the old single call was slow and failed often.
 - **Columns layout.** One table row per lyric line, four columns. A blank line in the song shows as a gap between verses, not an empty row.
 - **Paste fallback.** When no match is found, a "Paste the lyrics instead" link opens the existing paste form, which goes through the same pipeline.
 - **Deleting code.** Removed with their tests: the Claude pipeline (`claude.py`, `prompt.py`, `anthropic`, `ANTHROPIC_API_KEY`, the `model_…` codes) and the local readings (`fugashi`, `unidic-lite`, `japanese_analyzer.py`, `hiragana.py`, `readings.py`, `romaji.py`, and whatever of `kana.py` nothing else uses). `GEMINI_API_KEY` goes in `config.py` and `.env.example`.

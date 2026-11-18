@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = 8000
@@ -11,6 +12,13 @@ ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
 CLEANUP_SPLIT_LENGTH = 200
 # A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
 MAX_BODY_BYTES = 256 * 1024
+
+# The largest song id accepted: SQLite's largest integer. LRCLIB ids are far smaller.
+MAX_SONG_ID = 2**63 - 1
+
+# Saved songs live in one SQLite file, gitignored (`*.db`), at the repo root's `data/` folder.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DATABASE_PATH = REPO_ROOT / "data" / "lyrx.db"
 
 # The lyrx loggers write at this level; other libraries stay at Python's default (warnings).
 LOG_LEVEL = logging.INFO
@@ -36,20 +44,24 @@ DUPLICATE_DURATION_SECONDS = 2
 LOOKS_JAPANESE_FRACTION = 0.25
 
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
-GEMINI_MODEL = "gemini-3.6-flash"
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+# Flash-Lite: the free tier allows far more requests a day than Flash (about 500 against 20).
+# Each model has its own limit and its own load, so when one is overloaded (503) or out of
+# quota (429), the same request goes to the next.
+GEMINI_MODELS = ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
+GEMINI_URL_TEMPLATE = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 # Seconds before one Gemini request gives up; it is then retried (see the waits below).
 GEMINI_TIMEOUT_SECONDS = 45
-# Room for one chunk's three versions (about 1,500 tokens for 15 lines), with a wide margin.
+# Room for one chunk's three versions (about 4,000 tokens for 40 lines), with a wide margin.
 GEMINI_MAX_OUTPUT_TOKENS = 8192
 # Minimal thinking: the versions need context, not reasoning, and thinking adds wait time.
 GEMINI_THINKING_LEVEL = "MINIMAL"
 # A song is cut into chunks of at most this many lines and characters (texts joined by "\n").
-# The chunks are sent at the same time, so smaller chunks make a song come back sooner.
-GEMINI_CHUNK_LINES = 15
-GEMINI_CHUNK_CHARACTERS = 1500
+# The chunks are sent at the same time. Smaller chunks come back sooner but cost more of the
+# free tier's per-minute and per-day request limits; 40 lines keeps most songs to 1 or 2 calls.
+GEMINI_CHUNK_LINES = 40
+GEMINI_CHUNK_CHARACTERS = 4000
 # How many chunk requests run at once; the free tier limits requests per minute.
 GEMINI_PARALLEL_REQUESTS = 4
 # Each chunk request also carries the whole song as context, unless the song is longer than this.

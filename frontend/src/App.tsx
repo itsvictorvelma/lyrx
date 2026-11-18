@@ -1,8 +1,13 @@
-// The Lyrx page: find a song, open the best match, show it in four columns; paste as a fallback.
-import { useState } from "react";
-import { getPasteVersions, getSongVersions, searchSongs } from "./lyrics/api";
+// The Lyrx page: find a song, open the best match, show it in four columns; your saved songs.
+import { useEffect, useState } from "react";
+import {
+  getSongVersions,
+  listSavedSongs,
+  removeSavedSong,
+  searchSongs,
+} from "./lyrics/api";
 import { OtherMatches } from "./lyrics/OtherMatches";
-import { PasteForm } from "./lyrics/PasteForm";
+import { SavedSongs } from "./lyrics/SavedSongs";
 import { SearchForm } from "./lyrics/SearchForm";
 import type { ApiResult, Line, SearchResult, Song } from "./lyrics/types";
 import { VersionsTable } from "./lyrics/VersionsTable";
@@ -17,16 +22,22 @@ const OPENING_TEXT = "Getting the lyrics and translating…";
 type Status = "idle" | "finding" | "opening";
 
 interface Shown {
-  song?: Song;
+  song: Song;
   lines: Line[];
+  fromLibrary: boolean;
   // How long the steps took, in milliseconds; shown for development.
   findMs?: number;
   versionsMs: number;
 }
 
-// "Found in 0.4 s · versions in 12.3 s", or just the versions part.
-export function timingText(shown: Shown): string {
+// "Found in 0.4 s · versions in 12.3 s", or the library or versions part alone.
+export function timingText(
+  shown: Pick<Shown, "fromLibrary" | "findMs" | "versionsMs">,
+): string {
   const versions = formatSeconds(shown.versionsMs);
+  if (shown.fromLibrary) {
+    return `Opened from your songs in ${versions}`;
+  }
   return shown.findMs === undefined
     ? `Versions in ${versions}`
     : `Found in ${formatSeconds(shown.findMs)} · versions in ${versions}`;
@@ -52,8 +63,28 @@ export function App() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [shown, setShown] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [savedSongs, setSavedSongs] = useState<Song[]>([]);
   const busy = status !== "idle";
+
+  async function refreshSavedSongs() {
+    const result = await listSavedSongs();
+    if (result.kind === "ok") {
+      setSavedSongs(result.value);
+    }
+  }
+
+  // The saved songs load once when the page opens.
+  useEffect(() => {
+    let active = true;
+    void listSavedSongs().then((result) => {
+      if (active && result.kind === "ok") {
+        setSavedSongs(result.value);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function openSong(id: number, findMs?: number) {
     setStatus("opening");
@@ -64,11 +95,11 @@ export function App() {
     setStatus("idle");
     if (result.kind === "ok") {
       setShown({
-        song: result.value.song,
-        lines: result.value.lines,
+        ...result.value,
         findMs,
         versionsMs: performance.now() - started,
       });
+      void refreshSavedSongs();
     } else {
       setError(messageFor(result));
     }
@@ -96,26 +127,22 @@ export function App() {
     await openSong(best.id, findMs);
   }
 
-  async function paste(lyrics: string) {
-    setStatus("opening");
-    setShown(null);
+  async function removeSong(song: Song) {
     setError(null);
-    const started = performance.now();
-    const result = await getPasteVersions(lyrics);
-    setStatus("idle");
+    const result = await removeSavedSong(song.id);
     if (result.kind === "ok") {
-      setShown({
-        lines: result.value,
-        versionsMs: performance.now() - started,
-      });
+      setSavedSongs((songs) => songs.filter((saved) => saved.id !== song.id));
+      setResults((found) =>
+        found.map((match) =>
+          match.id === song.id ? { ...match, saved: false } : match,
+        ),
+      );
     } else {
       setError(messageFor(result));
     }
   }
 
-  const otherResults = results.filter(
-    (result) => result.id !== shown?.song?.id,
-  );
+  const otherResults = results.filter((result) => result.id !== shown?.song.id);
 
   return (
     <main>
@@ -140,13 +167,15 @@ export function App() {
           <strong>Error:</strong> {error}
         </p>
       )}
-      {shown?.song !== undefined && (
-        <p className="song-line">
-          <strong>{shown.song.track}</strong> — {shown.song.artist}{" "}
-          <span className="muted">(lyrics from LRCLIB)</span>
-        </p>
+      {shown !== null && (
+        <>
+          <p className="song-line">
+            <strong>{shown.song.track}</strong> — {shown.song.artist}{" "}
+            <span className="muted">(lyrics from LRCLIB)</span>
+          </p>
+          <p className="muted timing">{timingText(shown)}</p>
+        </>
       )}
-      {shown !== null && <p className="muted timing">{timingText(shown)}</p>}
       <OtherMatches
         results={otherResults}
         busy={busy}
@@ -155,24 +184,16 @@ export function App() {
         }}
       />
       {shown !== null && <VersionsTable lines={shown.lines} />}
-      {pasteOpen ? (
-        <PasteForm
-          busy={busy}
-          onSubmit={(lyrics) => {
-            void paste(lyrics);
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          className="link-button"
-          onClick={() => {
-            setPasteOpen(true);
-          }}
-        >
-          Paste the lyrics instead
-        </button>
-      )}
+      <SavedSongs
+        songs={savedSongs}
+        busy={busy}
+        onOpen={(song) => {
+          void openSong(song.id);
+        }}
+        onRemove={(song) => {
+          void removeSong(song);
+        }}
+      />
     </main>
   );
 }

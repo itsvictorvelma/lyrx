@@ -1,9 +1,8 @@
-"""Tests for splitting the paste into lines, reading the paste, and Japanese detection."""
+"""Tests for splitting lyrics into cleaned lines, and for Japanese detection."""
 
 import pytest
 
-from lyrx.errors import ApiError
-from lyrx.lines import has_japanese, read_paste, split_lines
+from lyrx.lines import has_japanese, read_lyrics, split_lines
 
 # Splitting (AC-1)
 
@@ -53,45 +52,30 @@ def test_ac1_empty_or_whitespace_paste_splits_into_no_lines(paste: str) -> None:
     assert split_lines(paste) == []
 
 
-# Empty input (spec 001 AC-5; spec 003 cleanup step 2: decided before cleanup)
-
-
-@pytest.mark.parametrize("paste", ["", "   ", "\n\n\n", " \r\n\t\r \n", "\u3000\n "])
-def test_ac5_empty_or_whitespace_paste_is_empty_input(paste: str) -> None:
-    with pytest.raises(ApiError) as caught:
-        read_paste(paste)
-
-    assert caught.value.code == "empty_input"
-    assert caught.value.status == 400
-
-
-# Reading the paste: the cleaned lines, with no size limits (spec 003, AC-23 to AC-34)
-
-
-def test_spec003_ac23_read_paste_returns_the_cleaned_lines() -> None:
+def test_spec003_ac23_read_lyrics_returns_the_cleaned_lines() -> None:
     paste = "君の声が 키미노 코에가 너의 목소리가 " + "遠くまでひびく 토오쿠마데 " * 30
 
-    assert read_paste(paste) == ["君の声が"] + ["遠くまでひびく"] * 30
+    assert read_lyrics(paste) == ["君の声が"] + ["遠くまでひびく"] * 30
 
 
-def test_spec003_ac24_read_paste_leaves_a_normal_paste_as_split() -> None:
+def test_spec003_ac24_read_lyrics_leaves_a_normal_paste_as_split() -> None:
     paste = "君の声が\n遠く ひびく\n\n星が  ながれる\nWe sing tonight"
 
-    assert read_paste(paste) == split_lines(paste)
+    assert read_lyrics(paste) == split_lines(paste)
 
 
-def test_spec003_ac25_read_paste_normalizes_to_nfc_before_cleaning() -> None:
-    assert read_paste("君か\u3099いる 너의") == ["君がいる"]
+def test_spec003_ac25_read_lyrics_normalizes_to_nfc_before_cleaning() -> None:
+    assert read_lyrics("君か\u3099いる 너의") == ["君がいる"]
 
 
-def test_spec003_ac26_read_paste_trims_leading_whitespace() -> None:
-    assert read_paste("  君の声が\u3000\n\t遠く") == ["君の声が", "遠く"]
+def test_spec003_ac26_read_lyrics_trims_leading_whitespace() -> None:
+    assert read_lyrics("  君の声が\u3000\n\t遠く") == ["君の声が", "遠く"]
 
 
-def test_spec003_ac25_read_paste_removes_text_through_the_shared_removal(
+def test_spec003_ac25_read_lyrics_removes_text_through_the_shared_removal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The paste route calls `lyric_cleanup.remove_unwanted_characters`, the one shared removal."""
+    """`read_lyrics` calls `lyric_cleanup.remove_unwanted_characters`, the one shared removal."""
     # Imported here so the rest of this file still runs while the module does not exist.
     from lyrx import lyric_cleanup
 
@@ -104,7 +88,7 @@ def test_spec003_ac25_read_paste_removes_text_through_the_shared_removal(
 
     monkeypatch.setattr(lyric_cleanup, "remove_unwanted_characters", recording_removal)
 
-    lines = read_paste("君の声が 너의\n\n遠く")
+    lines = read_lyrics("君の声が 너의\n\n遠く")
 
     assert lines == ["君の声が", "", "遠く"]
     assert "君の声が 너의" in seen_lines
@@ -126,7 +110,7 @@ def test_spec003_ac25_read_paste_removes_text_through_the_shared_removal(
 def test_spec003_ac32_line_over_the_split_length_is_kept_not_refused(
     paste: str, expected: list[str]
 ) -> None:
-    assert read_paste(paste) == expected
+    assert read_lyrics(paste) == expected
 
 
 @pytest.mark.parametrize(
@@ -143,7 +127,7 @@ def test_spec003_ac32_line_over_the_split_length_is_kept_not_refused(
 def test_spec003_ac33_there_are_no_limits_on_characters_or_lines(
     paste: str, expected: list[str]
 ) -> None:
-    assert read_paste(paste) == expected
+    assert read_lyrics(paste) == expected
 
 
 @pytest.mark.parametrize(
@@ -151,9 +135,9 @@ def test_spec003_ac33_there_are_no_limits_on_characters_or_lines(
     ["키미노 코에가\n너의 목소리가", "꿈" * 10000, "\u200b"],
     ids=["korean-lines", "long-korean-line", "zero-width-only"],
 )
-def test_spec003_ac34_paste_that_cleans_to_nothing_is_not_empty_input(paste: str) -> None:
-    """Not `empty_input`: the pipeline then refuses it as `no_japanese`."""
-    assert read_paste(paste) == []
+def test_spec003_ac34_lyrics_that_clean_to_nothing_give_no_lines(paste: str) -> None:
+    """The open route then refuses them as `song_not_japanese`."""
+    assert read_lyrics(paste) == []
 
 
 # Japanese detection (AC-8)

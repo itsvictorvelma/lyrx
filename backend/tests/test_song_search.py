@@ -81,6 +81,7 @@ def test_ac3_results_are_filtered_ranked_deduplicated_and_have_no_lyrics(
         "album": "夜の窓",
         "durationSeconds": 214,
         "looksJapanese": True,
+        "saved": False,
     }
     assert results[2]["looksJapanese"] is False
 

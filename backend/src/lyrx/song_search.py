@@ -4,7 +4,7 @@ import unicodedata
 
 import httpx2
 
-from lyrx import config, lrclib
+from lyrx import config, library, lrclib
 from lyrx.errors import ApiError
 from lyrx.lines import read_lyrics
 from lyrx.looks_japanese import looks_japanese
@@ -24,7 +24,8 @@ def search_songs(query: str, client: httpx2.Client) -> list[SearchResult]:
     kept = remove_duplicates(ranked)[: config.SEARCH_RESULTS_SHOWN]
     if not kept:
         raise ApiError("song_not_found")
-    return kept
+    saved = library.saved_ids_or_none(result.id for result in kept)
+    return [result.model_copy(update={"saved": result.id in saved}) for result in kept]
 
 
 def has_lyrics(record: LrclibRecord) -> bool:
