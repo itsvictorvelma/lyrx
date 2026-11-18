@@ -67,6 +67,7 @@ lyrx/
 │   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
 │   │   ├── chunks.py          Cuts a song into small chunks sent to Gemini at the same time
 │   │   ├── retries.py         Retries an overloaded or failed Gemini request after a short wait
+│   │   ├── http_clients.py    The shared Gemini and LRCLIB clients, built once per app
 │   │   ├── gemini.py          The Gemini request and the checks on its reply
 │   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
 │   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines

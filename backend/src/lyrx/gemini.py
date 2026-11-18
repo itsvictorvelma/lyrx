@@ -66,14 +66,14 @@ def request_versions(
     context: NumberedLines,
     wanted: NumberedLines,
     api_key: str,
-    transport: httpx2.BaseTransport,
+    client: httpx2.Client,
 ) -> ChunkReply:
     """One call for the `wanted` lines, with `context` as the song around them.
 
     A reply that is not usable at all raises an `ApiError`. A usable reply with some bad or
     missing lines returns the good ones and lists the bad indexes, so only those are asked again.
     """
-    envelope = parse_envelope(send_request(context, wanted, api_key, transport))
+    envelope = parse_envelope(send_request(context, wanted, api_key, client))
     reply_lines = parse_reply_lines(reply_text(envelope))
     good: dict[int, LineVersions] = {}
     bad: list[int] = []
@@ -124,20 +124,19 @@ def send_request(
     context: NumberedLines,
     wanted: NumberedLines,
     api_key: str,
-    transport: httpx2.BaseTransport,
+    client: httpx2.Client,
 ) -> httpx2.Response:
     """Exactly one POST. Any failure becomes a code and a short log reason, never error text."""
     # ponytail: the reply is read with no byte cap. It is bounded by maxOutputTokens and comes
     # from a fixed host; stream it with a cap if that ever changes.
+    # ponytail: the timeout applies to each step (connect, read), not the whole request, so a
+    # reply that trickles in can take longer than 45 s; add a total deadline if that shows up.
     try:
-        with httpx2.Client(
-            transport=transport, timeout=config.GEMINI_TIMEOUT_SECONDS, trust_env=False
-        ) as client:
-            response = client.post(
-                config.GEMINI_URL,
-                headers={"x-goog-api-key": api_key},
-                content=json.dumps(build_body(context, wanted)),
-            )
+        response = client.post(
+            config.GEMINI_URL,
+            headers={"x-goog-api-key": api_key},
+            content=json.dumps(build_body(context, wanted)),
+        )
     except httpx2.TimeoutException:
         raise ApiError("translation_unavailable", reason="timeout") from None
     except httpx2.RequestError:
@@ -174,6 +173,7 @@ def reply_text(envelope: GeminiEnvelope) -> str:
 
 
 def log_word(word: str) -> str:
+    """Gemini's reason word if it looks like one of its UPPER_CASE names, else OTHER."""
     return word if REASON_WORD.fullmatch(word) else "OTHER"
 
 

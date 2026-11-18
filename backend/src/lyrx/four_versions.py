@@ -7,14 +7,14 @@ from lyrx.schemas import GeminiVersions, VersionLine
 
 
 def make_four_versions(
-    lines: list[str], api_key: str, transport: httpx2.BaseTransport
+    lines: list[str], api_key: str, client: httpx2.Client
 ) -> tuple[list[VersionLine], GeminiVersions]:
     """Every line in order with Gemini's versions, and Gemini's result for the log.
 
     Blank lines are not sent and stay blank in every version.
     """
     sent_lines = [(index, line) for index, line in enumerate(lines) if line]
-    versions = request_in_chunks(sent_lines, api_key, transport)
+    versions = request_in_chunks(sent_lines, api_key, client)
     return [make_line(index, line, versions) for index, line in enumerate(lines)], versions
 
 

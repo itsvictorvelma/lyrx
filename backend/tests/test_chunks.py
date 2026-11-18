@@ -1,5 +1,8 @@
 """Tests for chunks.py: small chunks sent at the same time, retries, and asking bad lines again."""
 
+import contextlib
+import threading
+
 import pytest
 from fake_gemini import (
     FakeGemini,
@@ -17,6 +20,7 @@ from fake_gemini import (
 from lyrx import config
 from lyrx.chunks import MISSING, request_in_chunks
 from lyrx.errors import ApiError
+from lyrx.http_clients import make_gemini_client
 from lyrx.schemas import GeminiVersions
 
 API_KEY = "fake-gemini-key-not-real-0123"
@@ -26,17 +30,59 @@ LINES = [(index, f"空の歌{index}") for index in INDEXES]
 
 
 def run(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> GeminiVersions:
-    return request_in_chunks(lines, API_KEY, fake.make_transport())
+    return request_in_chunks(lines, API_KEY, make_gemini_client(fake.make_transport()))
 
 
 def chunks_sent(fake: FakeGemini) -> list[list[int]]:
     return sorted(sent_indexes(request) for request in fake.requests)
 
 
-def test_default_settings() -> None:
-    assert config.GEMINI_CHUNK_LINES == 15
-    assert config.GEMINI_PARALLEL_REQUESTS == 4
-    assert config.GEMINI_TIMEOUT_SECONDS == 45
+def test_chunks_run_at_the_same_time_but_never_more_than_the_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 1)
+    limit = config.GEMINI_PARALLEL_REQUESTS
+    # Each of the first `limit` requests waits until all of them are in flight together.
+    barrier = threading.Barrier(limit, timeout=5)
+    in_flight = 0
+    most_in_flight = 0
+    counter_lock = threading.Lock()
+
+    def answer(request: SeenGeminiRequest) -> ScriptedReply:
+        nonlocal in_flight, most_in_flight
+        with counter_lock:
+            in_flight += 1
+            most_in_flight = max(most_in_flight, in_flight)
+        try:
+            if sent_indexes(request)[0] < INDEXES[limit]:
+                barrier.wait()
+            return answer_with_placeholders(request)
+        finally:
+            with counter_lock:
+                in_flight -= 1
+
+    fake = FakeGemini(answer=answer)
+    # The fake's own lock would serialize the answers, so answer outside it.
+    fake.lock = contextlib.nullcontext()  # type: ignore[assignment]
+
+    run(fake)
+
+    assert most_in_flight == limit
+
+
+def test_a_failing_chunk_stops_the_song_and_unsent_chunks_are_never_sent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 2)
+    monkeypatch.setattr(config, "GEMINI_PARALLEL_REQUESTS", 1)
+    fake = FakeGemini()
+    fake.script(status(429))
+
+    with pytest.raises(ApiError) as caught:
+        run(fake)
+
+    assert caught.value.code == "translation_rate_limited"
+    assert len(fake.requests) == 1
 
 
 def test_chunks_cover_every_line_once_and_each_carries_the_whole_song(

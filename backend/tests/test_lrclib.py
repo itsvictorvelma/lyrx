@@ -6,13 +6,14 @@ from fake_lrclib import FakeLrclib, json_reply, record
 
 from lyrx import config, lrclib
 from lyrx.errors import ApiError
+from lyrx.http_clients import make_lrclib_client
 
 
 def test_search_sends_one_get_with_the_query_and_the_user_agent() -> None:
     fake = FakeLrclib()
     fake.script(json_reply([record()]))
 
-    records = lrclib.search("星の歌 ミナト", fake.make_transport())
+    records = lrclib.search("星の歌 ミナト", make_lrclib_client(fake.make_transport()))
 
     assert len(fake.requests) == 1
     request = fake.requests[0]
@@ -28,17 +29,19 @@ def test_search_drops_items_that_fail_the_schema() -> None:
     fake = FakeLrclib()
     fake.script(json_reply([{"id": "x"}, record(record_id=7), "text"]))
 
-    assert [found.id for found in lrclib.search("q", fake.make_transport())] == [7]
+    assert [
+        found.id for found in lrclib.search("q", make_lrclib_client(fake.make_transport()))
+    ] == [7]
 
 
 def test_get_record_asks_for_the_id_and_checks_it_matches() -> None:
     fake = FakeLrclib()
     fake.script(json_reply(record(record_id=5)), json_reply(record(record_id=6)))
 
-    assert lrclib.get_record(5, fake.make_transport()).id == 5
+    assert lrclib.get_record(5, make_lrclib_client(fake.make_transport())).id == 5
     assert str(fake.requests[0].url) == "https://lrclib.net/api/get/5"
     with pytest.raises(ApiError) as caught:
-        lrclib.get_record(5, fake.make_transport())
+        lrclib.get_record(5, make_lrclib_client(fake.make_transport()))
     assert caught.value.code == "lyrics_source_unavailable"
 
 
@@ -62,7 +65,7 @@ def test_failures_become_short_codes(
     fake.script(reply)
 
     with pytest.raises(ApiError) as caught:
-        lrclib.get_record(5, fake.make_transport())
+        lrclib.get_record(5, make_lrclib_client(fake.make_transport()))
 
     assert caught.value.code == code
     assert len(fake.requests) == 1
@@ -74,6 +77,6 @@ def test_a_reply_over_the_cap_is_refused(monkeypatch: pytest.MonkeyPatch) -> Non
     fake.script(json_reply([record()]))
 
     with pytest.raises(ApiError) as caught:
-        lrclib.search("q", fake.make_transport())
+        lrclib.search("q", make_lrclib_client(fake.make_transport()))
 
     assert caught.value.code == "lyrics_source_unavailable"

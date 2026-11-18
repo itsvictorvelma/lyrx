@@ -22,6 +22,7 @@ from fake_gemini import (
 from lyrx import config
 from lyrx.errors import ApiError
 from lyrx.gemini import request_versions
+from lyrx.http_clients import make_gemini_client
 from lyrx.schemas import ChunkReply, LineVersions, TokenUsage
 
 API_KEY = "fake-gemini-key-not-real-0123"
@@ -42,7 +43,9 @@ def call(
     wanted: list[tuple[int, str]] = LINES,
     context: list[tuple[int, str]] | None = None,
 ) -> ChunkReply:
-    return request_versions(context or wanted, wanted, API_KEY, fake.make_transport())
+    return request_versions(
+        context or wanted, wanted, API_KEY, make_gemini_client(fake.make_transport())
+    )
 
 
 def run_once(reply: ScriptedReply) -> tuple[FakeGemini, ChunkReply]:

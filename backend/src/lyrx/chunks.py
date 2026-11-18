@@ -1,7 +1,8 @@
 """Cuts a song into small chunks and asks Gemini for them at the same time, with retries."""
 
 import time
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
 import httpx2
@@ -27,18 +28,15 @@ class ChunkResult:
     missing_lines: int
 
 
-def request_in_chunks(
-    lines: NumberedLines, api_key: str, transport: httpx2.BaseTransport
-) -> GeminiVersions:
+def request_in_chunks(lines: NumberedLines, api_key: str, client: httpx2.Client) -> GeminiVersions:
     """All chunks at once; if any chunk fails for good, the whole song fails with its error."""
     started = time.monotonic()
     context = song_context(lines)
 
     def request_chunk(chunk: NumberedLines) -> ChunkResult:
-        return request_one_chunk(chunk if context is None else context, chunk, api_key, transport)
+        return request_one_chunk(chunk if context is None else context, chunk, api_key, client)
 
-    with ThreadPoolExecutor(max_workers=config.GEMINI_PARALLEL_REQUESTS) as pool:
-        results = list(pool.map(request_chunk, split_into_chunks(lines)))
+    results = run_all_or_stop(request_chunk, split_into_chunks(lines))
     versions: dict[int, LineVersions] = {}
     for result in results:
         versions.update(result.lines)
@@ -55,6 +53,22 @@ def request_in_chunks(
     )
 
 
+def run_all_or_stop(
+    request_chunk: Callable[[NumberedLines], "ChunkResult"], chunks: list[list[tuple[int, str]]]
+) -> list["ChunkResult"]:
+    """Every chunk's result, a few at a time. The first chunk to fail for good stops the song:
+    chunks not yet sent are cancelled and its error propagates, so no more quota is spent."""
+    pool = ThreadPoolExecutor(max_workers=config.GEMINI_PARALLEL_REQUESTS)
+    try:
+        futures = [pool.submit(request_chunk, chunk) for chunk in chunks]
+        for future in as_completed(futures):
+            future.result()
+        return [future.result() for future in futures]
+    finally:
+        # On success every chunk is done; on a failure, do not wait for requests in flight.
+        pool.shutdown(wait=False, cancel_futures=True)
+
+
 def song_context(lines: NumberedLines) -> NumberedLines | None:
     """The whole song, sent with every chunk for context, unless it is very long."""
     characters = len("\n".join(text for _, text in lines))
@@ -65,19 +79,17 @@ def request_one_chunk(
     context: NumberedLines,
     chunk: NumberedLines,
     api_key: str,
-    transport: httpx2.BaseTransport,
+    client: httpx2.Client,
 ) -> ChunkResult:
     """The chunk's lines; lines that fail the checks are asked once more, on their own."""
-    first, first_retries = with_retries(
-        lambda: request_versions(context, chunk, api_key, transport)
-    )
+    first, first_retries = with_retries(lambda: request_versions(context, chunk, api_key, client))
     lines = dict(first.lines)
     calls, retries = 1 + first_retries, first_retries
     input_tokens, output_tokens = first.usage.input_tokens, first.usage.output_tokens
     bad = [line for line in chunk if line[0] in first.bad_indexes]
     if bad:
         second, second_retries = with_retries(
-            lambda: request_versions(context, bad, api_key, transport)
+            lambda: request_versions(context, bad, api_key, client)
         )
         lines.update(second.lines)
         calls, retries = calls + 1 + second_retries, retries + second_retries

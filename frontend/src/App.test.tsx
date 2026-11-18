@@ -2,7 +2,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { App, FALLBACK_MESSAGE } from "./App";
+import { App, FALLBACK_MESSAGE, timingText } from "./App";
 import type { Line, SearchResult } from "./lyrics/types";
 
 const fakeFetch = vi.fn<typeof fetch>();
@@ -238,4 +238,24 @@ test("the waiting line counts the seconds", async () => {
   expect(status.textContent).toContain("3 s");
   finish(jsonResponse(200, { results: [] }));
   vi.useRealTimers();
+});
+
+test("the timing line says how long finding and the versions took", async () => {
+  fakeFetch
+    .mockResolvedValueOnce(jsonResponse(200, { results: [bestMatch] }))
+    .mockResolvedValueOnce(songReply(bestMatch));
+
+  await findSong();
+
+  await screen.findByRole("table");
+  expect(
+    screen.getByText(/^Found in \d+\.\d s · versions in \d+\.\d s$/),
+  ).toBeTruthy();
+});
+
+test("timingText formats milliseconds as seconds", () => {
+  expect(timingText({ lines: [], findMs: 420, versionsMs: 12345 })).toBe(
+    "Found in 0.4 s · versions in 12.3 s",
+  );
+  expect(timingText({ lines: [], versionsMs: 900 })).toBe("Versions in 0.9 s");
 });

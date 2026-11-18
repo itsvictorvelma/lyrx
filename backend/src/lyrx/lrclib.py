@@ -14,13 +14,13 @@ HTTP_NOT_FOUND = 404
 RECORD_ADAPTER = TypeAdapter(LrclibRecord)
 
 
-def search(query: str, transport: httpx2.BaseTransport) -> list[LrclibRecord]:
+def search(query: str, client: httpx2.Client) -> list[LrclibRecord]:
     """The valid records among the first items LRCLIB returns; invalid items are dropped."""
     body = fetch_json(
         config.LRCLIB_SEARCH_URL,
         {"q": query},
         config.LRCLIB_SEARCH_MAX_BYTES,
-        transport,
+        client,
         not_found_code="lyrics_source_unavailable",
     )
     if not isinstance(body, list):
@@ -28,11 +28,11 @@ def search(query: str, transport: httpx2.BaseTransport) -> list[LrclibRecord]:
     return [record for item in body[: config.SEARCH_ITEMS_READ] if (record := to_record(item))]
 
 
-def get_record(record_id: int, transport: httpx2.BaseTransport) -> LrclibRecord:
+def get_record(record_id: int, client: httpx2.Client) -> LrclibRecord:
     """One record by id; it must pass the schema and carry the requested id."""
     url = config.LRCLIB_RECORD_URL.format(id=record_id)
     body = fetch_json(
-        url, {}, config.LRCLIB_RECORD_MAX_BYTES, transport, not_found_code="song_not_found"
+        url, {}, config.LRCLIB_RECORD_MAX_BYTES, client, not_found_code="song_not_found"
     )
     record = to_record(body)
     if record is None or record.id != record_id:
@@ -51,24 +51,15 @@ def fetch_json(
     url: str,
     params: dict[str, str],
     max_bytes: int,
-    transport: httpx2.BaseTransport,
+    client: httpx2.Client,
     not_found_code: ErrorCode,
 ) -> Any:
     """One GET to a fixed LRCLIB address, body capped while it streams, then parsed as JSON.
 
-    The body is asked for uncompressed, so the cap counts real bytes, not inflated ones.
+    The client asks for the body uncompressed, so the cap counts real bytes.
     """
     try:
-        with (
-            httpx2.Client(
-                transport=transport,
-                timeout=config.LRCLIB_TIMEOUT_SECONDS,
-                follow_redirects=False,
-                trust_env=False,
-                headers={"User-Agent": config.USER_AGENT, "Accept-Encoding": "identity"},
-            ) as client,
-            client.stream("GET", url, params=params) as response,
-        ):
+        with client.stream("GET", url, params=params) as response:
             if response.status_code == HTTP_NOT_FOUND:
                 raise ApiError(not_found_code)
             if response.status_code != httpx2.codes.OK:

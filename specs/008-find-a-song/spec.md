@@ -65,6 +65,7 @@ Fixed host, `https` only, no redirects, no proxy from the environment, 10 s time
 ### The page
 - One labeled input "Song name or artist" and a "Find" button, disabled while empty or while a request runs. A status line says "Finding the song…", then "Getting the lyrics and translating…", each followed by the seconds elapsed (hidden from screen readers).
 - On success: a line "TRACK — ARTIST (lyrics from LRCLIB)", then the table with column headers Original, Hiragana, Romaji, English.
+- For development, a muted line under it says how long the steps took, measured by the page: "Found in 0.4 s · versions in 12.3 s" (amended 2026-11-18, user).
 - "Not this song?" lists the other results as buttons ("TRACK — ARTIST, m:ss"), with "Not Japanese" as text where it applies.
 - `song_not_found` → "No song found for that name." and the "Paste the lyrics instead" link. Other errors show their message.
 - On a narrow screen the table scrolls sideways inside its own box; the page itself never scrolls sideways.

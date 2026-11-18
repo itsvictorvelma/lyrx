@@ -11,14 +11,14 @@ from lyrx.looks_japanese import looks_japanese
 from lyrx.schemas import LrclibRecord, SearchResult
 
 
-def search_songs(query: str, transport: httpx2.BaseTransport) -> list[SearchResult]:
+def search_songs(query: str, client: httpx2.Client) -> list[SearchResult]:
     """Japanese-looking songs first, then LRCLIB's order, duplicates removed, at most 10."""
     query = query.strip()
     if not query:
         raise ApiError("empty_search")
     if len(query) > config.SEARCH_QUERY_MAX_CHARACTERS:
         raise ApiError("invalid_request")
-    records = [record for record in lrclib.search(query, transport) if has_lyrics(record)]
+    records = [record for record in lrclib.search(query, client) if has_lyrics(record)]
     results = [to_result(record) for record in records]
     ranked = sorted(results, key=lambda result: not result.looks_japanese)
     kept = remove_duplicates(ranked)[: config.SEARCH_RESULTS_SHOWN]

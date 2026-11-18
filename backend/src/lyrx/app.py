@@ -1,5 +1,7 @@
 """Builds the FastAPI app: its ASGI layers, the error handlers, and the three routes."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import cast
 
 import httpx2
@@ -14,6 +16,7 @@ from lyrx.crash_guard import CrashGuard
 from lyrx.errors import ApiError, ErrorCode, error_response
 from lyrx.four_versions import make_four_versions
 from lyrx.host_check import HostCheck
+from lyrx.http_clients import make_gemini_client, make_lrclib_client
 from lyrx.lines import has_japanese, read_paste
 from lyrx.request_log import logged_request
 from lyrx.schemas import (
@@ -74,7 +77,7 @@ def create_versions(body: VersionsRequest, request: Request) -> VersionsResponse
             raise ApiError("no_japanese")
         api_key = require_gemini_key()
         versions, gemini_result = make_four_versions(
-            lines, api_key, request.app.state.gemini_transport
+            lines, api_key, request.app.state.gemini_client
         )
         log.add_gemini(gemini_result)
         return VersionsResponse(lines=versions)
@@ -83,7 +86,7 @@ def create_versions(body: VersionsRequest, request: Request) -> VersionsResponse
 def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
     """Search: a short ranked list of songs, without lyrics."""
     with logged_request(SONG_SEARCH_PATH) as log:
-        results = search_songs(body.query, request.app.state.lrclib_transport)
+        results = search_songs(body.query, request.app.state.lrclib_client)
         log.add("results", len(results))
         return SongSearchResponse(results=results)
 
@@ -94,7 +97,7 @@ def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersio
         log.add("lrclib_id", body.id)
         api_key = require_gemini_key()
         song, lines, versions, gemini_result = open_song(
-            body.id, api_key, request.app.state.lrclib_transport, request.app.state.gemini_transport
+            body.id, api_key, request.app.state.lrclib_client, request.app.state.gemini_client
         )
         log.count_lines(lines)
         log.add_gemini(gemini_result)
@@ -106,9 +109,20 @@ def create_app(
     gemini_transport: httpx2.BaseTransport | None = None,
 ) -> FastAPI:
     """The app; tests pass fake transports so nothing reaches the network."""
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-    app.state.lrclib_transport = lrclib_transport or httpx2.HTTPTransport()
-    app.state.gemini_transport = gemini_transport or httpx2.HTTPTransport()
+    lrclib_client = make_lrclib_client(lrclib_transport or httpx2.HTTPTransport())
+    gemini_client = make_gemini_client(gemini_transport or httpx2.HTTPTransport())
+
+    @asynccontextmanager
+    async def close_clients_on_shutdown(app: FastAPI) -> AsyncIterator[None]:
+        yield
+        lrclib_client.close()
+        gemini_client.close()
+
+    app = FastAPI(
+        docs_url=None, redoc_url=None, openapi_url=None, lifespan=close_clients_on_shutdown
+    )
+    app.state.lrclib_client = lrclib_client
+    app.state.gemini_client = gemini_client
     # The last layer added runs first: the crash guard, then the Host check, then the body cap.
     app.add_middleware(BodySizeLimit)
     app.add_middleware(HostCheck)

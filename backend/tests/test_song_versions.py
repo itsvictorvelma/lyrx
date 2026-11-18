@@ -191,5 +191,8 @@ def test_ac13_the_log_line_has_counts_and_never_lyrics(
         "gemini_calls=1",
     ):
         assert field in messages[0]
+    fields = dict(part.split("=", 1) for part in messages[0].split() if "=" in part)
+    for count in ("gemini_retries", "gemini_ms", "missing_lines"):
+        assert fields[count].isdecimal()
     assert "君" not in caplog.text
     assert "fake-gemini-key" not in caplog.text

@@ -13,6 +13,7 @@ RETRYABLE_CODES = frozenset({"translation_unavailable", "translation_invalid"})
 
 
 def is_temporary(error: ApiError) -> bool:
+    """Whether trying again could help."""
     refused = error.reason is not None and error.reason.startswith("http_4")
     return error.code in RETRYABLE_CODES and not refused
 
