@@ -8,6 +8,18 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 [AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
 
+## What works today
+
+- **Find a song:** type a title, an artist, or both. The best match opens; "Not this song?" lists the others.
+- **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available".
+- **Your songs:** every song you open is saved and reopens instantly.
+
+## Coming next
+
+1. Synced playback: a YouTube video or your own MP3, with the current line highlighted.
+2. One cohesive design for the whole app.
+3. Personal accounts, so family and friends can use a hosted copy.
+
 ## Setup
 
 You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free API key from Groq, Gemini, or both (both is best: when one is busy, the other answers).
@@ -23,7 +35,7 @@ You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with n
    ```
    Put the keys after `GROQ_API_KEY=` and `GEMINI_API_KEY=` in `.env`. One key is enough; with both, a busy translator hands over to the other. The file is gitignored, so the keys are never committed.
 
-Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about 2 songs a minute); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
+Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about one long song a minute; Gemini takes over when it runs out); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
 
 ## Run
 
