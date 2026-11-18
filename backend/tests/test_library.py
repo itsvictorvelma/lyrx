@@ -1,8 +1,10 @@
-"""Tests for saved songs (spec 009 AC-1 to AC-9): the library file and the routes that use it."""
+"""Tests for saved songs (spec 009) and their saved playback (spec 012), with the routes."""
 
 import logging
 import sqlite3
+from contextlib import closing
 from pathlib import Path
+from typing import Any
 
 import pytest
 from conftest import REAL_DATABASE_PATH
@@ -18,16 +20,16 @@ from lyrx.app import SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
 SENT = [0, 1, 3, 4]
 
 
-def open_song(client: TestClient, song_id: int = 101) -> dict[str, object]:
+def open_song(client: TestClient, song_id: int = 101) -> dict[str, Any]:
     response = client.post(SONG_VERSIONS_PATH, json={"id": song_id})
     assert response.status_code == 200, response.text
-    body: dict[str, object] = response.json()
+    body: dict[str, Any] = response.json()
     return body
 
 
 def open_new_song(
     client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini, song_id: int = 101
-) -> dict[str, object]:
+) -> dict[str, Any]:
     fake_lrclib.script(json_reply(record(record_id=song_id, track=f"歌{song_id}")))
     fake_gemini.answer = answer_with_placeholders
     return open_song(client, song_id)
@@ -244,3 +246,139 @@ def test_the_paste_route_is_gone(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert_error_shape(response.json(), "not_found")
+
+
+# Playback (spec 012)
+
+VIDEO_ID = "abcDEF12_-z"
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec012_ac4_playback_is_saved_and_comes_back_on_the_next_open(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    first = open_new_song(client, fake_lrclib, fake_gemini)
+
+    response = client.put(
+        f"{SAVED_SONGS_PATH}/101/playback", json={"videoId": VIDEO_ID, "offsetMs": -750}
+    )
+
+    assert first["playback"] == {"videoId": None, "offsetMs": 0}
+    assert response.status_code == 204
+    assert open_song(client)["playback"] == {"videoId": VIDEO_ID, "offsetMs": -750}
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec012_ac4_a_new_copy_of_a_song_keeps_its_playback(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    open_new_song(client, fake_lrclib, fake_gemini)
+    client.put(f"{SAVED_SONGS_PATH}/101/playback", json={"videoId": VIDEO_ID, "offsetMs": 250})
+    saved = library.find_song(101)
+    assert saved is not None
+
+    library.save_song(saved)
+
+    assert open_song(client)["playback"] == {"videoId": VIDEO_ID, "offsetMs": 250}
+
+
+@pytest.mark.usefixtures("gemini_key")
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"videoId": "short", "offsetMs": 0},
+        {"videoId": "abcDEF12_-z!", "offsetMs": 0},
+        {"videoId": "<script>x</s", "offsetMs": 0},
+        {"videoId": VIDEO_ID, "offsetMs": 30_001},
+        {"videoId": VIDEO_ID, "offsetMs": -30_001},
+        {"videoId": VIDEO_ID, "offsetMs": "0"},
+        {"videoId": VIDEO_ID, "offsetMs": 1.5},
+    ],
+)
+def test_spec012_ac5_a_bad_video_id_or_offset_is_invalid_request(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini, body: dict[str, object]
+) -> None:
+    open_new_song(client, fake_lrclib, fake_gemini)
+
+    response = client.put(f"{SAVED_SONGS_PATH}/101/playback", json=body)
+
+    assert response.status_code == 400
+    assert_error_shape(response.json(), "invalid_request")
+
+
+def test_spec012_ac5_playback_for_a_song_that_is_not_saved_is_not_found(client: TestClient) -> None:
+    response = client.put(f"{SAVED_SONGS_PATH}/101/playback", json={"videoId": None, "offsetMs": 0})
+
+    assert response.status_code == 404
+    assert_error_shape(response.json(), "song_not_found")
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec012_ac6_a_library_from_before_playback_gains_the_columns_and_still_opens(
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    temporary_database: Path,
+) -> None:
+    temporary_database.parent.mkdir(parents=True)
+    with closing(sqlite3.connect(temporary_database)) as connection, connection:
+        connection.execute(
+            "CREATE TABLE saved_songs (id INTEGER PRIMARY KEY, track TEXT NOT NULL,"
+            " artist TEXT NOT NULL, album TEXT NOT NULL, duration_seconds INTEGER NOT NULL,"
+            " lines_json TEXT NOT NULL, saved_at REAL NOT NULL, last_opened_at REAL NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO saved_songs VALUES (101, '歌', 'ミナト', '', 200,"
+            ' \'[{"index": 0, "original": "夜", "hiragana": "よる",'
+            ' "romaji": "yoru", "english": "Night"}]\', 1.0, 1.0)'
+        )
+
+    reply = open_song(client)
+
+    assert reply["fromLibrary"] is True
+    assert reply["lines"] == [
+        {
+            "index": 0,
+            "original": "夜",
+            "hiragana": "よる",
+            "romaji": "yoru",
+            "english": "Night",
+            "startMs": None,
+        }
+    ]
+    assert reply["playback"] == {"videoId": None, "offsetMs": 0}
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_a_saved_playback_that_fails_the_checks_is_dropped_but_the_song_opens(
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    temporary_database: Path,
+) -> None:
+    open_new_song(client, fake_lrclib, fake_gemini)
+    with closing(sqlite3.connect(temporary_database)) as connection, connection:
+        connection.execute("UPDATE saved_songs SET video_id = 'not an id', offset_ms = 99999999")
+
+    assert open_song(client)["playback"] == {"videoId": None, "offsetMs": 0}
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_an_opened_song_with_timings_returns_and_saves_each_lines_start(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    synced = "[00:01.00] 君の声が聞こえる\n[00:05.00] 夜空に星が光る\n[00:12.00] We sing tonight\n"
+    synced += "[00:20.50] また会える日まで"
+    fake_lrclib.script(json_reply(record(synced=synced)))
+    fake_gemini.answer = answer_with_placeholders
+
+    first = open_song(client)
+
+    assert [line["startMs"] for line in first["lines"]] == [1000, 5000, None, 12000, 20500]
+    assert [line["startMs"] for line in open_song(client)["lines"]] == [
+        1000,
+        5000,
+        None,
+        12000,
+        20500,
+    ]

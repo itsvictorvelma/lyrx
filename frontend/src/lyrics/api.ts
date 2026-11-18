@@ -1,7 +1,9 @@
-// Calls the Lyrx server (search, open a song, saved songs) and checks every reply before use.
+// Calls the Lyrx server (search, open a song, saved songs, playback) and checks every reply.
+import { MAX_OFFSET_MS, VIDEO_ID } from "./playback";
 import type {
   ApiResult,
   Line,
+  Playback,
   SearchResult,
   Song,
   SongVersions,
@@ -42,6 +44,20 @@ export function removeSavedSong(id: number): Promise<ApiResult<null>> {
   );
 }
 
+// Saves a saved song's video and sync; a 404 means the song is not saved, so nothing is kept.
+export function savePlayback(
+  id: number,
+  playback: Playback,
+): Promise<ApiResult<null>> {
+  return requestJson(
+    "PUT",
+    `/api/songs/${String(id)}/playback`,
+    playback,
+    isNull,
+    204,
+  );
+}
+
 function postJson<Reply>(
   url: string,
   body: unknown,
@@ -52,7 +68,7 @@ function postJson<Reply>(
 
 // One request; a reply with `okStatus` must pass `isValid`, any other must be the error shape.
 async function requestJson<Reply>(
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
   body: unknown,
   isValid: (value: unknown) => value is Reply,
@@ -104,7 +120,19 @@ function isLine(value: unknown): value is Line {
     typeof value.original === "string" &&
     typeof value.hiragana === "string" &&
     typeof value.romaji === "string" &&
-    typeof value.english === "string"
+    typeof value.english === "string" &&
+    (value.startMs === null ||
+      (Number.isInteger(value.startMs) && Number(value.startMs) >= 0))
+  );
+}
+
+function isPlayback(value: unknown): value is Playback {
+  return (
+    isRecord(value) &&
+    (value.videoId === null ||
+      (typeof value.videoId === "string" && VIDEO_ID.test(value.videoId))) &&
+    Number.isInteger(value.offsetMs) &&
+    Math.abs(Number(value.offsetMs)) <= MAX_OFFSET_MS
   );
 }
 
@@ -161,7 +189,8 @@ function isSongVersionsReply(value: unknown): value is SongVersions {
     isRecord(value) &&
     isSong(value.song) &&
     isLineList(value.lines) &&
-    typeof value.fromLibrary === "boolean"
+    typeof value.fromLibrary === "boolean" &&
+    isPlayback(value.playback)
   );
 }
 

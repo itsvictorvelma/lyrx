@@ -77,16 +77,25 @@ const firstLine: Line = {
   hiragana: "ほし の みち",
   romaji: "hoshi no michi",
   english: "The road of stars",
+  startMs: null,
 };
 const lines: Line[] = [
   firstLine,
-  { index: 1, original: "", hiragana: "", romaji: "", english: "" },
+  {
+    index: 1,
+    original: "",
+    hiragana: "",
+    romaji: "",
+    english: "",
+    startMs: null,
+  },
   {
     index: 2,
     original: "風が歌う",
     hiragana: "かぜ が うたう",
     romaji: "kaze ga utau",
     english: "The wind sings",
+    startMs: null,
   },
 ];
 
@@ -115,6 +124,7 @@ function songReply(
     song: asSong(result),
     lines: songLines,
     fromLibrary,
+    playback: { videoId: null, offsetMs: 0 },
   });
 }
 

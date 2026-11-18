@@ -1,6 +1,6 @@
 # 011 — Tidy the backend
 
-Status: approved (by the user, 2026-11-18: "go ahead and do backend cleanup along with checking whether we need cleanup.py or not … simple is better ALWAYS")
+Status: done (merged 2026-11-18, PR #28; approved by the user: "go ahead and do backend cleanup along with checking whether we need cleanup.py or not … simple is better ALWAYS")
 
 ## Goal
 

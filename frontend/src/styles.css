@@ -135,3 +135,39 @@ input[type="search"] {
 .saved-songs li {
   margin: 0.35rem 0;
 }
+
+.playback {
+  margin: 1.5rem 0;
+}
+
+/* A 16:9 box for the YouTube player, as wide as the column allows. */
+.video-frame {
+  max-width: 40rem;
+  aspect-ratio: 16 / 9;
+}
+
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+/* The line being sung: a bar on the left and a tinted row, so it never relies on color alone. */
+.versions-table tr.current td {
+  background: var(--color-border);
+}
+
+.versions-table tr.current td:first-child {
+  border-left: 4px solid var(--color-text);
+  padding-left: 0.6rem;
+}
+
+.seek-button {
+  text-align: left;
+  text-decoration: none;
+}
+
+.seek-button:hover {
+  text-decoration: underline;
+}

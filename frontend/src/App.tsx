@@ -1,5 +1,5 @@
 // The Lyrx page: find a song, open the best match, show it in four columns; your saved songs.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getSongVersions,
   listSavedSongs,
@@ -7,9 +7,18 @@ import {
   searchSongs,
 } from "./lyrics/api";
 import { OtherMatches } from "./lyrics/OtherMatches";
+import { PlaybackPanel } from "./lyrics/PlaybackPanel";
+import { currentLineIndex, hasTimings } from "./lyrics/playback";
+import type { AudioClock } from "./lyrics/playback";
 import { SavedSongs } from "./lyrics/SavedSongs";
 import { SearchForm } from "./lyrics/SearchForm";
-import type { ApiResult, Line, SearchResult, Song } from "./lyrics/types";
+import type {
+  ApiResult,
+  Line,
+  Playback,
+  SearchResult,
+  Song,
+} from "./lyrics/types";
 import { VersionsTable } from "./lyrics/VersionsTable";
 import { WaitingStatus } from "./lyrics/WaitingStatus";
 
@@ -25,6 +34,9 @@ interface Shown {
   song: Song;
   lines: Line[];
   fromLibrary: boolean;
+  playback: Playback;
+  // When this open happened; it keys the playback panel, so every open starts it fresh.
+  openedAt: number;
   // How long the steps took, in milliseconds; shown for development.
   findMs?: number;
   versionsMs: number;
@@ -64,6 +76,35 @@ export function App() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedSongs, setSavedSongs] = useState<Song[]>([]);
+  const [offsetMs, setOffsetMs] = useState(0);
+  const [currentLine, setCurrentLine] = useState<number | null>(null);
+  // The player now playing, if any; read on a timer, so it is not state.
+  const clock = useRef<AudioClock | null>(null);
+
+  const handleClock = useCallback((next: AudioClock | null) => {
+    clock.current = next;
+    if (next === null) {
+      setCurrentLine(null);
+    }
+  }, []);
+
+  // Five times a second, the line being sung; React skips the render when it has not changed.
+  useEffect(() => {
+    if (shown === null) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const timeMs = clock.current?.timeMs() ?? null;
+      setCurrentLine(
+        timeMs === null
+          ? null
+          : currentLineIndex(shown.lines, timeMs, offsetMs),
+      );
+    }, 200);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [shown, offsetMs]);
   const busy = status !== "idle";
 
   async function refreshSavedSongs() {
@@ -97,8 +138,10 @@ export function App() {
       setShown({
         ...result.value,
         findMs,
+        openedAt: started,
         versionsMs: performance.now() - started,
       });
+      setOffsetMs(result.value.playback.offsetMs);
       void refreshSavedSongs();
     } else {
       setError(messageFor(result));
@@ -183,7 +226,28 @@ export function App() {
           void openSong(result.id);
         }}
       />
-      {shown !== null && <VersionsTable lines={shown.lines} />}
+      {shown !== null && (
+        <PlaybackPanel
+          key={shown.openedAt}
+          songId={shown.song.id}
+          savedVideoId={shown.playback.videoId}
+          offsetMs={offsetMs}
+          hasTimings={hasTimings(shown.lines)}
+          onOffsetChange={setOffsetMs}
+          onClock={handleClock}
+        />
+      )}
+      {shown !== null && (
+        <VersionsTable
+          lines={shown.lines}
+          currentLine={currentLine}
+          onSeek={(line) => {
+            if (line.startMs !== null) {
+              clock.current?.seekMs(line.startMs + offsetMs);
+            }
+          }}
+        />
+      )}
       <SavedSongs
         songs={savedSongs}
         busy={busy}

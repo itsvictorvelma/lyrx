@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from lyrx.config import MAX_SONG_ID
+from lyrx.config import MAX_SONG_ID, PLAYBACK_MAX_OFFSET_MS, YOUTUBE_VIDEO_ID_PATTERN
 
 
 class SongSearchRequest(BaseModel):
@@ -22,13 +22,25 @@ class SongVersionsRequest(BaseModel):
 
 
 class VersionLine(BaseModel):
-    """One line of a song in its four versions."""
+    """One line of a song in its four versions, and when it starts (None when unknown)."""
 
     index: int
     original: str
     hiragana: str
     romaji: str
     english: str
+    start_ms: int | None = Field(default=None, ge=0, serialization_alias="startMs")
+
+
+class Playback(BaseModel):
+    """A saved song's YouTube video and its sync nudge; also the body of the playback PUT."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    video_id: str | None = Field(default=None, alias="videoId", pattern=YOUTUBE_VIDEO_ID_PATTERN)
+    offset_ms: int = Field(
+        default=0, alias="offsetMs", ge=-PLAYBACK_MAX_OFFSET_MS, le=PLAYBACK_MAX_OFFSET_MS
+    )
 
 
 class Song(BaseModel):
@@ -66,6 +78,7 @@ class SongVersionsResponse(BaseModel):
     song: Song
     lines: list[VersionLine]
     from_library: bool = Field(default=False, serialization_alias="fromLibrary")
+    playback: Playback = Playback()
 
 
 class ErrorResponse(BaseModel):
