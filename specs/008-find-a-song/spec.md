@@ -1,6 +1,6 @@
 # 008 — Find a song: type a name, read it in four columns
 
-Status: approved (by the user in chat, 2026-11-17, with "Option 1": Gemini makes every version)
+Status: done (merged 2026-11-18, PR #25)
 
 ## Goal
 

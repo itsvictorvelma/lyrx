@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = 8000
@@ -11,6 +12,13 @@ ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
 CLEANUP_SPLIT_LENGTH = 200
 # A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
 MAX_BODY_BYTES = 256 * 1024
+
+# The largest song id accepted: SQLite's largest integer. LRCLIB ids are far smaller.
+MAX_SONG_ID = 2**63 - 1
+
+# Saved songs live in one SQLite file, gitignored (`*.db`), at the repo root's `data/` folder.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DATABASE_PATH = REPO_ROOT / "data" / "lyrx.db"
 
 # The lyrx loggers write at this level; other libraries stay at Python's default (warnings).
 LOG_LEVEL = logging.INFO

@@ -25,10 +25,11 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
 - **No paid AI or API services** (decided 2026-11-17).
   - Lyrics come from LRCLIB (free, no key).
   - Every version except the original (hiragana, romaji, English) comes from one Gemini API free-tier call per song, checked against a schema. No local reading dictionaries (decided 2026-11-17: less code, and new languages need only a new prompt).
-- **Lyrics source.** LRCLIB first. Pasting lyrics stays as the fallback when LRCLIB has no match; the paste code is already built. Scraping other lyrics sites is out for now (terms of use, fragile pages, SSRF risk). Revisit only if LRCLIB misses often.
+- **Lyrics source.** LRCLIB only. Pasting lyrics was removed (decided 2026-11-18). Scraping other lyrics sites is out for now (terms of use, fragile pages, SSRF risk). Revisit only if LRCLIB misses often.
 - **Layout.** Columns side by side, one row per lyric line.
 - **Hosting is planned.** The app will be hosted on a server for the user, family, and friends, with personal accounts (a later spec). Until that spec, it runs on `127.0.0.1`. The user handles the server and domain; specs only make the app ready for it.
-- **Roadmap after the core:** saved songs (library), then synced playback (YouTube embed and optional MP3, with LRCLIB timings), then personal accounts.
+- **Roadmap after the core:** saved songs (library), then synced playback (YouTube embed and optional MP3, with LRCLIB timings), then one cohesive design pass for the whole app, then personal accounts.
+- **Design.** Until the design pass, pages stay plain, neutral, readable, and accessible; no per-page visual polish.
 - **Stack.** Python server in `backend/` (FastAPI, uvicorn, uv, pytest), React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). `scripts/check.sh` runs every check.
 - **Never push to `main`.** Every change is a PR the user reviews and merges.
 
@@ -59,7 +60,7 @@ Limits:
 - Never weaken `.gitignore` for `.env*`, `*.mp3`, databases, or `.claude/settings.local.json`.
 
 ### Untrusted input
-- Typed song names, pasted lyrics, LRCLIB replies, and model output are all untrusted.
+- Typed song names, LRCLIB replies, saved rows, and model output are all untrusted.
 - Enforce size limits before anything else reads them.
 - The server calls only fixed hosts (LRCLIB, Gemini), over `https`, with a timeout, a size cap, no redirects, and no proxy from the environment. It never fetches a URL the learner supplies.
 - Lyrics sent to the model are data, never instructions. The system instruction says so.

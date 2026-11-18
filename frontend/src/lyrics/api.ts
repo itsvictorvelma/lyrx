@@ -1,4 +1,4 @@
-// Calls the Lyrx server (search, open a song, paste) and checks every reply before use.
+// Calls the Lyrx server (search, open a song, saved songs) and checks every reply before use.
 import type {
   ApiResult,
   Line,
@@ -20,27 +20,51 @@ export function getSongVersions(id: number): Promise<ApiResult<SongVersions>> {
   return postJson("/api/song-versions", { id }, isSongVersionsReply);
 }
 
-export async function getPasteVersions(
-  lyrics: string,
-): Promise<ApiResult<Line[]>> {
-  const result = await postJson("/api/versions", { lyrics }, isLinesReply);
+export async function listSavedSongs(): Promise<ApiResult<Song[]>> {
+  const result = await requestJson(
+    "GET",
+    "/api/songs",
+    undefined,
+    isSavedSongsReply,
+  );
   return result.kind === "ok"
-    ? { kind: "ok", value: result.value.lines }
+    ? { kind: "ok", value: result.value.songs }
     : result;
 }
 
-async function postJson<Reply>(
+export function removeSavedSong(id: number): Promise<ApiResult<null>> {
+  return requestJson(
+    "DELETE",
+    `/api/songs/${String(id)}`,
+    undefined,
+    isNull,
+    204,
+  );
+}
+
+function postJson<Reply>(
   url: string,
   body: unknown,
   isValid: (value: unknown) => value is Reply,
+): Promise<ApiResult<Reply>> {
+  return requestJson("POST", url, body, isValid);
+}
+
+// One request; a reply with `okStatus` must pass `isValid`, any other must be the error shape.
+async function requestJson<Reply>(
+  method: "GET" | "POST" | "DELETE",
+  url: string,
+  body: unknown,
+  isValid: (value: unknown) => value is Reply,
+  okStatus = 200,
 ): Promise<ApiResult<Reply>> {
   let response: Response;
   let text: string;
   try {
     response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method,
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     return { kind: "unreachable" };
@@ -50,8 +74,8 @@ async function postJson<Reply>(
   } catch {
     return { kind: "unreadable" };
   }
-  const reply = parseJson(text);
-  if (response.status === 200) {
+  const reply = okStatus === 204 ? null : parseJson(text);
+  if (response.status === okStatus) {
     return isValid(reply)
       ? { kind: "ok", value: reply }
       : { kind: "unreadable" };
@@ -107,8 +131,21 @@ function isSong(value: unknown): value is Song {
 
 function isSearchResult(value: unknown): value is SearchResult {
   return (
-    isRecord(value) && isSong(value) && typeof value.looksJapanese === "boolean"
+    isRecord(value) &&
+    isSong(value) &&
+    typeof value.looksJapanese === "boolean" &&
+    typeof value.saved === "boolean"
   );
+}
+
+function isSavedSongsReply(value: unknown): value is { songs: Song[] } {
+  return (
+    isRecord(value) && Array.isArray(value.songs) && value.songs.every(isSong)
+  );
+}
+
+function isNull(value: unknown): value is null {
+  return value === null;
 }
 
 function isSearchReply(value: unknown): value is { results: SearchResult[] } {
@@ -120,11 +157,12 @@ function isSearchReply(value: unknown): value is { results: SearchResult[] } {
 }
 
 function isSongVersionsReply(value: unknown): value is SongVersions {
-  return isRecord(value) && isSong(value.song) && isLineList(value.lines);
-}
-
-function isLinesReply(value: unknown): value is { lines: Line[] } {
-  return isRecord(value) && isLineList(value.lines);
+  return (
+    isRecord(value) &&
+    isSong(value.song) &&
+    isLineList(value.lines) &&
+    typeof value.fromLibrary === "boolean"
+  );
 }
 
 function isErrorReply(

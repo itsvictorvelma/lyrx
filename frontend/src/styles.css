@@ -45,23 +45,6 @@ h2:focus:not(:focus-visible) {
   outline: none;
 }
 
-.paste-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-textarea {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 0.5rem;
-  font: inherit;
-  color: inherit;
-  background: var(--color-page);
-  border: 1px solid var(--color-muted);
-}
-
 button {
   padding: 0.4rem 1rem;
   font: inherit;
@@ -97,7 +80,6 @@ input[type="search"] {
 }
 
 .link-button {
-  margin-top: 1.5rem;
   padding: 0;
   color: inherit;
   text-decoration: underline;
@@ -140,4 +122,16 @@ input[type="search"] {
 /* A verse gap: each table body after the first starts with space above it. */
 .versions-table tbody + tbody tr:first-child td {
   padding-top: 1.5rem;
+}
+
+.saved-songs {
+  margin-top: 2rem;
+}
+
+.saved-songs ul {
+  padding-left: 1.25rem;
+}
+
+.saved-songs li {
+  margin: 0.35rem 0;
 }

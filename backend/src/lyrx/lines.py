@@ -2,7 +2,6 @@
 
 import unicodedata
 
-from lyrx.errors import ApiError
 from lyrx.kana import is_kana, is_kanji
 from lyrx.lyric_cleanup import clean_lines, tidy_blank_lines
 
@@ -14,13 +13,6 @@ def normalize_line_endings(paste: str) -> str:
 def split_lines(paste: str) -> list[str]:
     """Trailing whitespace off, blank lines at the ends dropped, blank runs collapsed to one."""
     return tidy_blank_lines([line.rstrip() for line in normalize_line_endings(paste).split("\n")])
-
-
-def read_paste(lyrics: str) -> list[str]:
-    """The paste split and cleaned. An empty paste is refused before cleanup."""
-    if not split_lines(lyrics):
-        raise ApiError("empty_input")
-    return read_lyrics(lyrics)
 
 
 def read_lyrics(lyrics: str) -> list[str]:

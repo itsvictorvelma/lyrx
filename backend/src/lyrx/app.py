@@ -1,38 +1,38 @@
-"""Builds the FastAPI app: its ASGI layers, the error handlers, and the three routes."""
+"""Builds the FastAPI app: its ASGI layers, the error handlers, and the routes."""
 
+import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import cast
+from http import HTTPStatus
+from typing import Annotated, cast
 
 import httpx2
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from lyrx import config
+from lyrx import config, library
 from lyrx.body_limit import BodySizeLimit
 from lyrx.crash_guard import CrashGuard
 from lyrx.errors import ApiError, ErrorCode, error_response
-from lyrx.four_versions import make_four_versions
 from lyrx.host_check import HostCheck
 from lyrx.http_clients import make_gemini_client, make_lrclib_client
-from lyrx.lines import has_japanese, read_paste
-from lyrx.request_log import logged_request
+from lyrx.request_log import RequestLog, logged_request
 from lyrx.schemas import (
+    SavedSongsResponse,
     SongSearchRequest,
     SongSearchResponse,
     SongVersionsRequest,
     SongVersionsResponse,
-    VersionsRequest,
-    VersionsResponse,
 )
 from lyrx.song_search import search_songs
 from lyrx.song_versions import open_song
 
-VERSIONS_PATH = "/api/versions"
 SONG_SEARCH_PATH = "/api/song-search"
 SONG_VERSIONS_PATH = "/api/song-versions"
+SAVED_SONGS_PATH = "/api/songs"
+SAVED_SONG_PATH = "/api/songs/{song_id}"
 
 ROUTING_ERROR_CODES: dict[int, ErrorCode] = {404: "not_found", 405: "method_not_allowed"}
 FIRST_SERVER_ERROR_STATUS = 500
@@ -68,21 +68,6 @@ def require_gemini_key() -> str:
 # blocking HTTP calls and the cleanup never block the event loop.
 
 
-def create_versions(body: VersionsRequest, request: Request) -> VersionsResponse:
-    """Paste: clean the lyrics, then the shared pipeline."""
-    with logged_request(VERSIONS_PATH) as log:
-        lines = read_paste(body.lyrics)
-        log.count_lines(lines)
-        if not any(has_japanese(line) for line in lines):
-            raise ApiError("no_japanese")
-        api_key = require_gemini_key()
-        versions, gemini_result = make_four_versions(
-            lines, api_key, request.app.state.gemini_client
-        )
-        log.add_gemini(gemini_result)
-        return VersionsResponse(lines=versions)
-
-
 def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
     """Search: a short ranked list of songs, without lyrics."""
     with logged_request(SONG_SEARCH_PATH) as log:
@@ -92,16 +77,48 @@ def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
 
 
 def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersionsResponse:
-    """Open a song: the key is checked before LRCLIB is called."""
+    """Open a song: from the library if saved; otherwise the key, LRCLIB, Gemini, then save."""
     with logged_request(SONG_VERSIONS_PATH) as log:
         log.add("lrclib_id", body.id)
+        saved = library.find_song_or_none(body.id)
+        log.add("from_library", "true" if saved else "false")
+        if saved is not None:
+            return saved.model_copy(update={"from_library": True})
         api_key = require_gemini_key()
         song, lines, versions, gemini_result = open_song(
             body.id, api_key, request.app.state.lrclib_client, request.app.state.gemini_client
         )
         log.count_lines(lines)
         log.add_gemini(gemini_result)
-        return SongVersionsResponse(song=song, lines=versions)
+        reply = SongVersionsResponse(song=song, lines=versions)
+        if gemini_result.missing_lines == 0:
+            save_quietly(reply, log)
+        return reply
+
+
+def save_quietly(reply: SongVersionsResponse, log: RequestLog) -> None:
+    """A failed save is logged as `save_failed` and never fails the reply."""
+    try:
+        library.save_song(reply)
+    except sqlite3.Error:
+        log.add("save_failed", "true")
+
+
+def list_saved_songs() -> SavedSongsResponse:
+    """The saved songs, most recently opened first, without lines."""
+    with logged_request(SAVED_SONGS_PATH) as log:
+        songs = library.list_songs()
+        log.add("songs", len(songs))
+        return SavedSongsResponse(songs=songs)
+
+
+def remove_saved_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]) -> Response:
+    """Removes one saved song: 204, or 404 when it was not saved."""
+    with logged_request(SAVED_SONG_PATH) as log:
+        log.add("lrclib_id", song_id)
+        if not library.remove_song(song_id):
+            raise ApiError("song_not_found")
+        return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 def create_app(
@@ -130,7 +147,8 @@ def create_app(
     app.add_exception_handler(ApiError, handle_api_error)
     app.add_exception_handler(HTTPException, handle_http_error)
     app.add_exception_handler(RequestValidationError, handle_invalid_request)
-    app.add_api_route(VERSIONS_PATH, create_versions, methods=["POST"])
     app.add_api_route(SONG_SEARCH_PATH, find_songs, methods=["POST"])
     app.add_api_route(SONG_VERSIONS_PATH, get_song_versions, methods=["POST"])
+    app.add_api_route(SAVED_SONGS_PATH, list_saved_songs, methods=["GET"])
+    app.add_api_route(SAVED_SONG_PATH, remove_saved_song, methods=["DELETE"])
     return app

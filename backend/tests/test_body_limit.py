@@ -6,7 +6,8 @@ from typing import Any
 
 import pytest
 from error_shape import assert_error_shape
-from fake_gemini import FakeGemini, answer_with_placeholders
+from fake_gemini import FakeGemini
+from fake_lrclib import FakeLrclib
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from raw_asgi import (
@@ -20,7 +21,7 @@ from raw_asgi import (
 )
 from starlette.types import Message
 
-from lyrx.app import VERSIONS_PATH
+from lyrx.app import SONG_SEARCH_PATH
 
 REQUEST_LOGGER = "lyrx.request_log"
 
@@ -31,9 +32,6 @@ JSON_HEADERS = {"Content-Type": "application/json"}
 OVERSIZED_BODY = b"{" + b" " * BODY_CAP_BYTES
 # The same size in two chunks, so the client sends no Content-Length.
 OVERSIZED_CHUNKS = [b"{" + b" " * (BODY_CAP_BYTES // 2), b" " * (BODY_CAP_BYTES // 2)]
-
-# The spec's 150-line song (invented): three lines repeated 50 times.
-SONG_LINES = ["君の声が", "遠くまでひびく", "星がながれる夜に"] * 50
 
 
 def assert_not_lyrics_body(body: Any) -> None:
@@ -50,7 +48,7 @@ def test_spec003_ac65_body_over_256_kib_with_content_length_is_not_lyrics_before
 ) -> None:
     assert len(OVERSIZED_BODY) == BODY_CAP_BYTES + 1
 
-    response = client.post(VERSIONS_PATH, content=OVERSIZED_BODY, headers=JSON_HEADERS)
+    response = client.post(SONG_SEARCH_PATH, content=OVERSIZED_BODY, headers=JSON_HEADERS)
 
     assert response.request.headers["content-length"] == str(BODY_CAP_BYTES + 1)
     assert response.status_code == 413
@@ -64,7 +62,7 @@ def test_spec003_ac65_body_over_256_kib_without_content_length_is_not_lyrics(
     """The cap counts the bytes read, so a body with no Content-Length is capped."""
     assert sum(len(chunk) for chunk in OVERSIZED_CHUNKS) == BODY_CAP_BYTES + 1
 
-    response = client.post(VERSIONS_PATH, content=iter(OVERSIZED_CHUNKS), headers=JSON_HEADERS)
+    response = client.post(SONG_SEARCH_PATH, content=iter(OVERSIZED_CHUNKS), headers=JSON_HEADERS)
 
     assert "content-length" not in response.request.headers
     assert response.status_code == 413
@@ -98,32 +96,10 @@ def test_spec003_ac65_broken_body_of_exactly_256_kib_is_parsed_and_gets_the_norm
     """The cap only catches bodies over it; a broken body at the cap is parsed."""
     body_at_the_cap = b"{" + b" " * (BODY_CAP_BYTES - 1)
 
-    response = client.post(VERSIONS_PATH, content=body_at_the_cap, headers=JSON_HEADERS)
+    response = client.post(SONG_SEARCH_PATH, content=body_at_the_cap, headers=JSON_HEADERS)
 
     assert response.status_code == 400
     assert_error_shape(response.json(), "invalid_request")
-
-
-def paste_body_of_exactly_the_cap() -> bytes:
-    """`{"lyrics": ...}` holding the 150-line song, padded with trailing spaces to 262,144 bytes."""
-    song = "\n".join(SONG_LINES)
-    unpadded = json.dumps({"lyrics": song}, ensure_ascii=False).encode()
-    padding = " " * (BODY_CAP_BYTES - len(unpadded))
-    return json.dumps({"lyrics": song + padding}, ensure_ascii=False).encode()
-
-
-def test_spec003_ac65_paste_of_exactly_256_kib_of_valid_lyrics_is_not_refused_by_the_cap(
-    client: TestClient, fake_gemini: FakeGemini, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
-    fake_gemini.answer = answer_with_placeholders
-    body = paste_body_of_exactly_the_cap()
-    assert len(body) == BODY_CAP_BYTES
-
-    response = client.post(VERSIONS_PATH, content=body, headers=JSON_HEADERS)
-
-    assert response.status_code == 200, response.text
-    assert [line["original"] for line in response.json()["lines"]] == SONG_LINES
 
 
 def test_spec003_ac65_the_cap_applies_on_every_route(client: TestClient) -> None:
@@ -137,24 +113,24 @@ def test_spec003_ac65_the_cap_applies_on_every_route(client: TestClient) -> None
 # A client that disconnects mid-body never reaches the app (T7 follow-up).
 
 
-def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_gemini(
+def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_lrclib(
     app: FastAPI,
-    fake_gemini: FakeGemini,
+    fake_lrclib: FakeLrclib,
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The body cap reads the whole body first; a cut-off body never reaches the route."""
     caplog.set_level(logging.DEBUG)
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
-    whole_body = json.dumps({"lyrics": "夜の月が ひかる"}, ensure_ascii=False).encode()
+    whole_body = json.dumps({"query": "夜の月が ひかる"}, ensure_ascii=False).encode()
     # The first chunk is a complete, valid body, but `more_body` says more is coming; then the
     # client disconnects.
     incoming: list[Message] = [{"type": "http.request", "body": whole_body, "more_body": True}]
 
     run_like_uvicorn(app, [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER], incoming)
 
-    # The route always calls Gemini for this paste and always writes its one request line.
-    assert fake_gemini.requests == []
+    # The route would call LRCLIB for this search and always writes its one request line.
+    assert fake_lrclib.requests == []
     assert [record for record in caplog.records if record.name == REQUEST_LOGGER] == []
 
 
@@ -163,7 +139,7 @@ def test_ac44_client_disconnecting_mid_body_gets_no_response_and_logs_no_traceba
 ) -> None:
     """A cut-off body ends quietly: nothing is sent and nothing reaches uvicorn's log."""
     caplog.set_level(logging.DEBUG)
-    whole_body = json.dumps({"lyrics": "夜の月が ひかる"}, ensure_ascii=False).encode()
+    whole_body = json.dumps({"query": "夜の月が ひかる"}, ensure_ascii=False).encode()
     incoming: list[Message] = [{"type": "http.request", "body": whole_body, "more_body": True}]
 
     sent = run_like_uvicorn(app, [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER], incoming)

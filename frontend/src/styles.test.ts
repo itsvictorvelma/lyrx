@@ -10,8 +10,10 @@ function ruleBody(selector: string): string {
   return match[1] ?? "";
 }
 
-test("test_t9_a11y_paste_box_border_uses_the_muted_color", () => {
-  const border = /(?:^|;|\s)border\s*:\s*([^;]*);/.exec(ruleBody("textarea"));
+test("the search box border uses the muted color", () => {
+  const border = /(?:^|;|\s)border\s*:\s*([^;]*);/.exec(
+    ruleBody('input\\[type="search"\\]'),
+  );
 
   expect(border?.[1]).toContain("var(--color-muted)");
 });

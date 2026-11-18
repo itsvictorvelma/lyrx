@@ -18,11 +18,13 @@ export interface Song {
 
 export interface SearchResult extends Song {
   looksJapanese: boolean;
+  saved: boolean;
 }
 
 export interface SongVersions {
   song: Song;
   lines: Line[];
+  fromLibrary: boolean;
 }
 
 export type ApiResult<Value> =

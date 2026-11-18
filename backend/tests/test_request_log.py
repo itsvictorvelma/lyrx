@@ -50,15 +50,15 @@ def test_ac33_api_error_is_reraised_unchanged_and_logged_with_its_status_and_cod
 ) -> None:
     """An ApiError leaves the block as the same object; its line has status and code, no tokens."""
     caplog.set_level(logging.DEBUG)
-    error = ApiError("no_japanese")
+    error = ApiError("song_not_japanese")
 
     with pytest.raises(ApiError) as raised, logged_request("/api/test", lines=2, characters=15):
         raise error
 
     assert raised.value is error
     fields = only_request_line(caplog)
-    assert fields["status"] == "400"
-    assert fields["code"] == "no_japanese"
+    assert fields["status"] == "422"
+    assert fields["code"] == "song_not_japanese"
     assert fields["lines"] == "2"
     assert fields["characters"] == "15"
     assert fields["duration_ms"].isdecimal()
