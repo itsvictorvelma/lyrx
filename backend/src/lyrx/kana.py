@@ -1,4 +1,4 @@
-"""Says which characters are kana and kanji, and turns katakana into hiragana."""
+"""Says which characters are kana and which are kanji."""
 
 # Inclusive Unicode code point ranges, grouped by kind.
 
@@ -34,15 +34,6 @@ KANJI_RANGES = (
     CJK_SUPPLEMENTARY_IDEOGRAPHS,
 )
 
-# Each katakana sits 0x60 code points above its hiragana (ア U+30A2, あ U+3042).
-# ヷ ヸ ヹ ヺ and ー have no hiragana form, so they are left out.
-KATAKANA_TO_HIRAGANA_OFFSET = 0x60
-KATAKANA_WITH_HIRAGANA = [
-    *range(ord("ァ"), ord("ヶ") + 1),
-    *range(ord("ヽ"), ord("ヾ") + 1),
-]
-KATAKANA_TO_HIRAGANA = {code: code - KATAKANA_TO_HIRAGANA_OFFSET for code in KATAKANA_WITH_HIRAGANA}
-
 
 def in_ranges(character: str, ranges: tuple[tuple[int, int], ...]) -> bool:
     return any(first <= ord(character) <= last for first, last in ranges)
@@ -52,15 +43,5 @@ def is_kana(character: str) -> bool:
     return in_ranges(character, KANA_RANGES)
 
 
-def is_hiragana_letter(character: str) -> bool:
-    """A hiragana letter, small kana included; not ゝ, ゞ, or ー."""
-    return in_ranges(character, (HIRAGANA,))
-
-
 def is_kanji(character: str) -> bool:
     return in_ranges(character, KANJI_RANGES)
-
-
-def to_hiragana(text: str) -> str:
-    """Turns each katakana that has a hiragana form into it; everything else is unchanged."""
-    return text.translate(KATAKANA_TO_HIRAGANA)

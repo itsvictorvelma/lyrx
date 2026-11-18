@@ -97,13 +97,35 @@ def lines_text(items: list[dict[str, Any]]) -> str:
     return json.dumps({"lines": items}, ensure_ascii=False)
 
 
+Versions = tuple[str, str, str]
+
+
 def success(
-    english: dict[int, str], prompt_tokens: int = 120, output_tokens: int = 45
+    versions: dict[int, Versions], prompt_tokens: int = 120, output_tokens: int = 45
 ) -> httpx2.Response:
-    """A valid reply: one item per index, in the dict's order, with token counts."""
-    items = [{"index": index, "english": text} for index, text in english.items()]
+    """A valid reply: one (hiragana, romaji, english) item per index, in the dict's order."""
+    items = [
+        {"index": index, "hiragana": hiragana, "romaji": romaji, "english": english}
+        for index, (hiragana, romaji, english) in versions.items()
+    ]
     usage = {"promptTokenCount": prompt_tokens, "candidatesTokenCount": output_tokens}
     return candidate_reply(lines_text(items), usage=usage)
+
+
+def placeholder_versions(index: int) -> Versions:
+    """Valid invented versions for any line: kana, romaji, and English naming the index."""
+    return ("かな", "kana", f"English {index}")
+
+
+def success_for(indexes: list[int]) -> httpx2.Response:
+    """A valid reply with placeholder versions for the given line indexes."""
+    return success({index: placeholder_versions(index) for index in indexes})
+
+
+def sent_indexes(request: "SeenGeminiRequest") -> list[int]:
+    """The line indexes in a request's user message, in order."""
+    text = request.body["contents"][0]["parts"][0]["text"]
+    return [int(line[1 : line.index("]")]) for line in text.split("\n") if line.startswith("[")]
 
 
 def blocked_prompt(reason: str = "SAFETY") -> httpx2.Response:

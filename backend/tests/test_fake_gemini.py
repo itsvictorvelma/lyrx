@@ -24,7 +24,7 @@ def post(fake: FakeGemini, body: dict[str, object]) -> httpx2.Response:
 
 def test_replies_are_served_in_script_order_and_requests_recorded() -> None:
     fake = FakeGemini()
-    fake.script(status(429), success({0: "Your voice"}))
+    fake.script(status(429), success({0: ("きみ", "kimi", "You")}))
 
     first = post(fake, {"n": 1})
     second = post(fake, {"n": 2})
@@ -32,7 +32,9 @@ def test_replies_are_served_in_script_order_and_requests_recorded() -> None:
     assert first.status_code == 429
     reply = second.json()
     text = "".join(part["text"] for part in reply["candidates"][0]["content"]["parts"])
-    assert json.loads(text) == {"lines": [{"index": 0, "english": "Your voice"}]}
+    assert json.loads(text) == {
+        "lines": [{"index": 0, "hiragana": "きみ", "romaji": "kimi", "english": "You"}]
+    }
     assert reply["candidates"][0]["finishReason"] == "STOP"
     assert reply["usageMetadata"] == {"promptTokenCount": 120, "candidatesTokenCount": 45}
     assert [request.body for request in fake.requests] == [{"n": 1}, {"n": 2}]

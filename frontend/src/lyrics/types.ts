@@ -1,4 +1,4 @@
-// Data shapes the page shares with the server: one line of the four versions and the request result.
+// Data shapes the page shares with the server: a line, a song, a search result, a request result.
 
 export interface Line {
   index: number;
@@ -6,24 +6,28 @@ export interface Line {
   hiragana: string;
   romaji: string;
   english: string;
-  readingVerified: boolean;
 }
 
-// The server error codes that have their own message on the page.
-export type PageErrorCode =
-  | "empty_input"
-  | "no_japanese"
-  | "input_too_large"
-  | "model_refused"
-  | "model_output_truncated"
-  | "model_output_invalid"
-  | "model_unavailable"
-  | "server_not_configured";
+export interface Song {
+  id: number;
+  track: string;
+  artist: string;
+  album: string;
+  durationSeconds: number;
+}
 
-export type FourVersionsResult =
-  | { kind: "lines"; lines: Line[] }
-  // `details` is unchecked here; `errorMessageFor` validates it before use.
-  | { kind: "error"; code: string; details?: unknown }
+export interface SearchResult extends Song {
+  looksJapanese: boolean;
+}
+
+export interface SongVersions {
+  song: Song;
+  lines: Line[];
+}
+
+export type ApiResult<Value> =
+  | { kind: "ok"; value: Value }
+  | { kind: "error"; code: string; message: string }
   // A reply arrived but was not a shape the page can trust.
   | { kind: "unreadable" }
   | { kind: "unreachable" };

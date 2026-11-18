@@ -1,94 +1,143 @@
-// The Lyrx page: the paste form above, the four versions or an error below; holds the request state.
-import { useEffect, useRef, useState } from "react";
-import { getFourVersions } from "./lyrics/api";
-import {
-  errorMessageFor,
-  FALLBACK_MESSAGE,
-  SERVER_UNREACHABLE_MESSAGE,
-} from "./lyrics/errorMessages";
-import { FourVersions } from "./lyrics/FourVersions";
+// The Lyrx page: find a song, open the best match, show it in four columns; paste as a fallback.
+import { useState } from "react";
+import { getPasteVersions, getSongVersions, searchSongs } from "./lyrics/api";
+import { OtherMatches } from "./lyrics/OtherMatches";
 import { PasteForm } from "./lyrics/PasteForm";
-import type { FourVersionsResult, Line } from "./lyrics/types";
+import { SearchForm } from "./lyrics/SearchForm";
+import type { ApiResult, Line, SearchResult, Song } from "./lyrics/types";
+import { VersionsTable } from "./lyrics/VersionsTable";
 
-type PageState =
-  | { kind: "idle" }
-  | { kind: "waiting" }
-  | { kind: "result"; lines: Line[] }
-  | { kind: "error"; message: string };
+export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
+export const SERVER_UNREACHABLE_MESSAGE =
+  "Could not reach the Lyrx server. Is it running?";
+const FINDING_TEXT = "Finding the song…";
+const OPENING_TEXT = "Getting the lyrics and translating…";
 
-function toPageState(result: FourVersionsResult): PageState {
+type Status = "idle" | "finding" | "opening";
+
+interface Shown {
+  song?: Song;
+  lines: Line[];
+}
+
+function messageFor(result: Exclude<ApiResult<unknown>, { kind: "ok" }>) {
   switch (result.kind) {
-    case "lines":
-      return { kind: "result", lines: result.lines };
     case "error":
-      return {
-        kind: "error",
-        message: errorMessageFor(result.code, result.details),
-      };
+      return result.message;
     case "unreadable":
-      return { kind: "error", message: FALLBACK_MESSAGE };
+      return FALLBACK_MESSAGE;
     case "unreachable":
-      return { kind: "error", message: SERVER_UNREACHABLE_MESSAGE };
+      return SERVER_UNREACHABLE_MESSAGE;
   }
-}
-
-function lineCountText(count: number): string {
-  return count === 1 ? "1 line" : `${String(count)} lines`;
-}
-
-function ResultHeading({ lines }: { lines: Line[] }) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
-
-  // Focus tells keyboard and screen-reader users the result arrived, and keeps focus
-  // from being lost when the disabled button lets go of it.
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, [lines]);
-
-  return (
-    <h2 ref={headingRef} tabIndex={-1}>
-      Four versions ({lineCountText(lines.length)})
-    </h2>
-  );
 }
 
 export function App() {
-  const [state, setState] = useState<PageState>({ kind: "idle" });
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [status, setStatus] = useState<Status>("idle");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [shown, setShown] = useState<Shown | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const busy = status !== "idle";
 
-  // Focus is lost when the button disables; on an error, return it to the paste box
-  // so the learner fixes the text where they left off.
-  useEffect(() => {
-    if (state.kind === "error") {
-      textAreaRef.current?.focus();
+  async function openSong(id: number) {
+    setStatus("opening");
+    setShown(null);
+    setError(null);
+    const result = await getSongVersions(id);
+    setStatus("idle");
+    if (result.kind === "ok") {
+      setShown({ song: result.value.song, lines: result.value.lines });
+    } else {
+      setError(messageFor(result));
     }
-  }, [state]);
-
-  async function submit(lyrics: string) {
-    setState({ kind: "waiting" });
-    setState(toPageState(await getFourVersions(lyrics)));
   }
+
+  async function find(query: string) {
+    setStatus("finding");
+    setResults([]);
+    setShown(null);
+    setError(null);
+    const result = await searchSongs(query);
+    if (result.kind !== "ok") {
+      setStatus("idle");
+      setError(messageFor(result));
+      return;
+    }
+    setResults(result.value);
+    const best = result.value[0];
+    if (best === undefined) {
+      setStatus("idle");
+      return;
+    }
+    await openSong(best.id);
+  }
+
+  async function paste(lyrics: string) {
+    setStatus("opening");
+    setShown(null);
+    setError(null);
+    const result = await getPasteVersions(lyrics);
+    setStatus("idle");
+    if (result.kind === "ok") {
+      setShown({ lines: result.value });
+    } else {
+      setError(messageFor(result));
+    }
+  }
+
+  const otherResults = results.filter(
+    (result) => result.id !== shown?.song?.id,
+  );
 
   return (
     <main>
       <h1>Lyrx</h1>
-      <PasteForm
-        waiting={state.kind === "waiting"}
-        textAreaRef={textAreaRef}
-        onSubmit={(lyrics) => {
-          void submit(lyrics);
+      <SearchForm
+        busy={busy}
+        onSearch={(query) => {
+          void find(query);
         }}
       />
-      {state.kind === "result" && (
-        <section>
-          <ResultHeading lines={state.lines} />
-          <FourVersions lines={state.lines} />
-        </section>
-      )}
-      {state.kind === "error" && (
+      <p role="status" aria-live="polite" className="muted">
+        {status === "finding" && FINDING_TEXT}
+        {status === "opening" && OPENING_TEXT}
+      </p>
+      {error !== null && (
         <p role="alert" className="error">
-          <strong>Error:</strong> {state.message}
+          <strong>Error:</strong> {error}
         </p>
+      )}
+      {shown?.song !== undefined && (
+        <p className="song-line">
+          <strong>{shown.song.track}</strong> — {shown.song.artist}{" "}
+          <span className="muted">(lyrics from LRCLIB)</span>
+        </p>
+      )}
+      <OtherMatches
+        results={otherResults}
+        busy={busy}
+        onPick={(result) => {
+          void openSong(result.id);
+        }}
+      />
+      {shown !== null && <VersionsTable lines={shown.lines} />}
+      {pasteOpen ? (
+        <PasteForm
+          busy={busy}
+          onSubmit={(lyrics) => {
+            void paste(lyrics);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => {
+            setPasteOpen(true);
+          }}
+        >
+          Paste the lyrics instead
+        </button>
       )}
     </main>
   );

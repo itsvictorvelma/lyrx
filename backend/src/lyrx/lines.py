@@ -1,4 +1,4 @@
-"""Splits the paste into lines, reads it into cleaned lines, and detects Japanese text."""
+"""Splits lyrics into cleaned lines, and detects Japanese text."""
 
 import unicodedata
 
@@ -17,14 +17,16 @@ def split_lines(paste: str) -> list[str]:
 
 
 def read_paste(lyrics: str) -> list[str]:
-    """The paste in NFC, so decomposed kana (か + U+3099) behaves like が, split and cleaned.
-
-    An empty paste is refused before cleanup; a paste that cleanup empties gives no lines.
-    """
-    lines = split_lines(unicodedata.normalize("NFC", lyrics))
-    if not lines:
+    """The paste split and cleaned. An empty paste is refused before cleanup."""
+    if not split_lines(lyrics):
         raise ApiError("empty_input")
-    return clean_lines(lines)
+    return read_lyrics(lyrics)
+
+
+def read_lyrics(lyrics: str) -> list[str]:
+    """Lyrics in NFC, so decomposed kana (か + U+3099) behaves like が, split and cleaned."""
+    lines = split_lines(unicodedata.normalize("NFC", lyrics))
+    return clean_lines(lines) if lines else []
 
 
 def has_japanese(text: str) -> bool:

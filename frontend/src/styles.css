@@ -30,7 +30,7 @@ body {
 }
 
 main {
-  max-width: 48rem;
+  max-width: 72rem;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -71,30 +71,73 @@ button {
   color: var(--color-error);
 }
 
-.four-versions {
-  padding-left: 2rem;
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.four-versions > li {
-  padding: 0.75rem 0;
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  color: inherit;
+  background: var(--color-page);
+  border: 1px solid var(--color-muted);
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.link-button {
+  margin-top: 1.5rem;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.other-matches ul {
+  padding-left: 1.25rem;
+}
+
+.other-matches li {
+  margin: 0.25rem 0;
+}
+
+/* Only the table scrolls sideways on a narrow screen, never the page. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.versions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.versions-table th {
+  text-align: left;
+  color: var(--color-muted);
+  font-weight: normal;
   border-bottom: 1px solid var(--color-border);
 }
 
-.blank-line {
-  min-height: 1.5rem;
+.versions-table th,
+.versions-table td {
+  padding: 0.35rem 1rem 0.35rem 0;
+  vertical-align: top;
 }
 
-.version-row {
-  display: flex;
-  gap: 1rem;
-}
-
-.version-label {
-  flex: 0 0 5.5rem;
-  color: var(--color-muted);
-}
-
-.reading-note {
-  margin-left: 0.75rem;
-  color: var(--color-muted);
+/* A verse gap: each table body after the first starts with space above it. */
+.versions-table tbody + tbody tr:first-child td {
+  padding-top: 1.5rem;
 }

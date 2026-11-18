@@ -1,7 +1,6 @@
-"""Data shapes: the request body, the response, the error response, and the model replies."""
+"""Data shapes: request bodies, responses, the LRCLIB record, and the Gemini reply."""
 
 from dataclasses import dataclass
-from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,20 +13,64 @@ class VersionsRequest(BaseModel):
     lyrics: str
 
 
+class SongSearchRequest(BaseModel):
+    """The body of `POST /api/song-search`."""
+
+    model_config = ConfigDict(strict=True)
+
+    query: str
+
+
+class SongVersionsRequest(BaseModel):
+    """The body of `POST /api/song-versions`. Strict, so `true`, `1.5`, and `"1"` are refused."""
+
+    model_config = ConfigDict(strict=True)
+
+    id: int = Field(ge=1)
+
+
 class VersionLine(BaseModel):
-    """One line of the paste in its four versions."""
+    """One line of a song in its four versions."""
 
     index: int
     original: str
     hiragana: str
     romaji: str
     english: str
-    reading_verified: bool = Field(serialization_alias="readingVerified")
 
 
 class VersionsResponse(BaseModel):
-    """The body of a successful `POST /api/versions`: every line of the paste, in order."""
+    """The body of a successful `POST /api/versions`: every line, in order."""
 
+    lines: list[VersionLine]
+
+
+class Song(BaseModel):
+    """Which LRCLIB song a result or a reply is about."""
+
+    id: int
+    track: str
+    artist: str
+    album: str
+    duration_seconds: int = Field(serialization_alias="durationSeconds")
+
+
+class SearchResult(Song):
+    """One search result: the song, and whether its lyrics look Japanese."""
+
+    looks_japanese: bool = Field(serialization_alias="looksJapanese")
+
+
+class SongSearchResponse(BaseModel):
+    """The body of a successful `POST /api/song-search`, best first."""
+
+    results: list[SearchResult]
+
+
+class SongVersionsResponse(BaseModel):
+    """The body of a successful `POST /api/song-versions`."""
+
+    song: Song
     lines: list[VersionLine]
 
 
@@ -36,33 +79,18 @@ class ErrorResponse(BaseModel):
 
     code: str
     message: str
-    details: dict[str, Any] | None = None
 
 
-class ReplyLine(BaseModel):
-    """One line of Claude's reply. Strict: no coercion and no extra fields."""
+class LrclibRecord(BaseModel):
+    """One LRCLIB record, from search or by id. Fields Lyrx does not read are ignored."""
 
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    index: int
-    reading: str
-    english: str
-
-
-class ClaudeReply(BaseModel):
-    """Claude's whole reply: one entry per sent line. Strict: no coercion and no extra fields."""
-
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    lines: list[ReplyLine]
-
-
-EnglishErrorCode = Literal[
-    "translation_blocked",
-    "translation_invalid",
-    "translation_rate_limited",
-    "translation_unavailable",
-]
+    id: int = Field(strict=True, ge=1)
+    track_name: str = Field(alias="trackName", strict=True)
+    artist_name: str = Field(alias="artistName", strict=True)
+    album_name: str | None = Field(default=None, alias="albumName", strict=True)
+    duration: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
+    instrumental: bool = Field(default=False, strict=True)
+    plain_lyrics: str | None = Field(default=None, alias="plainLyrics", strict=True)
 
 
 class GeminiPart(BaseModel):
@@ -118,11 +146,13 @@ class GeminiEnvelope(BaseModel):
 
 
 class GeminiLine(BaseModel):
-    """One line of Gemini's English. Strict: no coercion and no extra fields."""
+    """One line of Gemini's reply. Strict: no coercion and no extra fields."""
 
     model_config = ConfigDict(strict=True, extra="forbid")
 
     index: int
+    hiragana: str
+    romaji: str
     english: str
 
 
@@ -140,26 +170,25 @@ class GeminiReply(BaseModel):
 
 @dataclass(frozen=True)
 class TokenUsage:
-    """The tokens a model (Claude or Gemini) reports for one call."""
+    """The tokens Gemini reports for one or more calls."""
 
     input_tokens: int
     output_tokens: int
 
 
 @dataclass(frozen=True)
-class ClaudeReadings:
-    """Claude's reply after every check in `claude.py`, and the tokens the call used.
+class LineVersions:
+    """The three versions Gemini made for one line, after every check."""
 
-    A dataclass, not a Pydantic model: it is never validated, since its lines already were.
-    """
-
-    lines: list[ReplyLine]
-    usage: TokenUsage
+    hiragana: str
+    romaji: str
+    english: str
 
 
 @dataclass(frozen=True)
-class GeminiTranslation:
-    """Gemini's English after every check in `gemini.py`, by line index, and the tokens used."""
+class GeminiVersions:
+    """Gemini's checked versions by line index, the tokens used, and how many calls it took."""
 
-    english: dict[int, str]
+    lines: dict[int, LineVersions]
     usage: TokenUsage
+    calls: int = 1

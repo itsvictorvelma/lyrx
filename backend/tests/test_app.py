@@ -4,13 +4,11 @@ import inspect
 
 import pytest
 from error_shape import ERROR_SHAPE_KEYS, assert_error_shape
-from fake_claude import FakeClaudeClient, fake_message
 from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from lyrx import claude
-from lyrx.app import VERSIONS_PATH, create_app
+from lyrx.app import SONG_SEARCH_PATH, SONG_VERSIONS_PATH, VERSIONS_PATH
 
 
 def test_ac9_body_that_is_not_json_is_invalid_request(client: TestClient) -> None:
@@ -115,83 +113,14 @@ def test_ac44_other_http_exceptions_map_to_the_error_shape_without_their_detail(
     assert "secret-detail" not in response.text
 
 
-# The route runs in FastAPI's threadpool (T7 follow-up).
+# The routes run in FastAPI's threadpool.
 
 
-def test_ac2_versions_route_is_a_sync_function_so_the_checks_run_off_the_event_loop(
-    app: FastAPI,
+@pytest.mark.parametrize("path", [VERSIONS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH])
+def test_routes_are_sync_functions_so_blocking_calls_run_off_the_event_loop(
+    app: FastAPI, path: str
 ) -> None:
-    """The reading checks are CPU-bound; a sync `def` route keeps them off the event loop."""
-    routes = [
-        route for route in app.routes if isinstance(route, APIRoute) and route.path == VERSIONS_PATH
-    ]
+    routes = [route for route in app.routes if isinstance(route, APIRoute) and route.path == path]
 
     assert len(routes) == 1
     assert not inspect.iscoroutinefunction(routes[0].endpoint)
-
-
-# The real SDK client is built only when a request needs it (T7 follow-up).
-
-REAL_CLIENT_TEST_KEY = "test-key-for-make-client"
-REAL_CLIENT_REPLY = '{"lines": [{"index": 0, "reading": "よる", "english": "Night"}]}'
-
-
-@pytest.fixture
-def made_clients(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Replaces `claude.make_client` with one that records the key and returns a fake client."""
-    keys: list[str] = []
-
-    def make_fake_client(api_key: str) -> FakeClaudeClient:
-        keys.append(api_key)
-        fake = FakeClaudeClient()
-        fake.messages.final_message = fake_message(REAL_CLIENT_REPLY)
-        return fake
-
-    monkeypatch.setattr(claude, "make_client", make_fake_client)
-    return keys
-
-
-def test_ac2_without_a_client_create_app_uses_make_client_with_the_api_key(
-    made_clients: list[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """No client is built by `create_app`; the request builds one from the environment's key."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", REAL_CLIENT_TEST_KEY)
-    real_app = create_app()
-    assert made_clients == []
-
-    with TestClient(real_app, base_url="http://127.0.0.1:8000") as test_client:
-        response = test_client.post(VERSIONS_PATH, json={"lyrics": "夜"})
-
-    assert response.status_code == 200
-    assert response.json()["lines"][0]["hiragana"] == "よる"
-    assert made_clients == [REAL_CLIENT_TEST_KEY]
-
-
-@pytest.mark.parametrize(
-    ("lyrics", "api_key", "expected_status", "expected_code"),
-    [
-        ("We sing tonight", REAL_CLIENT_TEST_KEY, 400, "no_japanese"),
-        ("   ", REAL_CLIENT_TEST_KEY, 400, "empty_input"),
-        ("夜", None, 503, "server_not_configured"),
-    ],
-)
-def test_ac22_a_refused_paste_never_builds_the_real_client(
-    made_clients: list[str],
-    monkeypatch: pytest.MonkeyPatch,
-    lyrics: str,
-    api_key: str | None,
-    expected_status: int,
-    expected_code: str,
-) -> None:
-    """Every refusal before the call happens before the real client is built."""
-    if api_key is None:
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    else:
-        monkeypatch.setenv("ANTHROPIC_API_KEY", api_key)
-
-    with TestClient(create_app(), base_url="http://127.0.0.1:8000") as test_client:
-        response = test_client.post(VERSIONS_PATH, json={"lyrics": lyrics})
-
-    assert response.status_code == expected_status
-    assert_error_shape(response.json(), expected_code)
-    assert made_clients == []

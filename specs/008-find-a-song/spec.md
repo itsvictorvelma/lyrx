@@ -110,3 +110,4 @@ Page (Vitest):
 - **Backend:** `gemini.py` asks for and checks hiragana, romaji, and English; `four_versions.py` becomes the shared pipeline; new `lrclib.py` (the two LRCLIB requests), `song_search.py`, `song_versions.py`, `looks_japanese.py`; routes in `app.py`; codes in `errors.py`; settings in `config.py`; shapes in `schemas.py`; `tests/fake_lrclib.py`.
 - **Frontend:** search form, results list, versions table, paste fallback; types in `types.ts`; reply checks.
 - **README:** Gemini key setup and the folder map.
+- **Paste link:** shown at all times, not only after `song_not_found`, so a learner can paste any song (decided in the build; the AC-16 flow still holds).
