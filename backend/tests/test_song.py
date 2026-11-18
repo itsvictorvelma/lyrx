@@ -55,9 +55,17 @@ def test_ac5_a_japanese_song_comes_back_in_four_versions_with_one_gemini_call(
         "hiragana": "きみ の こえ が きこえる",
         "romaji": "kimi no koe ga kikoeru",
         "english": "I can hear your voice",
+        "startMs": None,
     }
-    assert lines[2] == {"index": 2, "original": "", "hiragana": "", "romaji": "", "english": ""}
-    assert set(lines[3].values()) == {3, "We sing tonight"}
+    assert lines[2] == {
+        "index": 2,
+        "original": "",
+        "hiragana": "",
+        "romaji": "",
+        "english": "",
+        "startMs": None,
+    }
+    assert set(lines[3].values()) == {3, "We sing tonight", None}
     assert len(fake_gemini.requests) == 1
     assert sent_indexes(fake_gemini.requests[0]) == SENT
 

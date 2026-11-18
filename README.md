@@ -13,12 +13,13 @@ It runs on your own computer, on `127.0.0.1`, for now.
 - **Find a song:** type a title, an artist, or both. The best match opens; "Not this song?" lists the others.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available".
 - **Your songs:** every song you open is saved and reopens instantly.
+- **Play along:** paste a YouTube link or pick an audio file from your computer; the line being sung is highlighted (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are saved with the song. Your file is never uploaded.
 
 ## Coming next
 
-1. Synced playback: a YouTube video or your own MP3, with the current line highlighted.
-2. One cohesive design for the whole app.
-3. Personal accounts, so family and friends can use a hosted copy.
+1. One cohesive design for the whole app.
+2. Personal accounts, so family and friends can use a hosted copy.
+3. Finding the YouTube video automatically.
 
 ## Setup
 
@@ -81,7 +82,7 @@ lyrx/
 │   │   ├── lyrics/            Finding and preparing lyrics
 │   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record shape
 │   │   │   ├── search.py          Typed text → a short ranked list of songs
-│   │   │   ├── lines.py           Plain lyrics → trimmed lines, one blank line between verses
+│   │   │   ├── lines.py           Lyrics → trimmed lines, and each line's start time
 │   │   │   └── japanese.py        Kana and kanji, and whether lyrics look Japanese
 │   │   ├── translation/       Lines → hiragana, romaji, and English
 │   │   │   ├── chain.py           Groq first, Gemini when Groq is busy
@@ -108,7 +109,11 @@ lyrx/
             ├── api.ts             The requests to the server, and the checks on their replies
             ├── SearchForm.tsx     The search box and Find button
             ├── OtherMatches.tsx   "Not this song?": the other results
-            ├── VersionsTable.tsx  The four-column table
+            ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
             ├── WaitingStatus.tsx  The waiting line with its seconds counter
-            └── SavedSongs.tsx     "Your songs": open or remove a saved song
+            ├── SavedSongs.tsx     "Your songs": open or remove a saved song
+            ├── PlaybackPanel.tsx  "Play along": YouTube link, audio file, Earlier/Later sync
+            ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
+            ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser
+            └── playback.ts        Link → video id, the line being sung, the sync
 ```

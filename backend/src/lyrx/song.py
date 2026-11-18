@@ -7,7 +7,7 @@ import httpx2
 from lyrx.errors import ApiError
 from lyrx.lyrics import lrclib
 from lyrx.lyrics.japanese import looks_japanese
-from lyrx.lyrics.lines import read_lyrics
+from lyrx.lyrics.lines import read_lyrics, start_times
 from lyrx.lyrics.lrclib import LrclibRecord
 from lyrx.schemas import Song, VersionLine
 from lyrx.translation.chain import ReadyTranslator
@@ -30,12 +30,18 @@ def open_song(
         raise ApiError("song_not_japanese")
     sent_lines = [(index, line) for index, line in enumerate(lines) if line]
     translation = request_in_chunks(sent_lines, translators)
-    versions = [make_line(index, line, translation) for index, line in enumerate(lines)]
+    starts = start_times(lines, record.synced_lyrics)
+    versions = [
+        make_line(index, line, translation, start)
+        for index, (line, start) in enumerate(zip(lines, starts, strict=True))
+    ]
     return to_song(record), lines, versions, translation
 
 
-def make_line(index: int, original: str, translation: SongTranslation) -> VersionLine:
-    """A sent line from its checked versions; a blank line stays blank."""
+def make_line(
+    index: int, original: str, translation: SongTranslation, start_ms: int | None
+) -> VersionLine:
+    """A sent line from its checked versions and its start time; a blank line stays blank."""
     if not original:
         return VersionLine(index=index, original="", hiragana="", romaji="", english="")
     line = translation.lines[index]
@@ -45,6 +51,7 @@ def make_line(index: int, original: str, translation: SongTranslation) -> Versio
         hiragana=line.hiragana,
         romaji=line.romaji,
         english=line.english,
+        start_ms=start_ms,
     )
 
 

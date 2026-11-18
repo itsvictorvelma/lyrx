@@ -51,6 +51,7 @@ def record(
     duration: float = 214.4,
     instrumental: bool = False,
     album: str | None = "夜の窓",
+    synced: str | None = None,
 ) -> dict[str, Any]:
     """One LRCLIB record as JSON, with invented values."""
     return {
@@ -62,7 +63,7 @@ def record(
         "duration": duration,
         "instrumental": instrumental,
         "plainLyrics": lyrics,
-        "syncedLyrics": None,
+        "syncedLyrics": synced,
     }
 
 

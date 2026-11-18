@@ -12,6 +12,11 @@ ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
 # A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
 MAX_BODY_BYTES = 256 * 1024
 
+# A YouTube video id: exactly 11 letters, digits, "_" or "-". Only the id is ever kept.
+YOUTUBE_VIDEO_ID_PATTERN = r"^[A-Za-z0-9_-]{11}$"
+# The sync nudge between the audio and the line timings is limited to this, either way.
+PLAYBACK_MAX_OFFSET_MS = 30_000
+
 # The largest song id accepted: SQLite's largest integer. LRCLIB ids are far smaller.
 MAX_SONG_ID = 2**63 - 1
 

@@ -1,4 +1,4 @@
-// Data shapes the page shares with the server: a line, a song, a search result, a request result.
+// Data shapes the page shares with the server: a line, a song, playback, a request result.
 
 export interface Line {
   index: number;
@@ -6,6 +6,14 @@ export interface Line {
   hiragana: string;
   romaji: string;
   english: string;
+  // When the line starts in the song, in milliseconds; null when unknown or blank.
+  startMs: number | null;
+}
+
+// A saved song's YouTube video and how far its line timings are moved, in milliseconds.
+export interface Playback {
+  videoId: string | null;
+  offsetMs: number;
 }
 
 export interface Song {
@@ -25,6 +33,7 @@ export interface SongVersions {
   song: Song;
   lines: Line[];
   fromLibrary: boolean;
+  playback: Playback;
 }
 
 export type ApiResult<Value> =

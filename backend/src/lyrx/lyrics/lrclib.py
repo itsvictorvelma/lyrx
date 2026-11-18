@@ -22,6 +22,7 @@ class LrclibRecord(BaseModel):
     duration: float = Field(default=0, ge=0, strict=True, allow_inf_nan=False)
     instrumental: bool = Field(default=False, strict=True)
     plain_lyrics: str | None = Field(default=None, alias="plainLyrics", strict=True)
+    synced_lyrics: str | None = Field(default=None, alias="syncedLyrics", strict=True)
 
 
 RECORD_ADAPTER = TypeAdapter(LrclibRecord)

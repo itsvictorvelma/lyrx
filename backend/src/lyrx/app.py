@@ -17,6 +17,7 @@ from lyrx.errors import ApiError, ErrorCode, error_response
 from lyrx.lyrics.lrclib import make_lrclib_client
 from lyrx.lyrics.search import search_songs
 from lyrx.schemas import (
+    Playback,
     SavedSongsResponse,
     SongSearchRequest,
     SongSearchResponse,
@@ -36,6 +37,7 @@ SONG_SEARCH_PATH = "/api/song-search"
 SONG_VERSIONS_PATH = "/api/song-versions"
 SAVED_SONGS_PATH = "/api/songs"
 SAVED_SONG_PATH = "/api/songs/{song_id}"
+PLAYBACK_PATH = "/api/songs/{song_id}/playback"
 
 ROUTING_ERROR_CODES: dict[int, ErrorCode] = {404: "not_found", 405: "method_not_allowed"}
 FIRST_SERVER_ERROR_STATUS = 500
@@ -117,6 +119,17 @@ def remove_saved_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
+def save_song_playback(
+    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback
+) -> Response:
+    """Saves a saved song's YouTube video and sync nudge: 204, or 404 when it is not saved."""
+    with logged_request(PLAYBACK_PATH) as log:
+        log.add("lrclib_id", song_id)
+        if not library.save_playback(song_id, body):
+            raise ApiError("song_not_found")
+        return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
 def create_app(
     lrclib_transport: httpx2.BaseTransport | None = None,
     gemini_transport: httpx2.BaseTransport | None = None,
@@ -154,4 +167,5 @@ def create_app(
     app.add_api_route(SONG_VERSIONS_PATH, get_song_versions, methods=["POST"])
     app.add_api_route(SAVED_SONGS_PATH, list_saved_songs, methods=["GET"])
     app.add_api_route(SAVED_SONG_PATH, remove_saved_song, methods=["DELETE"])
+    app.add_api_route(PLAYBACK_PATH, save_song_playback, methods=["PUT"])
     return app

@@ -9,7 +9,7 @@ from contextlib import closing, contextmanager
 from pydantic import TypeAdapter, ValidationError
 
 from lyrx import config
-from lyrx.schemas import Song, SongVersionsResponse, VersionLine
+from lyrx.schemas import Playback, Song, SongVersionsResponse, VersionLine
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,13 @@ CREATE TABLE IF NOT EXISTS saved_songs (
     duration_seconds INTEGER NOT NULL,
     lines_json TEXT NOT NULL,
     saved_at REAL NOT NULL,
-    last_opened_at REAL NOT NULL
+    last_opened_at REAL NOT NULL,
+    video_id TEXT,
+    offset_ms INTEGER NOT NULL DEFAULT 0
 )
 """
+# Columns added after the first release, with their definitions, for older library files.
+ADDED_COLUMNS = {"video_id": "TEXT", "offset_ms": "INTEGER NOT NULL DEFAULT 0"}
 
 
 @contextmanager
@@ -38,14 +42,24 @@ def connect() -> Iterator[sqlite3.Connection]:
     config.DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(config.DATABASE_PATH)) as connection, connection:
         connection.execute(CREATE_TABLE)
+        add_missing_columns(connection)
         yield connection
+
+
+def add_missing_columns(connection: sqlite3.Connection) -> None:
+    """Brings a library made by an older Lyrx up to date; existing rows get the defaults."""
+    present = {row[1] for row in connection.execute("PRAGMA table_info(saved_songs)")}
+    for name, definition in ADDED_COLUMNS.items():
+        if name not in present:
+            # Only names and definitions from ADDED_COLUMNS above are formatted in.
+            connection.execute(f"ALTER TABLE saved_songs ADD COLUMN {name} {definition}")
 
 
 def find_song(song_id: int) -> SongVersionsResponse | None:
     """The saved song, its last-opened time updated; None if not saved or its row is broken."""
     with connect() as connection:
         row = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds, lines_json"
+            "SELECT id, track, artist, album, duration_seconds, lines_json, video_id, offset_ms"
             " FROM saved_songs WHERE id = ?",
             (song_id,),
         ).fetchone()
@@ -61,9 +75,11 @@ def find_song(song_id: int) -> SongVersionsResponse | None:
         return saved
 
 
-def to_saved_song(row: tuple[int, str, str, str, int, str]) -> SongVersionsResponse | None:
+def to_saved_song(
+    row: tuple[int, str, str, str, int, str, str | None, int],
+) -> SongVersionsResponse | None:
     """The row as a reply, after the same checks as any untrusted data."""
-    song_id, track, artist, album, duration_seconds, lines_json = row
+    song_id, track, artist, album, duration_seconds, lines_json, video_id, offset_ms = row
     try:
         lines = LINES_ADAPTER.validate_json(lines_json)
         song = Song(
@@ -77,7 +93,25 @@ def to_saved_song(row: tuple[int, str, str, str, int, str]) -> SongVersionsRespo
         return None
     if [line.index for line in lines] != list(range(len(lines))):
         return None
-    return SongVersionsResponse(song=song, lines=lines)
+    return SongVersionsResponse(song=song, lines=lines, playback=to_playback(video_id, offset_ms))
+
+
+def to_playback(video_id: str | None, offset_ms: int) -> Playback:
+    """The saved video and nudge; a value that fails the checks is dropped, not the song."""
+    try:
+        return Playback.model_validate({"videoId": video_id, "offsetMs": offset_ms})
+    except ValidationError:
+        return Playback()
+
+
+def save_playback(song_id: int, playback: Playback) -> bool:
+    """Saves a saved song's video and nudge; False when the song is not saved."""
+    with connect() as connection:
+        cursor = connection.execute(
+            "UPDATE saved_songs SET video_id = ?, offset_ms = ? WHERE id = ?",
+            (playback.video_id, playback.offset_ms, song_id),
+        )
+        return cursor.rowcount > 0
 
 
 def save_song(reply: SongVersionsResponse) -> None:
