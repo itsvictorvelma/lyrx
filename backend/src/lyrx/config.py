@@ -40,6 +40,10 @@ GEMINI_TIMEOUT_SECONDS = 120
 GEMINI_MAX_OUTPUT_TOKENS = 32768
 # Low thinking: translation needs context, not long reasoning.
 GEMINI_THINKING_LEVEL = "LOW"
+# Most lines in one Gemini request; a longer song is sent in several chunks.
+GEMINI_CHUNK_LINES = 200
+# Most characters in one chunk (its texts joined by "\n"); one chunk's English fits in one reply.
+GEMINI_CHUNK_CHARACTERS = 8000
 
 
 def read_api_key() -> str | None:

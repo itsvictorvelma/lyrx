@@ -336,3 +336,18 @@ def test_ac58_call_error_is_translation_unavailable_with_no_exception_text(
 
     assert_only_code(error, "translation_unavailable")
     assert SECRET_TEXT not in repr(error)
+
+
+CALL_ERRORS: dict[str, httpx2.RequestError] = {
+    "connection-error": httpx2.ConnectError(SECRET_TEXT),
+    "read-timeout": httpx2.ReadTimeout(SECRET_TEXT),
+    "connect-timeout": httpx2.ConnectTimeout(SECRET_TEXT),
+}
+
+
+@pytest.mark.parametrize("reply", CALL_ERRORS.values(), ids=CALL_ERRORS.keys())
+def test_ac58_call_error_hides_the_original_exception_chain(reply: httpx2.RequestError) -> None:
+    error = fail_once(reply)
+
+    assert error.__cause__ is None
+    assert error.__suppress_context__

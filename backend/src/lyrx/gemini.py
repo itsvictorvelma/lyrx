@@ -85,11 +85,15 @@ def request_english(
 
 
 def build_user_message(lines: NumberedLines) -> str:
+    """The numbered lines between <lyrics> tags."""
+    # ponytail: a lyric line containing "</lyrics>" is not escaped, so it could close the tag
+    # early; upgrade: reject or escape such lines before building the message.
     numbered = "\n".join(f"[{index}] {text}" for index, text in lines)
     return f"<lyrics>\n{numbered}\n</lyrics>"
 
 
 def build_body(lines: NumberedLines) -> dict[str, Any]:
+    """The JSON body of the generateContent request."""
     return {
         "systemInstruction": {"parts": [{"text": SYSTEM_INSTRUCTION}]},
         "contents": [{"role": "user", "parts": [{"text": build_user_message(lines)}]}],
@@ -126,9 +130,12 @@ def send_request(
 
 
 def parse_envelope(response: httpx2.Response) -> GeminiEnvelope:
+    """Parses and validates the reply's outer wrapper."""
+    # ponytail: the reply is read with no byte cap; it is bounded by maxOutputTokens and the
+    # fixed host. Upgrade: stream it with a cap.
     try:
         return GeminiEnvelope.model_validate_json(response.content)
-    except ValidationError:
+    except (ValidationError, RecursionError):
         raise TranslationFailed("translation_invalid") from None
 
 
