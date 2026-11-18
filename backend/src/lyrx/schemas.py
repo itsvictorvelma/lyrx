@@ -1,4 +1,4 @@
-"""Data shapes: request bodies, responses, the LRCLIB record, and the Gemini reply."""
+"""Data shapes: request bodies, responses, the LRCLIB record, and the Groq and Gemini replies."""
 
 from dataclasses import dataclass
 
@@ -141,8 +141,43 @@ class GeminiEnvelope(BaseModel):
     usage_metadata: GeminiUsage | None = Field(default=None, alias="usageMetadata")
 
 
-class GeminiLine(BaseModel):
-    """One line of Gemini's reply. Strict: no coercion and no extra fields."""
+class GroqMessage(BaseModel):
+    """A Groq choice's message; only the reply text is read."""
+
+    model_config = ConfigDict(strict=True)
+
+    content: str | None = None
+
+
+class GroqChoice(BaseModel):
+    """One Groq choice: its message and why it ended."""
+
+    model_config = ConfigDict(strict=True)
+
+    message: GroqMessage | None = None
+    finish_reason: str | None = None
+
+
+class GroqUsage(BaseModel):
+    """The token counts Groq reports. A missing count is zero."""
+
+    model_config = ConfigDict(strict=True)
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+
+class GroqReply(BaseModel):
+    """The chat-completions reply around the text. Fields Lyrx does not read are ignored."""
+
+    model_config = ConfigDict(strict=True)
+
+    choices: list[GroqChoice] = []
+    usage: GroqUsage | None = None
+
+
+class ReplyLine(BaseModel):
+    """One line of a translator's reply. Strict: no coercion and no extra fields."""
 
     model_config = ConfigDict(strict=True, extra="forbid")
 
@@ -158,7 +193,7 @@ class GeminiLine(BaseModel):
 
 @dataclass(frozen=True)
 class TokenUsage:
-    """The tokens Gemini reports for one or more calls."""
+    """The tokens a translator reports for one or more calls."""
 
     input_tokens: int
     output_tokens: int
@@ -166,7 +201,7 @@ class TokenUsage:
 
 @dataclass(frozen=True)
 class LineVersions:
-    """The three versions Gemini made for one line, after every check."""
+    """The three versions a translator made for one line, after every check."""
 
     hiragana: str
     romaji: str
@@ -174,17 +209,26 @@ class LineVersions:
 
 
 @dataclass(frozen=True)
-class ChunkReply:
-    """One Gemini reply after its checks: the good lines, and the lines to ask again."""
+class TranslatorReply:
+    """One translator's reply text, before any check, with its token counts."""
 
-    lines: dict[int, LineVersions]
-    bad_indexes: list[int]
+    text: str
     usage: TokenUsage
 
 
 @dataclass(frozen=True)
-class GeminiVersions:
-    """Gemini's versions for a song by line index, and what it took, for the log.
+class ChunkReply:
+    """One reply after its checks: the good lines, the lines to ask again, who answered."""
+
+    lines: dict[int, LineVersions]
+    bad_indexes: list[int]
+    usage: TokenUsage
+    translator: str
+
+
+@dataclass(frozen=True)
+class SongTranslation:
+    """The versions for a song by line index, and what it took, for the log.
 
     `missing_lines` failed the checks even when asked again; they are shown without versions.
     """
@@ -195,3 +239,5 @@ class GeminiVersions:
     retries: int = 0
     missing_lines: int = 0
     elapsed_ms: int = 0
+    # The translators that answered, in chain order.
+    translators: tuple[str, ...] = ()

@@ -24,7 +24,7 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
 - **Japanese first.** Other languages are added one spec at a time, after Japanese works end to end.
 - **No paid AI or API services** (decided 2026-11-17).
   - Lyrics come from LRCLIB (free, no key).
-  - Every version except the original (hiragana, romaji, English) comes from one Gemini API free-tier call per song, checked against a schema. No local reading dictionaries (decided 2026-11-17: less code, and new languages need only a new prompt).
+  - Every version except the original (hiragana, romaji, English) comes from a free-tier AI translator, checked against a schema: Groq first, Gemini as the backup when Groq is busy (decided 2026-11-18, spec 010). No local reading dictionaries (decided 2026-11-17: less code, and new languages need only a new prompt).
 - **Lyrics source.** LRCLIB only. Pasting lyrics was removed (decided 2026-11-18). Scraping other lyrics sites is out for now (terms of use, fragile pages, SSRF risk). Revisit only if LRCLIB misses often.
 - **Layout.** Columns side by side, one row per lyric line.
 - **Hosting is planned.** The app will be hosted on a server for the user, family, and friends, with personal accounts (a later spec). Until that spec, it runs on `127.0.0.1`. The user handles the server and domain; specs only make the app ready for it.
@@ -56,13 +56,13 @@ Limits:
 ## Security rules (non-negotiable)
 
 ### Secrets
-- API keys (Gemini) live only in the environment or a gitignored `.env`. Never hardcode, commit, log, print, or send them to the browser.
+- API keys (Groq, Gemini) live only in the environment or a gitignored `.env`. Never hardcode, commit, log, print, or send them to the browser.
 - Never weaken `.gitignore` for `.env*`, `*.mp3`, databases, or `.claude/settings.local.json`.
 
 ### Untrusted input
 - Typed song names, LRCLIB replies, saved rows, and model output are all untrusted.
 - Enforce size limits before anything else reads them.
-- The server calls only fixed hosts (LRCLIB, Gemini), over `https`, with a timeout, a size cap, no redirects, and no proxy from the environment. It never fetches a URL the learner supplies.
+- The server calls only fixed hosts (LRCLIB, Groq, Gemini), over `https`, with a timeout, a size cap, no redirects, and no proxy from the environment. It never fetches a URL the learner supplies.
 - Lyrics sent to the model are data, never instructions. The system instruction says so.
 - Model output is validated against a schema before the app uses it. Invalid output creates nothing.
 - Fetched and generated text is rendered as text, never as HTML.
@@ -73,7 +73,7 @@ Limits:
 
 ### Lyrics and tests
 - Song lyrics are copyrighted. Never commit real lyrics: tests, fixtures, specs, and docs use invented lines.
-- Default tests never call Gemini, LRCLIB, or the network. Outside calls are replaced with fakes.
+- Default tests never call Groq, Gemini, LRCLIB, or the network. Outside calls are replaced with fakes.
 
 ### Before every commit
 - Run `git status` and `git diff --cached`.
@@ -110,7 +110,7 @@ The code must be easy to read for someone who has never worked in this repo. The
 
 ## Domain notes (Japanese)
 
-- Gemini is asked to spell the romaji from its own hiragana, and to keep kana already in the line as written. The server checks that the hiragana has no kanji and the romaji has no kana or kanji.
+- The translator is asked to spell the romaji from its own hiragana, and to keep kana already in the line as written. The server checks that the hiragana has no kanji and the romaji has no kana or kanji.
 - Line count and order are the same in every version. Index from 0, no gaps.
 
 ## Tests

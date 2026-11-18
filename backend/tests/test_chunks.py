@@ -21,7 +21,8 @@ from lyrx import config
 from lyrx.chunks import MISSING, request_in_chunks
 from lyrx.errors import ApiError
 from lyrx.http_clients import make_gemini_client
-from lyrx.schemas import GeminiVersions
+from lyrx.schemas import SongTranslation
+from lyrx.translators import ReadyTranslator
 
 API_KEY = "fake-gemini-key-not-real-0123"
 # Ten invented Japanese lines; index 5 was blank, so it is left out.
@@ -29,8 +30,11 @@ INDEXES = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
 LINES = [(index, f"空の歌{index}") for index in INDEXES]
 
 
-def run(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> GeminiVersions:
-    return request_in_chunks(lines, API_KEY, make_gemini_client(fake.make_transport()))
+def run(fake: FakeGemini, lines: list[tuple[int, str]] = LINES) -> SongTranslation:
+    gemini = next(t for t in config.TRANSLATORS if t.service == "gemini")
+    client = make_gemini_client(fake.make_transport())
+    translator = ReadyTranslator(gemini.name, gemini.service, gemini.model, API_KEY, client)
+    return request_in_chunks(lines, [translator])
 
 
 def chunks_sent(fake: FakeGemini) -> list[list[int]]:
@@ -40,8 +44,8 @@ def chunks_sent(fake: FakeGemini) -> list[list[int]]:
 def test_chunks_run_at_the_same_time_but_never_more_than_the_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 1)
-    limit = config.GEMINI_PARALLEL_REQUESTS
+    monkeypatch.setattr(config, "CHUNK_LINES", 1)
+    limit = config.PARALLEL_REQUESTS
     # Each of the first `limit` requests waits until all of them are in flight together.
     barrier = threading.Barrier(limit, timeout=5)
     in_flight = 0
@@ -73,8 +77,8 @@ def test_chunks_run_at_the_same_time_but_never_more_than_the_limit(
 def test_a_failing_chunk_stops_the_song_and_unsent_chunks_are_never_sent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 2)
-    monkeypatch.setattr(config, "GEMINI_PARALLEL_REQUESTS", 1)
+    monkeypatch.setattr(config, "CHUNK_LINES", 2)
+    monkeypatch.setattr(config, "PARALLEL_REQUESTS", 1)
     fake = FakeGemini()
     fake.script(status(429))
 
@@ -88,7 +92,7 @@ def test_a_failing_chunk_stops_the_song_and_unsent_chunks_are_never_sent(
 def test_chunks_cover_every_line_once_and_each_carries_the_whole_song(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 4)
+    monkeypatch.setattr(config, "CHUNK_LINES", 4)
     fake = FakeGemini(answer=answer_with_placeholders)
 
     result = run(fake)
@@ -105,8 +109,8 @@ def test_chunks_cover_every_line_once_and_each_carries_the_whole_song(
 def test_a_very_long_song_sends_each_chunk_without_the_whole_song(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_LINES", 5)
-    monkeypatch.setattr(config, "GEMINI_CONTEXT_MAX_CHARACTERS", 10)
+    monkeypatch.setattr(config, "CHUNK_LINES", 5)
+    monkeypatch.setattr(config, "CONTEXT_MAX_CHARACTERS", 10)
     fake = FakeGemini(answer=answer_with_placeholders)
 
     run(fake)
@@ -117,7 +121,7 @@ def test_a_very_long_song_sends_each_chunk_without_the_whole_song(
 def test_a_line_longer_than_the_character_size_goes_in_a_chunk_alone(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "GEMINI_CHUNK_CHARACTERS", 10)
+    monkeypatch.setattr(config, "CHUNK_CHARACTERS", 10)
     lines = [(0, "短い"), (1, "とても長い長い長い長い長い歌詞の行"), (2, "短い"), (3, "短い")]
     fake = FakeGemini(answer=answer_with_placeholders)
 
@@ -145,7 +149,7 @@ def test_after_all_retries_the_song_fails_with_the_last_error() -> None:
         run(fake)
 
     assert caught.value.code == "translation_unavailable"
-    assert len(fake.requests) == 1 + len(config.GEMINI_RETRY_WAIT_SECONDS)
+    assert len(fake.requests) == 1 + len(config.RETRY_WAIT_SECONDS)
 
 
 @pytest.mark.parametrize(

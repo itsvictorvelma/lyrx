@@ -35,11 +35,14 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "song_not_found": (404, "No song found for that name. Try the title and artist."),
     "song_not_japanese": (422, "Lyrx only supports Japanese songs for now."),
     "lyrics_source_unavailable": (502, "The lyrics site could not be reached. Try again."),
-    "translation_rate_limited": (429, "The free Gemini limit was reached. Try again later."),
-    "translation_blocked": (502, "Gemini declined these lyrics."),
-    "translation_unavailable": (503, "Gemini could not be reached. Try again."),
-    "translation_invalid": (502, "Gemini's reply did not pass the checks. Try again."),
-    "server_not_configured": (503, "The server has no Gemini API key. See the README."),
+    "translation_rate_limited": (429, "The free translator limits were reached. Try again later."),
+    "translation_blocked": (502, "The translator declined these lyrics."),
+    "translation_unavailable": (503, "The translators are busy right now. Try again."),
+    "translation_invalid": (502, "The translator's reply did not pass the checks. Try again."),
+    "server_not_configured": (
+        503,
+        "The server has no translator key (GROQ_API_KEY or GEMINI_API_KEY). See the README.",
+    ),
     "internal_error": (500, "Something went wrong on the server."),
 }
 

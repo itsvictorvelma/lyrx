@@ -25,7 +25,7 @@ def failing_then(errors: list[ApiError]) -> Callable[[], str]:
 @pytest.fixture
 def waits(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     """The configured waits restored, and every sleep recorded instead of slept."""
-    monkeypatch.setattr(config, "GEMINI_RETRY_WAIT_SECONDS", (1.0, 3.0))
+    monkeypatch.setattr(config, "RETRY_WAIT_SECONDS", (1.0, 3.0))
     slept: list[float] = []
     monkeypatch.setattr(time, "sleep", slept.append)
     return slept

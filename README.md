@@ -2,7 +2,7 @@
 
 An app for learning a Japanese song. Type the song's name, and Lyrx shows every line in four columns: Original, Hiragana, Romaji, and English.
 
-The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). The Gemini API free tier makes the hiragana, romaji, and English for every line, and the server checks its reply before showing it. Every song you open is saved on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no Gemini quota.
+The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). A free AI translator makes the hiragana, romaji, and English for every line: Groq first, Gemini as the backup when Groq is busy. The server checks every reply before showing it. Every song you open is saved on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no quota.
 
 It runs on your own computer, on `127.0.0.1`, for now.
 
@@ -10,20 +10,20 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 ## Setup
 
-You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free Gemini API key.
+You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free API key from Groq, Gemini, or both (both is best: when one is busy, the other answers).
 
 1. Install the dependencies:
    ```bash
    cd backend && uv sync && cd ..
    cd frontend && npm install && cd ..
    ```
-2. Get a free key at [Google AI Studio](https://aistudio.google.com/apikey), then:
+2. Get free keys at [Groq](https://console.groq.com/keys) and [Google AI Studio](https://aistudio.google.com/apikey), then:
    ```bash
    cp .env.example .env
    ```
-   Put your key after `GEMINI_API_KEY=` in `.env`. The file is gitignored, so the key is never committed.
+   Put the keys after `GROQ_API_KEY=` and `GEMINI_API_KEY=` in `.env`. One key is enough; with both, a busy translator hands over to the other. The file is gitignored, so the keys are never committed.
 
-The free tier has daily and per-minute limits (shown in AI Studio). Lyrx uses Gemini Flash-Lite, which has the highest free daily limit of the Gemini models (about 500 requests). A song is one call per 40 lines, sent at the same time, so most songs take 1 or 2 calls. When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
+Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about 2 songs a minute); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
 
 ## Run
 
@@ -47,7 +47,7 @@ Use two terminals.
 scripts/check.sh
 ```
 
-Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ESLint, `tsc`, Vitest, and the build. No test calls Gemini, LRCLIB, or the network.
+Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ESLint, `tsc`, Vitest, and the build. No test calls Groq, Gemini, LRCLIB, or the network.
 
 ## Folder map
 
@@ -56,7 +56,7 @@ lyrx/
 ├── AGENTS.md              Rules and workflow
 ├── specs/                 One folder per feature
 ├── scripts/check.sh       Every check in one command
-├── .env.example           The one setting: GEMINI_API_KEY
+├── .env.example           The settings: GROQ_API_KEY and GEMINI_API_KEY
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
 │   │   ├── __main__.py        Starts the server on 127.0.0.1
@@ -66,10 +66,14 @@ lyrx/
 │   │   ├── library.py         Saved songs in one SQLite file
 │   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
 │   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
-│   │   ├── chunks.py          Cuts a song into small chunks sent to Gemini at the same time
-│   │   ├── retries.py         Retries an overloaded or failed Gemini request after a short wait
-│   │   ├── http_clients.py    The shared Gemini and LRCLIB clients, built once per app
-│   │   ├── gemini.py          The Gemini request and the checks on its reply
+│   │   ├── chunks.py          Cuts a song into chunks sent to the translators at the same time
+│   │   ├── retries.py         Retries an overloaded or failed request after a short wait
+│   │   ├── http_clients.py    The shared Groq, Gemini, and LRCLIB clients, built once per app
+│   │   ├── translators.py     The translator chain: Groq, then Gemini when Groq is busy
+│   │   ├── translation_prompt.py  What every translator is asked, and the reply shape
+│   │   ├── reply_checks.py    The checks on a reply: its JSON, then each line
+│   │   ├── groq.py            One Groq request and its reply text
+│   │   ├── gemini.py          One Gemini request and its reply text
 │   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
 │   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines
 │   │   ├── looks_japanese.py  Whether lyrics look Japanese (enough lines with kana)
@@ -81,7 +85,7 @@ lyrx/
 │   │   ├── schemas.py         Data shapes
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
 │   │   └── config.py          Every setting in one place
-│   └── tests/             One test_<module>.py per module, plus fake Gemini and LRCLIB
+│   └── tests/             One test_<module>.py per module, plus fake Groq, Gemini, and LRCLIB
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
