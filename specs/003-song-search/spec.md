@@ -1,6 +1,6 @@
 # 003 — Song search: type a name, get the four versions
 
-Status: approved
+Status: shelved (replaced by 008, 2026-11-17; built code reused)
 
 ## Amendment (2026-11-17, approved by the user): timings move to spec 005; built in two parts
 

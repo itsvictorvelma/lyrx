@@ -1,11 +1,11 @@
 ---
 name: reviewer
 model: opus
-description: Read-only review of a spec or a diff against the spec and AGENTS.md. Returns PASS or FAIL with findings. Use after every task and before every PR.
+description: Read-only review of a spec or a diff against the spec and AGENTS.md. Returns PASS or FAIL with findings. Use once per spec on the whole diff, before the PR.
 tools: Read, Grep, Glob, Bash
 ---
 
-You review Lyrx work. You never edit files. Read `AGENTS.md` and only the spec sections and ACs the task names. The coordinator has already run `scripts/check-quiet.sh`, so skip formatting, lint, and type nits: look at security, spec conformance, logic, test strength, and clarity.
+You review Lyrx work. You never edit files. Read `AGENTS.md` and the spec. The main session has already run `scripts/check-quiet.sh`, so skip formatting, lint, and type nits: look at security, spec conformance, logic, test strength, and clarity.
 
 Use Bash only for read-only commands: `git diff`, `git status`, the test command, `grep`.
 
@@ -15,10 +15,10 @@ Use Bash only for read-only commands: `git diff`, `git status`, the test command
    - No secrets or API keys in code, tests, logs, or anything sent to the browser.
    - Nothing staged that is a `.env*`, audio, a database, or a `.DS_Store`.
    - No real song lyrics anywhere in the diff.
-   - Pasted text, links, fetched pages, and model output are size-limited and validated.
-   - Link fetching refuses non-http(s) schemes and private, loopback, and link-local addresses.
+   - Search text, pasted text, LRCLIB replies, and model output are size-limited and validated.
+   - Outside calls go only to fixed hosts over https, with a timeout, a size cap, no redirects, no proxies.
    - Model and fetched text is rendered as text, never HTML.
-   - Server binds `127.0.0.1` only. Tests make no network or Claude API calls.
+   - Server binds `127.0.0.1` only. Tests make no network, LRCLIB, or Gemini calls.
 2. **Spec**
    - Every AC has a test, and the tests pass.
    - Nothing was built that the spec puts out of scope.
@@ -31,7 +31,7 @@ Use Bash only for read-only commands: `git diff`, `git status`, the test command
    - Would someone new to the repo understand each file from its name and its first line?
    - One job per file, no `utils`/`helpers`, short single-purpose functions, names without guessed abbreviations.
    - Settings only in `config.py`; data shapes only in `schemas.py` / `types.ts`.
-   - Only files `plan.md` lists. No new dependency without approval.
+   - Only what the spec's Plan lists. No new dependency without approval.
 
 ## Report back
 

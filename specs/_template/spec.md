@@ -2,6 +2,8 @@
 
 Status: draft
 
+<!-- Aim for under 150 lines. The goal is a page the user can click. -->
+
 ## Goal
 
 One or two sentences: what this delivers and why the learner needs it.
@@ -16,9 +18,7 @@ One or two sentences: what this delivers and why the learner needs it.
 
 ## Inputs and outputs
 
-Input: …
-
-Output: …
+…
 
 ## Rules
 
@@ -27,14 +27,13 @@ Output: …
 ## Security
 
 - Untrusted input and how it is validated: …
-- What is sent to the Claude API or fetched from the network: …
+- What is sent to an outside service: …
 - What is logged and what touches disk: …
 
 ## Acceptance checks
 
 - AC-1: …
-- AC-2: …
 
-## Open questions
+## Plan
 
-- …
+Added after approval: files touched, approach, side effects.

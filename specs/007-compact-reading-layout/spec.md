@@ -1,6 +1,6 @@
 # 007 — Compact reading layout
 
-Status: draft
+Status: shelved (replaced by the columns layout in 008, 2026-11-17)
 
 ## Goal
 
