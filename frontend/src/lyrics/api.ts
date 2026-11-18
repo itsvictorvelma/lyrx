@@ -1,43 +1,64 @@
-// Asks the Lyrx server for the four versions of pasted lyrics and checks its reply.
-import type { FourVersionsResult, Line } from "./types";
+// Calls the Lyrx server (search, open a song, paste) and checks every reply before use.
+import type {
+  ApiResult,
+  Line,
+  SearchResult,
+  Song,
+  SongVersions,
+} from "./types";
 
-const VERSIONS_URL = "/api/versions";
+export async function searchSongs(
+  query: string,
+): Promise<ApiResult<SearchResult[]>> {
+  const result = await postJson("/api/song-search", { query }, isSearchReply);
+  return result.kind === "ok"
+    ? { kind: "ok", value: result.value.results }
+    : result;
+}
 
-export async function getFourVersions(
+export function getSongVersions(id: number): Promise<ApiResult<SongVersions>> {
+  return postJson("/api/song-versions", { id }, isSongVersionsReply);
+}
+
+export async function getPasteVersions(
   lyrics: string,
-): Promise<FourVersionsResult> {
+): Promise<ApiResult<Line[]>> {
+  const result = await postJson("/api/versions", { lyrics }, isLinesReply);
+  return result.kind === "ok"
+    ? { kind: "ok", value: result.value.lines }
+    : result;
+}
+
+async function postJson<Reply>(
+  url: string,
+  body: unknown,
+  isValid: (value: unknown) => value is Reply,
+): Promise<ApiResult<Reply>> {
   let response: Response;
+  let text: string;
   try {
-    response = await fetch(VERSIONS_URL, {
+    response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lyrics }),
+      body: JSON.stringify(body),
     });
   } catch {
     return { kind: "unreachable" };
   }
-
-  let bodyText: string;
   try {
-    bodyText = await response.text();
+    text = await response.text();
   } catch {
     return { kind: "unreadable" };
   }
-  return readReply(response.status, parseJson(bodyText));
-}
-
-function readReply(status: number, body: unknown): FourVersionsResult {
-  if (status === 200) {
-    return isLinesReply(body)
-      ? { kind: "lines", lines: body.lines }
+  const reply = parseJson(text);
+  if (response.status === 200) {
+    return isValid(reply)
+      ? { kind: "ok", value: reply }
       : { kind: "unreadable" };
   }
-  if (!isErrorReply(body)) {
-    return { kind: "unreadable" };
-  }
-  return body.details !== undefined
-    ? { kind: "error", code: body.code, details: body.details }
-    : { kind: "error", code: body.code };
+  return isErrorReply(reply)
+    ? { kind: "error", code: reply.code, message: reply.message }
+    : { kind: "unreadable" };
 }
 
 function parseJson(text: string): unknown {
@@ -59,24 +80,59 @@ function isLine(value: unknown): value is Line {
     typeof value.original === "string" &&
     typeof value.hiragana === "string" &&
     typeof value.romaji === "string" &&
-    typeof value.english === "string" &&
-    typeof value.readingVerified === "boolean"
+    typeof value.english === "string"
   );
 }
 
 // Indexes must run 0, 1, 2… in order with no gaps, as the server promises.
-function isLinesReply(value: unknown): value is { lines: Line[] } {
+function isLineList(value: unknown): value is Line[] {
   return (
-    isRecord(value) &&
-    Array.isArray(value.lines) &&
-    value.lines.every(
+    Array.isArray(value) &&
+    value.every(
       (line: unknown, position) => isLine(line) && line.index === position,
     )
   );
 }
 
+function isSong(value: unknown): value is Song {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.id) &&
+    typeof value.track === "string" &&
+    typeof value.artist === "string" &&
+    typeof value.album === "string" &&
+    Number.isInteger(value.durationSeconds)
+  );
+}
+
+function isSearchResult(value: unknown): value is SearchResult {
+  return (
+    isRecord(value) && isSong(value) && typeof value.looksJapanese === "boolean"
+  );
+}
+
+function isSearchReply(value: unknown): value is { results: SearchResult[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.results) &&
+    value.results.every(isSearchResult)
+  );
+}
+
+function isSongVersionsReply(value: unknown): value is SongVersions {
+  return isRecord(value) && isSong(value.song) && isLineList(value.lines);
+}
+
+function isLinesReply(value: unknown): value is { lines: Line[] } {
+  return isRecord(value) && isLineList(value.lines);
+}
+
 function isErrorReply(
   value: unknown,
-): value is { code: string; details?: unknown } {
-  return isRecord(value) && typeof value.code === "string";
+): value is { code: string; message: string } {
+  return (
+    isRecord(value) &&
+    typeof value.code === "string" &&
+    typeof value.message === "string"
+  );
 }

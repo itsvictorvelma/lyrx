@@ -1,31 +1,35 @@
 # Lyrx
 
-A local app for learning a Japanese song. Paste the lyrics, and Lyrx shows every line in four versions: Original, Hiragana, Romaji, and English.
+An app for learning a Japanese song. Type the song's name, and Lyrx shows every line in four columns: Original, Hiragana, Romaji, and English.
 
-It runs only on your own computer, on `127.0.0.1`. One call to the Claude API returns the hiragana reading and the English for every line. The server checks that reply and spells the romaji from the hiragana in code.
+The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). One call to the Gemini API free tier makes the hiragana, romaji, and English for every line. The server checks that reply before showing it. If LRCLIB has no match, you can paste the lyrics instead.
 
-[AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved. The previous version is preserved at the git tag `archive/cursor-v1`.
+It runs on your own computer, on `127.0.0.1`, for now.
+
+[AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
 
 ## Setup
 
-You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a Claude API key.
+You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free Gemini API key.
 
 1. Install the dependencies:
    ```bash
    cd backend && uv sync && cd ..
    cd frontend && npm install && cd ..
    ```
-2. Add your API key. The `.env` file is gitignored, so the key is never committed:
+2. Get a free key at [Google AI Studio](https://aistudio.google.com/apikey), then:
    ```bash
    cp .env.example .env
    ```
-   Then put your key after `ANTHROPIC_API_KEY=` in `.env`.
+   Put your key after `GEMINI_API_KEY=` in `.env`. The file is gitignored, so the key is never committed.
+
+The free tier has daily and per-minute limits (shown in AI Studio). A song is a few small calls sent at once (about one per 15 lines). When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
 
 ## Run
 
 Use two terminals.
 
-1. The server, on `127.0.0.1:8000`. The server reads the key from the environment, so pass the `.env` file to `uv`:
+1. The server, on `127.0.0.1:8000`:
    ```bash
    cd backend
    uv run --env-file ../.env python -m lyrx
@@ -35,9 +39,7 @@ Use two terminals.
    cd frontend
    npm run dev
    ```
-   Open the address it prints (normally `http://127.0.0.1:5173`). It forwards `/api` requests to the server.
-
-Each submit makes one call to the Claude API, which is billed to your key.
+   Open the address it prints (normally `http://127.0.0.1:5173`).
 
 ## Check
 
@@ -45,50 +47,51 @@ Each submit makes one call to the Claude API, which is billed to your key.
 scripts/check.sh
 ```
 
-This runs every check, and nothing merges unless it passes:
-- **Backend:** ruff format, ruff lint, mypy `--strict`, pytest.
-- **Frontend:** Prettier, ESLint, `tsc`, Vitest, and the build.
-
-No test calls the Claude API or the network.
+Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ESLint, `tsc`, Vitest, and the build. No test calls Gemini, LRCLIB, or the network.
 
 ## Folder map
 
 ```
 lyrx/
-├── AGENTS.md              Rules and workflow for every human and agent
-├── specs/                 One folder per feature: spec, plan, tasks
+├── AGENTS.md              Rules and workflow
+├── specs/                 One folder per feature
 ├── scripts/check.sh       Every check in one command
-├── .env.example           The one setting: ANTHROPIC_API_KEY
+├── .env.example           The one setting: GEMINI_API_KEY
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
 │   │   ├── __main__.py        Starts the server on 127.0.0.1
-│   │   ├── app.py             Builds the app: the route and the error handlers
-│   │   ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
-│   │   ├── body_limit.py      Refuses request bodies over 64 KB before they are parsed
-│   │   ├── crash_guard.py     Turns any unexpected error into a plain 500
-│   │   ├── request_log.py     The one log line per request (no lyrics, no key)
-│   │   ├── four_versions.py   The pipeline: paste in, four versions out
-│   │   ├── lines.py           Reads and splits the paste and checks the size limits
-│   │   ├── prompt.py          The system prompt and the message sent to Claude
-│   │   ├── claude.py          The one Claude call and the checks on its reply
-│   │   ├── readings.py        Checks Claude's hiragana reading against the line
-│   │   ├── romaji.py          Spells romaji from hiragana (modified Hepburn)
+│   │   ├── app.py             Builds the app: three routes and the error handlers
+│   │   ├── song_search.py     Search: typed text → ranked LRCLIB results
+│   │   ├── song_versions.py   Open a song: LRCLIB id → four versions
+│   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
+│   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
+│   │   ├── chunks.py          Cuts a song into small chunks sent to Gemini at the same time
+│   │   ├── retries.py         Retries an overloaded or failed Gemini request after a short wait
+│   │   ├── http_clients.py    The shared Gemini and LRCLIB clients, built once per app
+│   │   ├── gemini.py          The Gemini request and the checks on its reply
+│   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
+│   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines
+│   │   ├── looks_japanese.py  Whether lyrics look Japanese (enough lines with kana)
 │   │   ├── kana.py            Which characters are kana and kanji
-│   │   ├── schemas.py         Data shapes: request, response, Claude's reply
+│   │   ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
+│   │   ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
+│   │   ├── crash_guard.py     Turns any unexpected error into a plain 500
+│   │   ├── request_log.py     One log line per request (no lyrics, no key)
+│   │   ├── schemas.py         Data shapes
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
 │   │   └── config.py          Every setting in one place
-│   └── tests/             One test_<module>.py per module, plus a fake Claude client
+│   └── tests/             One test_<module>.py per module, plus fake Gemini and LRCLIB
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
-        ├── App.tsx            Page layout and its state: idle, waiting, result, error
+        ├── App.tsx            The page and its state: find, open, paste, errors
         ├── styles.css         Neutral colors, Japanese font stack, visible focus
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
-            ├── api.ts             The one request to the server, and the checks on its reply
-            ├── errorMessages.ts   Error code → message on the page
-            ├── PasteForm.tsx      The paste box, the button, and the waiting status
-            └── FourVersions.tsx   Each line in its four labeled versions
+            ├── api.ts             The three requests, and the checks on their replies
+            ├── SearchForm.tsx     The search box and Find button
+            ├── OtherMatches.tsx   "Not this song?": the other results
+            ├── VersionsTable.tsx  The four-column table
+            ├── WaitingStatus.tsx  The waiting line with its seconds counter
+            └── PasteForm.tsx      The paste fallback
 ```
-
-Tests sit next to what they test: `backend/tests/test_<module>.py` and `frontend/src/**/*.test.ts(x)`.

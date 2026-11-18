@@ -4,7 +4,7 @@ import json
 
 import pytest
 from error_shape import assert_error_shape
-from fake_claude import FakeClaudeClient
+from fake_gemini import FakeGemini
 from fastapi.testclient import TestClient
 
 from lyrx.app import VERSIONS_PATH
@@ -39,7 +39,7 @@ def test_ac30_foreign_host_is_rejected_before_routing(client: TestClient) -> Non
     "host", ["127.0.0.1", "127.0.0.1:8000", "localhost", "localhost:8000", "localhost:5173"]
 )
 def test_ac30_local_host_passes_the_host_check(client: TestClient, host: str) -> None:
-    # A body without `lyrics` keeps the request away from Claude; only the Host check matters.
+    # A body without `lyrics` keeps the request away from Gemini; only the Host check matters.
     response = client.post(VERSIONS_PATH, json={}, headers={"Host": host})
 
     assert response.status_code == 400
@@ -47,7 +47,7 @@ def test_ac30_local_host_passes_the_host_check(client: TestClient, host: str) ->
 
 
 def test_ac30_foreign_host_is_rejected_before_the_body_size_cap(
-    client: TestClient, fake_claude_client: FakeClaudeClient
+    client: TestClient, fake_gemini: FakeGemini
 ) -> None:
     oversized_body = json.dumps({"lyrics": "夜の月" * 30_000}).encode()
     assert len(oversized_body) > 70_000
@@ -60,4 +60,4 @@ def test_ac30_foreign_host_is_rejected_before_the_body_size_cap(
 
     assert response.status_code == 403
     assert_error_shape(response.json(), "host_not_allowed")
-    assert fake_claude_client.messages.calls == []
+    assert fake_gemini.requests == []

@@ -27,4 +27,4 @@ Each task is one test-writer → implementer → reviewer round. Server tests us
 - [x] T9 follow-up (accessibility, same reason as T9): on an error, move focus to the paste box so a keyboard user can fix the text where they left off; focus is otherwise lost when the button disables. Rename the T9 tests to say they are accessibility checks from T9, since no AC lists them.
 - [x] README: folder map, setup (key, both servers), and `scripts/check.sh`.
 - [x] T10 (AC-48, approved by the user after the first real test): a size refusal names the limit it broke. Server: `details` gain `limitHit`, `measured`, and `lineNumber` (line cap only); the `input_too_large` message is built from them. The 64 KB body cap keeps the AC-45 message. Page: `api.ts` passes the details on, checked; the page builds the same sentence with comma-grouped numbers whatever the browser language, and falls back to the AC-45 message.
-- [ ] Final review (redo for T10) of the whole diff, then the explainer's walkthrough, then the PR.
+- [x] Final review (redo for T10) of the whole diff, then the explainer's walkthrough, then the PR.

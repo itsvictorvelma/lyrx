@@ -1,19 +1,20 @@
-"""Tests for the body cap: over 64 KB is refused before parsing; a cut-off body ends quietly."""
+"""Tests for the body cap: over 256 KiB is refused before parsing; a cut-off body ends quietly."""
 
 import json
 import logging
+from typing import Any
 
 import pytest
 from error_shape import assert_error_shape
-from fake_claude import FakeClaudeClient
+from fake_gemini import FakeGemini, answer_with_placeholders
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pastes import LIMIT_DETAILS, LIMIT_MESSAGE
 from raw_asgi import (
     ALLOWED_HOST_HEADER,
     JSON_CONTENT_TYPE_HEADER,
     UVICORN_ERROR_LOGGER,
     body_messages,
+    response_body,
     response_status,
     run_like_uvicorn,
 )
@@ -23,103 +24,128 @@ from lyrx.app import VERSIONS_PATH
 
 REQUEST_LOGGER = "lyrx.request_log"
 
+BODY_CAP_BYTES = 262_144
+NOT_LYRICS_MESSAGE = "This doesn't look like song lyrics."
+JSON_HEADERS = {"Content-Type": "application/json"}
+# Broken JSON one byte over the cap: if it were parsed, the answer would be invalid_request.
+OVERSIZED_BODY = b"{" + b" " * BODY_CAP_BYTES
+# The same size in two chunks, so the client sends no Content-Length.
+OVERSIZED_CHUNKS = [b"{" + b" " * (BODY_CAP_BYTES // 2), b" " * (BODY_CAP_BYTES // 2)]
 
-def test_ac44_body_over_64kb_is_input_too_large_before_parsing(
-    client: TestClient, fake_claude_client: FakeClaudeClient
+# The spec's 150-line song (invented): three lines repeated 50 times.
+SONG_LINES = ["君の声が", "遠くまでひびく", "星がながれる夜に"] * 50
+
+
+def assert_not_lyrics_body(body: Any) -> None:
+    """Spec 003 AC-65: the exact sentence, no `details`, and no "too long" or "limit"."""
+    assert_error_shape(body, "not_lyrics")
+    assert body == {"code": "not_lyrics", "message": NOT_LYRICS_MESSAGE}
+    text = json.dumps(body).lower()
+    assert "too long" not in text
+    assert "limit" not in text
+
+
+def test_spec003_ac65_body_over_256_kib_with_content_length_is_not_lyrics_before_parsing(
+    client: TestClient, fake_gemini: FakeGemini
 ) -> None:
-    # Spec amendment: a body over 64 KB is refused before parsing. This body is
-    # broken JSON, so if it were parsed the answer would be invalid_request.
-    oversized_body = b"{" + b" " * 70_000
+    assert len(OVERSIZED_BODY) == BODY_CAP_BYTES + 1
 
-    response = client.post(
-        VERSIONS_PATH, content=oversized_body, headers={"Content-Type": "application/json"}
-    )
+    response = client.post(VERSIONS_PATH, content=OVERSIZED_BODY, headers=JSON_HEADERS)
 
+    assert response.request.headers["content-length"] == str(BODY_CAP_BYTES + 1)
     assert response.status_code == 413
-    assert_error_shape(response.json(), "input_too_large")
-    assert fake_claude_client.messages.calls == []
+    assert_not_lyrics_body(response.json())
+    assert fake_gemini.requests == []
 
 
-def test_ac48_body_over_64kb_keeps_the_ac45_message_and_has_no_limit_hit(
+def test_spec003_ac65_body_over_256_kib_without_content_length_is_not_lyrics(
+    client: TestClient, fake_gemini: FakeGemini
+) -> None:
+    """The cap counts the bytes read, so a body with no Content-Length is capped."""
+    assert sum(len(chunk) for chunk in OVERSIZED_CHUNKS) == BODY_CAP_BYTES + 1
+
+    response = client.post(VERSIONS_PATH, content=iter(OVERSIZED_CHUNKS), headers=JSON_HEADERS)
+
+    assert "content-length" not in response.request.headers
+    assert response.status_code == 413
+    assert_not_lyrics_body(response.json())
+    assert fake_gemini.requests == []
+
+
+def send_raw_request(
+    app: FastAPI, headers: list[tuple[bytes, bytes]], chunks: list[bytes]
+) -> list[Message]:
+    """Call the ASGI app directly with `chunks` as the body; return what it sent."""
+    return run_like_uvicorn(app, headers, body_messages(chunks))
+
+
+def test_spec003_ac65_body_over_256_kib_with_a_false_small_content_length_is_not_lyrics(
+    app: FastAPI, fake_gemini: FakeGemini
+) -> None:
+    """A lying Content-Length cannot get a large body past the cap."""
+    headers = [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER, (b"content-length", b"10")]
+
+    sent = send_raw_request(app, headers, OVERSIZED_CHUNKS)
+
+    assert response_status(sent) == 413
+    assert_not_lyrics_body(json.loads(response_body(sent)))
+    assert fake_gemini.requests == []
+
+
+def test_spec003_ac65_broken_body_of_exactly_256_kib_is_parsed_and_gets_the_normal_error(
     client: TestClient,
 ) -> None:
-    """The body cap is not a paste limit: it keeps the AC-45 message and the three limits only."""
-    oversized_body = b"{" + b" " * 70_000
+    """The cap only catches bodies over it; a broken body at the cap is parsed."""
+    body_at_the_cap = b"{" + b" " * (BODY_CAP_BYTES - 1)
 
-    response = client.post(
-        VERSIONS_PATH, content=oversized_body, headers={"Content-Type": "application/json"}
-    )
-
-    assert response.status_code == 413
-    body = response.json()
-    assert_error_shape(body, "input_too_large")
-    assert body["message"] == LIMIT_MESSAGE
-    assert body["details"] == LIMIT_DETAILS
-    assert "limitHit" not in body["details"]
-
-
-def test_ac44_body_just_under_64kb_still_gets_the_normal_error(client: TestClient) -> None:
-    # Spec amendment: the cap only catches oversized bodies; a smaller broken body is parsed.
-    body_under_the_cap = b"{" + b" " * 60_000
-
-    response = client.post(
-        VERSIONS_PATH, content=body_under_the_cap, headers={"Content-Type": "application/json"}
-    )
+    response = client.post(VERSIONS_PATH, content=body_at_the_cap, headers=JSON_HEADERS)
 
     assert response.status_code == 400
     assert_error_shape(response.json(), "invalid_request")
 
 
-def test_ac44_chunked_body_over_64kb_without_content_length_is_input_too_large(
-    client: TestClient, fake_claude_client: FakeClaudeClient
+def paste_body_of_exactly_the_cap() -> bytes:
+    """`{"lyrics": ...}` holding the 150-line song, padded with trailing spaces to 262,144 bytes."""
+    song = "\n".join(SONG_LINES)
+    unpadded = json.dumps({"lyrics": song}, ensure_ascii=False).encode()
+    padding = " " * (BODY_CAP_BYTES - len(unpadded))
+    return json.dumps({"lyrics": song + padding}, ensure_ascii=False).encode()
+
+
+def test_spec003_ac65_paste_of_exactly_256_kib_of_valid_lyrics_is_not_refused_by_the_cap(
+    client: TestClient, fake_gemini: FakeGemini, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Spec amendment: the cap counts the bytes read, so a body with no Content-Length is capped.
-    chunks = iter([b"{" + b" " * 40_000, b" " * 40_000])
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
+    fake_gemini.answer = answer_with_placeholders
+    body = paste_body_of_exactly_the_cap()
+    assert len(body) == BODY_CAP_BYTES
 
-    response = client.post(
-        VERSIONS_PATH, content=chunks, headers={"Content-Type": "application/json"}
-    )
+    response = client.post(VERSIONS_PATH, content=body, headers=JSON_HEADERS)
 
-    assert "content-length" not in response.request.headers
+    assert response.status_code == 200, response.text
+    assert [line["original"] for line in response.json()["lines"]] == SONG_LINES
+
+
+def test_spec003_ac65_the_cap_applies_on_every_route(client: TestClient) -> None:
+    """The body cap runs before routing, so an unknown path gets `not_lyrics` too."""
+    response = client.post("/api/no-such-route", content=OVERSIZED_BODY, headers=JSON_HEADERS)
+
     assert response.status_code == 413
-    assert_error_shape(response.json(), "input_too_large")
-    assert fake_claude_client.messages.calls == []
-
-
-def send_raw_request(app: FastAPI, headers: list[tuple[bytes, bytes]], chunks: list[bytes]) -> int:
-    """Call the ASGI app directly with `chunks` as the body; return the response status."""
-    return response_status(run_like_uvicorn(app, headers, body_messages(chunks)))
-
-
-def test_ac44_body_over_64kb_with_a_false_small_content_length_is_input_too_large(
-    app: FastAPI, fake_claude_client: FakeClaudeClient
-) -> None:
-    # Spec amendment: a lying Content-Length cannot get a large body past the cap.
-    headers = [
-        (b"host", b"127.0.0.1:8000"),
-        (b"content-type", b"application/json"),
-        (b"content-length", b"10"),
-    ]
-    chunks = [b"{" + b" " * 40_000, b" " * 40_000]
-
-    status = send_raw_request(app, headers, chunks)
-
-    assert status == 413
-    assert fake_claude_client.messages.calls == []
+    assert_not_lyrics_body(response.json())
 
 
 # A client that disconnects mid-body never reaches the app (T7 follow-up).
 
 
-def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_claude(
+def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_gemini(
     app: FastAPI,
-    fake_claude_client: FakeClaudeClient,
+    fake_gemini: FakeGemini,
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The body cap reads the whole body first; a cut-off body never reaches the route."""
     caplog.set_level(logging.DEBUG)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
     whole_body = json.dumps({"lyrics": "夜の月が ひかる"}, ensure_ascii=False).encode()
     # The first chunk is a complete, valid body, but `more_body` says more is coming; then the
     # client disconnects.
@@ -127,8 +153,8 @@ def test_ac44_client_disconnecting_mid_body_never_reaches_the_app_or_claude(
 
     run_like_uvicorn(app, [ALLOWED_HOST_HEADER, JSON_CONTENT_TYPE_HEADER], incoming)
 
-    # The route always calls Claude for this paste and always writes its one request line.
-    assert fake_claude_client.messages.calls == []
+    # The route always calls Gemini for this paste and always writes its one request line.
+    assert fake_gemini.requests == []
     assert [record for record in caplog.records if record.name == REQUEST_LOGGER] == []
 
 

@@ -1,17 +1,14 @@
-// The paste form: a labeled text area, the submit button, and the waiting status.
-import { useState, type Ref, type SubmitEvent } from "react";
-
-const WAITING_TEXT = "Working on your lyrics…";
+// The paste fallback: a labeled text area and its submit button.
+import { useState, type SubmitEvent } from "react";
 
 interface PasteFormProps {
-  waiting: boolean;
+  busy: boolean;
   onSubmit: (lyrics: string) => void;
-  textAreaRef?: Ref<HTMLTextAreaElement>;
 }
 
-export function PasteForm({ waiting, onSubmit, textAreaRef }: PasteFormProps) {
+export function PasteForm({ busy, onSubmit }: PasteFormProps) {
   const [lyrics, setLyrics] = useState("");
-  const canSubmit = !waiting && lyrics.trim() !== "";
+  const canSubmit = !busy && lyrics.trim() !== "";
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +21,6 @@ export function PasteForm({ waiting, onSubmit, textAreaRef }: PasteFormProps) {
     <form className="paste-form" onSubmit={handleSubmit}>
       <label htmlFor="lyrics">Japanese lyrics</label>
       <textarea
-        ref={textAreaRef}
         id="lyrics"
         rows={12}
         value={lyrics}
@@ -33,11 +29,8 @@ export function PasteForm({ waiting, onSubmit, textAreaRef }: PasteFormProps) {
         }}
       />
       <button type="submit" disabled={!canSubmit}>
-        Get four versions
+        Show the versions
       </button>
-      <p role="status" aria-live="polite">
-        {waiting ? WAITING_TEXT : ""}
-      </p>
     </form>
   );
 }

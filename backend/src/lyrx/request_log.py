@@ -1,4 +1,4 @@
-"""Writes the one log line for each `POST /api/versions`: status, counts, time, and tokens."""
+"""Writes the one log line for each API request: route, status, counts, time, and tokens."""
 
 import logging
 import time
@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from http import HTTPStatus
 
 from lyrx.errors import ApiError
-from lyrx.schemas import TokenUsage
+from lyrx.schemas import GeminiVersions
 
 logger = logging.getLogger(__name__)
 
@@ -20,37 +20,65 @@ class RequestLog:
     Only codes and counts ever go in: never text from the request or the reply.
     """
 
-    def __init__(self, lines: int, characters: int) -> None:
+    def __init__(self, route: str, lines: int, characters: int) -> None:
         self.started = time.monotonic()
+        self.route = route
         self.fields: LogFields = {"lines": lines, "characters": characters}
 
-    def add_tokens(self, usage: TokenUsage) -> None:
-        self.fields["input_tokens"] = usage.input_tokens
-        self.fields["output_tokens"] = usage.output_tokens
+    def count_lines(self, lines: list[str]) -> None:
+        """The counts of the cleaned lines; characters as if joined by one `\\n` each."""
+        self.fields["lines"] = len(lines)
+        self.fields["characters"] = len("\n".join(lines))
+
+    def add_gemini(self, versions: GeminiVersions) -> None:
+        """The number of Gemini calls and the tokens they used."""
+        self.fields["gemini_calls"] = versions.calls
+        self.fields["gemini_retries"] = versions.retries
+        self.fields["gemini_ms"] = versions.elapsed_ms
+        self.fields["missing_lines"] = versions.missing_lines
+        self.fields["input_tokens"] = versions.usage.input_tokens
+        self.fields["output_tokens"] = versions.usage.output_tokens
+
+    def add(self, name: str, value: int) -> None:
+        """One more count for the line, such as `results` or `lrclib_id`."""
+        self.fields[name] = value
 
     def write(self, status: int, outcome: LogFields) -> None:
         duration_ms = round((time.monotonic() - self.started) * 1000)
-        line = {"status": status, **outcome, **self.fields, "duration_ms": duration_ms}
+        line = {
+            "route": self.route,
+            "status": status,
+            **outcome,
+            **self.fields,
+            "duration_ms": duration_ms,
+        }
         logger.info(" ".join(f"{name}={value}" for name, value in line.items()))
 
 
 @contextmanager
-def logged_request(lines: int, characters: int) -> Iterator[RequestLog]:
+def logged_request(route: str, lines: int = 0, characters: int = 0) -> Iterator[RequestLog]:
     """Times the `with` block and writes its one log line, whether it succeeds or fails.
+
+    The counts start at `lines` and `characters`; `count_lines` replaces them once known.
 
     An `ApiError` is logged with its status and code, then re-raised. Any other exception
     becomes `internal_error`, logged with only its class name, never its message. The
     `CrashGuard` layer is the backstop for errors outside this block.
     """
-    log = RequestLog(lines, characters)
+    log = RequestLog(route, lines, characters)
     try:
         yield log
     except ApiError as error:
-        log.write(error.status, {"code": error.code})
+        outcome: LogFields = {"code": error.code}
+        if error.reason is not None:
+            outcome["reason"] = error.reason
+        log.write(error.status, outcome)
         raise
     except Exception as error:
         internal_error = ApiError("internal_error")
-        outcome: LogFields = {"code": internal_error.code, "exception": type(error).__name__}
-        log.write(internal_error.status, outcome)
+        log.write(
+            internal_error.status,
+            {"code": internal_error.code, "exception": type(error).__name__},
+        )
         raise internal_error from None
     log.write(HTTPStatus.OK.value, {})
