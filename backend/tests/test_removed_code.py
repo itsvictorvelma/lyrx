@@ -1,4 +1,4 @@
-"""Tests for AC-12: the Claude pipeline and the local reading code are gone for good."""
+"""Tests for AC-12 (spec 008): the Claude pipeline and the local reading libraries stay gone."""
 
 import importlib.util
 
@@ -14,7 +14,6 @@ REMOVED = [
     "lyrx.readings",
     "lyrx.romaji",
     "lyrx.japanese_analyzer",
-    "lyrx.translation",
 ]
 
 

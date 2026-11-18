@@ -233,7 +233,7 @@ def test_the_log_says_whether_a_song_came_from_the_library(
     open_new_song(client, fake_lrclib, fake_gemini)
     open_song(client)
 
-    lines = [r.getMessage() for r in caplog.records if r.name == "lyrx.request_log"]
+    lines = [r.getMessage() for r in caplog.records if r.name == "lyrx.server.request_log"]
     assert "from_library=false" in lines[0]
     assert "from_library=true" in lines[1]
     assert "歌101" not in caplog.text

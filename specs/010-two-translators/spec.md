@@ -1,6 +1,6 @@
 # 010 — Two translators: Groq first, Gemini as backup
 
-Status: approved (by the user, 2026-11-18)
+Status: done (merged 2026-11-18, PR #27)
 
 ## Goal
 

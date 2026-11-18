@@ -60,32 +60,32 @@ lyrx/
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
 │   │   ├── __main__.py        Starts the server on 127.0.0.1
-│   │   ├── app.py             Builds the app: the routes and the error handlers
-│   │   ├── song_search.py     Search: typed text → ranked LRCLIB results
-│   │   ├── song_versions.py   Open a song: LRCLIB id → four versions
-│   │   ├── library.py         Saved songs in one SQLite file
-│   │   ├── lrclib.py          The two LRCLIB requests, with caps and checks
-│   │   ├── four_versions.py   The shared pipeline: cleaned lines → four versions
-│   │   ├── chunks.py          Cuts a song into chunks sent to the translators at the same time
-│   │   ├── retries.py         Retries an overloaded or failed request after a short wait
-│   │   ├── http_clients.py    The shared Groq, Gemini, and LRCLIB clients, built once per app
-│   │   ├── translators.py     The translator chain: Groq, then Gemini when Groq is busy
-│   │   ├── translation_prompt.py  What every translator is asked, and the reply shape
-│   │   ├── reply_checks.py    The checks on a reply: its JSON, then each line
-│   │   ├── groq.py            One Groq request and its reply text
-│   │   ├── gemini.py          One Gemini request and its reply text
-│   │   ├── lines.py           Splits lyrics into cleaned lines; detects Japanese
-│   │   ├── lyric_cleanup.py   Removes unwanted characters and splits overlong lines
-│   │   ├── looks_japanese.py  Whether lyrics look Japanese (enough lines with kana)
-│   │   ├── kana.py            Which characters are kana and kanji
-│   │   ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
-│   │   ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
-│   │   ├── crash_guard.py     Turns any unexpected error into a plain 500
-│   │   ├── request_log.py     One log line per request (no lyrics, no key)
-│   │   ├── schemas.py         Data shapes
+│   │   ├── app.py             Builds the app: the routes, error handlers, and shared clients
+│   │   ├── config.py          Every setting in one place
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
-│   │   └── config.py          Every setting in one place
-│   └── tests/             One test_<module>.py per module, plus fake Groq, Gemini, and LRCLIB
+│   │   ├── schemas.py         What the page sends and receives
+│   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
+│   │   ├── library.py         Saved songs in one SQLite file
+│   │   ├── lyrics/            Finding and preparing lyrics
+│   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record shape
+│   │   │   ├── search.py          Typed text → a short ranked list of songs
+│   │   │   ├── lines.py           Plain lyrics → trimmed lines, one blank line between verses
+│   │   │   └── japanese.py        Kana and kanji, and whether lyrics look Japanese
+│   │   ├── translation/       Lines → hiragana, romaji, and English
+│   │   │   ├── chain.py           Groq first, Gemini when Groq is busy
+│   │   │   ├── chunks.py          Splits a song, sends the chunks at once, retries
+│   │   │   ├── prompt.py          What every translator is asked, and the reply shape
+│   │   │   ├── checks.py          The checks on every reply: its JSON, then each line
+│   │   │   ├── groq.py            Groq: client, one request, reply shape
+│   │   │   ├── gemini.py          Gemini: client, one request, reply shape
+│   │   │   └── results.py         The internal result shapes
+│   │   └── server/            Guards and logging around every request
+│   │       ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
+│   │       ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
+│   │       ├── crash_guard.py     Turns any unexpected error into a plain 500
+│   │       └── request_log.py     One log line per request (no lyrics, no key)
+│   └── tests/             The same folders as src/lyrx, one test_<module>.py per module,
+│                          plus fake Groq, Gemini, and LRCLIB at the top
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
