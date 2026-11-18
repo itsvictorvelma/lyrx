@@ -1,4 +1,4 @@
-"""Tests for gemini.py: one request for some lines of a song, and the checks on its reply."""
+"""Tests for one Gemini request (gemini.py) and the shared checks on its reply."""
 
 import json
 from typing import Any
@@ -21,9 +21,9 @@ from fake_gemini import (
 
 from lyrx import config
 from lyrx.errors import ApiError
-from lyrx.gemini import request_versions
 from lyrx.http_clients import make_gemini_client
 from lyrx.schemas import ChunkReply, LineVersions, TokenUsage
+from lyrx.translators import ReadyTranslator, request_versions
 
 API_KEY = "fake-gemini-key-not-real-0123"
 # Non-blank lines of an invented song; index 1 was blank and is not sent. Index 3 has no Japanese.
@@ -43,9 +43,14 @@ def call(
     wanted: list[tuple[int, str]] = LINES,
     context: list[tuple[int, str]] | None = None,
 ) -> ChunkReply:
-    return request_versions(
-        context or wanted, wanted, API_KEY, make_gemini_client(fake.make_transport())
-    )
+    return request_versions(context or wanted, wanted, [gemini_translator(fake)])
+
+
+def gemini_translator(fake: FakeGemini) -> ReadyTranslator:
+    """The first Gemini translator in the chain, talking to the fake."""
+    gemini = next(t for t in config.TRANSLATORS if t.service == "gemini")
+    client = make_gemini_client(fake.make_transport())
+    return ReadyTranslator(gemini.name, gemini.service, gemini.model, API_KEY, client)
 
 
 def run_once(reply: ScriptedReply) -> tuple[FakeGemini, ChunkReply]:
@@ -85,7 +90,8 @@ def test_one_post_with_lyrics_as_numbered_data_and_the_key_in_a_header() -> None
 
     request = fake.requests[0]
     assert request.method == "POST"
-    assert request.url == config.GEMINI_URL_TEMPLATE.format(model=config.GEMINI_MODELS[0])
+    gemini = next(t for t in config.TRANSLATORS if t.service == "gemini")
+    assert request.url == config.GEMINI_URL_TEMPLATE.format(model=gemini.model)
     assert set(request.timeout.values()) == {config.GEMINI_TIMEOUT_SECONDS}
     assert request.body["contents"][0]["parts"][0]["text"] == EXPECTED_USER_TEXT
     system_text = request.body["systemInstruction"]["parts"][0]["text"]
@@ -218,57 +224,6 @@ def test_an_outage_is_translation_unavailable_with_a_reason_but_no_error_text(
     assert error.reason == reason
     assert "fake-secret" not in repr(error)
     assert error.__cause__ is None
-
-
-TWO_MODELS = ("model-a", "model-b")
-
-
-def run_with_two_models(
-    monkeypatch: pytest.MonkeyPatch, *replies: ScriptedReply
-) -> tuple[FakeGemini, ChunkReply | ApiError]:
-    """Runs one request with two models configured; returns the fake and the result or error."""
-    monkeypatch.setattr(config, "GEMINI_MODELS", TWO_MODELS)
-    fake = FakeGemini()
-    fake.script(*replies)
-    try:
-        return fake, call(fake)
-    except ApiError as error:
-        return fake, error
-
-
-def models_called(fake: FakeGemini) -> list[str]:
-    return [request.url.rsplit("/", 1)[-1].split(":")[0] for request in fake.requests]
-
-
-@pytest.mark.parametrize("busy", [503, 429])
-def test_an_overloaded_or_exhausted_model_hands_the_request_to_the_next(
-    monkeypatch: pytest.MonkeyPatch, busy: int
-) -> None:
-    fake, result = run_with_two_models(monkeypatch, status(busy), success(VERSIONS))
-
-    assert models_called(fake) == ["model-a", "model-b"]
-    assert isinstance(result, ChunkReply)
-    assert result.bad_indexes == []
-
-
-@pytest.mark.parametrize(
-    ("busy", "code"), [(503, "translation_unavailable"), (429, "translation_rate_limited")]
-)
-def test_when_every_model_is_busy_the_last_error_counts(
-    monkeypatch: pytest.MonkeyPatch, busy: int, code: str
-) -> None:
-    fake, result = run_with_two_models(monkeypatch, status(busy), status(busy))
-
-    assert models_called(fake) == ["model-a", "model-b"]
-    assert isinstance(result, ApiError)
-    assert result.code == code
-
-
-def test_a_refused_request_does_not_try_the_next_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake, result = run_with_two_models(monkeypatch, status(400))
-
-    assert models_called(fake) == ["model-a"]
-    assert isinstance(result, ApiError)
 
 
 def test_the_log_reason_names_the_finish_reason_only_if_it_looks_like_one() -> None:

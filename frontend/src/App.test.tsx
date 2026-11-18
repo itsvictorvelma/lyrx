@@ -264,7 +264,7 @@ test("the server being down says so", async () => {
   );
 });
 
-test("a line Gemini could not do says Not available", async () => {
+test("a line the translator could not do says Not available", async () => {
   respond("POST /api/song-search", jsonResponse(200, { results: [bestMatch] }));
   respond(
     "POST /api/song-versions",

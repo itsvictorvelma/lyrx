@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from http import HTTPStatus
 
 from lyrx.errors import ApiError
-from lyrx.schemas import GeminiVersions
+from lyrx.schemas import SongTranslation
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,13 @@ class RequestLog:
         self.fields["lines"] = len(lines)
         self.fields["characters"] = len("\n".join(lines))
 
-    def add_gemini(self, versions: GeminiVersions) -> None:
-        """The number of Gemini calls and the tokens they used."""
-        self.fields["gemini_calls"] = versions.calls
-        self.fields["gemini_retries"] = versions.retries
-        self.fields["gemini_ms"] = versions.elapsed_ms
+    def add_translation(self, versions: SongTranslation) -> None:
+        """Which translators answered, how many calls it took, and the tokens they used."""
+        if versions.translators:
+            self.fields["translator"] = "+".join(versions.translators)
+        self.fields["translator_calls"] = versions.calls
+        self.fields["translator_retries"] = versions.retries
+        self.fields["translator_ms"] = versions.elapsed_ms
         self.fields["missing_lines"] = versions.missing_lines
         self.fields["input_tokens"] = versions.usage.input_tokens
         self.fields["output_tokens"] = versions.usage.output_tokens

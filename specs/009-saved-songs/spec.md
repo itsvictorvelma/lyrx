@@ -1,6 +1,6 @@
 # 009 — Saved songs, and paste removed
 
-Status: approved (by the user, 2026-11-18)
+Status: done (merged 2026-11-18, PR #26)
 
 ## Goal
 
@@ -20,9 +20,9 @@ Every song the learner opens is saved on their computer. Opening it again is ins
 
 ## Out of scope
 
-- Accounts and per-person libraries (spec 012 adds a user to each saved song; nothing here assumes one learner forever).
+- Accounts and per-person libraries (spec 013 adds a user to each saved song; nothing here assumes one learner forever).
 - Refreshing a saved song's versions, editing them, folders, search inside the library, export.
-- Playback and timings (spec 010).
+- Playback and timings (spec 011).
 
 ## Inputs and outputs
 

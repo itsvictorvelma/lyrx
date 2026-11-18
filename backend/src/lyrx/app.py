@@ -17,7 +17,7 @@ from lyrx.body_limit import BodySizeLimit
 from lyrx.crash_guard import CrashGuard
 from lyrx.errors import ApiError, ErrorCode, error_response
 from lyrx.host_check import HostCheck
-from lyrx.http_clients import make_gemini_client, make_lrclib_client
+from lyrx.http_clients import make_gemini_client, make_groq_client, make_lrclib_client
 from lyrx.request_log import RequestLog, logged_request
 from lyrx.schemas import (
     SavedSongsResponse,
@@ -28,6 +28,7 @@ from lyrx.schemas import (
 )
 from lyrx.song_search import search_songs
 from lyrx.song_versions import open_song
+from lyrx.translators import ready_translators
 
 SONG_SEARCH_PATH = "/api/song-search"
 SONG_VERSIONS_PATH = "/api/song-versions"
@@ -56,14 +57,6 @@ async def handle_invalid_request(request: Request, error: Exception) -> JSONResp
     return error_response(ApiError("invalid_request"))
 
 
-def require_gemini_key() -> str:
-    """The key, read per request so setting it after start works."""
-    api_key = config.read_gemini_key()
-    if api_key is None:
-        raise ApiError("server_not_configured")
-    return api_key
-
-
 # The routes are sync `def`s on purpose: FastAPI runs them in its threadpool, so the
 # blocking HTTP calls and the cleanup never block the event loop.
 
@@ -77,21 +70,22 @@ def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
 
 
 def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersionsResponse:
-    """Open a song: from the library if saved; otherwise the key, LRCLIB, Gemini, then save."""
+    """Open a song: from the library if saved; otherwise the keys, LRCLIB, translators, save."""
     with logged_request(SONG_VERSIONS_PATH) as log:
         log.add("lrclib_id", body.id)
         saved = library.find_song_or_none(body.id)
         log.add("from_library", "true" if saved else "false")
         if saved is not None:
             return saved.model_copy(update={"from_library": True})
-        api_key = require_gemini_key()
-        song, lines, versions, gemini_result = open_song(
-            body.id, api_key, request.app.state.lrclib_client, request.app.state.gemini_client
+        # Keys are read per request, so setting one after start works.
+        translators = ready_translators(request.app.state.translator_clients)
+        song, lines, versions, translation = open_song(
+            body.id, translators, request.app.state.lrclib_client
         )
         log.count_lines(lines)
-        log.add_gemini(gemini_result)
+        log.add_translation(translation)
         reply = SongVersionsResponse(song=song, lines=versions)
-        if gemini_result.missing_lines == 0:
+        if translation.missing_lines == 0:
             save_quietly(reply, log)
         return reply
 
@@ -124,22 +118,27 @@ def remove_saved_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]
 def create_app(
     lrclib_transport: httpx2.BaseTransport | None = None,
     gemini_transport: httpx2.BaseTransport | None = None,
+    groq_transport: httpx2.BaseTransport | None = None,
 ) -> FastAPI:
     """The app; tests pass fake transports so nothing reaches the network."""
     lrclib_client = make_lrclib_client(lrclib_transport or httpx2.HTTPTransport())
-    gemini_client = make_gemini_client(gemini_transport or httpx2.HTTPTransport())
+    translator_clients = {
+        "gemini": make_gemini_client(gemini_transport or httpx2.HTTPTransport()),
+        "groq": make_groq_client(groq_transport or httpx2.HTTPTransport()),
+    }
 
     @asynccontextmanager
     async def close_clients_on_shutdown(app: FastAPI) -> AsyncIterator[None]:
         yield
         lrclib_client.close()
-        gemini_client.close()
+        for client in translator_clients.values():
+            client.close()
 
     app = FastAPI(
         docs_url=None, redoc_url=None, openapi_url=None, lifespan=close_clients_on_shutdown
     )
     app.state.lrclib_client = lrclib_client
-    app.state.gemini_client = gemini_client
+    app.state.translator_clients = translator_clients
     # The last layer added runs first: the crash guard, then the Host check, then the body cap.
     app.add_middleware(BodySizeLimit)
     app.add_middleware(HostCheck)

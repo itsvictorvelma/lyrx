@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fake_gemini import FakeGemini
+from fake_groq import FakeGroq
 from fake_lrclib import FakeLrclib
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -18,9 +19,12 @@ pytest_plugins = ["network_guard", "pytester"]
 
 # The real library path, read before any test replaces it.
 REAL_DATABASE_PATH = config.DATABASE_PATH
+# The shipped translator chain, read before any test shortens it.
+SHIPPED_TRANSLATORS = config.TRANSLATORS
 
 ALLOWED_TEST_BASE_URL = "http://127.0.0.1:8000"
 TEST_GEMINI_KEY = "fake-gemini-key-not-real-0123"
+TEST_GROQ_KEY = "fake-groq-key-not-real-4567"
 
 
 @pytest.fixture(autouse=True)
@@ -32,21 +36,37 @@ def temporary_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def one_gemini_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    """One model, so a scripted failure is one request; test_gemini tests the fallback."""
-    monkeypatch.setattr(config, "GEMINI_MODELS", config.GEMINI_MODELS[:1])
+def no_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No key from the developer's shell reaches a test; each test sets the keys it needs."""
+    monkeypatch.delenv(config.GEMINI_API_KEY_ENV_VAR, raising=False)
+    monkeypatch.delenv(config.GROQ_API_KEY_ENV_VAR, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def one_translator_per_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The first Groq and the first Gemini translator only, so a scripted failure is one
+    request per service; test_translators tests longer chains."""
+    first: dict[str, config.Translator] = {}
+    for translator in config.TRANSLATORS:
+        first.setdefault(translator.service, translator)
+    monkeypatch.setattr(config, "TRANSLATORS", tuple(first.values()))
 
 
 @pytest.fixture(autouse=True)
 def no_retry_waits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Retries happen at once in tests; the number of retries stays the configured one."""
-    waits = tuple(0.0 for _ in config.GEMINI_RETRY_WAIT_SECONDS)
-    monkeypatch.setattr(config, "GEMINI_RETRY_WAIT_SECONDS", waits)
+    waits = tuple(0.0 for _ in config.RETRY_WAIT_SECONDS)
+    monkeypatch.setattr(config, "RETRY_WAIT_SECONDS", waits)
 
 
 @pytest.fixture
 def fake_gemini() -> FakeGemini:
     return FakeGemini()
+
+
+@pytest.fixture
+def fake_groq() -> FakeGroq:
+    return FakeGroq()
 
 
 @pytest.fixture
@@ -62,10 +82,18 @@ def gemini_key(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 @pytest.fixture
-def app(fake_gemini: FakeGemini, fake_lrclib: FakeLrclib) -> FastAPI:
+def groq_key(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Sets a fake Groq key in the environment for one test."""
+    monkeypatch.setenv(config.GROQ_API_KEY_ENV_VAR, TEST_GROQ_KEY)
+    return TEST_GROQ_KEY
+
+
+@pytest.fixture
+def app(fake_gemini: FakeGemini, fake_groq: FakeGroq, fake_lrclib: FakeLrclib) -> FastAPI:
     return create_app(
         lrclib_transport=fake_lrclib.make_transport(),
         gemini_transport=fake_gemini.make_transport(),
+        groq_transport=fake_groq.make_transport(),
     )
 
 

@@ -7,7 +7,7 @@ import pytest
 
 from lyrx.errors import ApiError
 from lyrx.request_log import logged_request
-from lyrx.schemas import GeminiVersions, TokenUsage
+from lyrx.schemas import SongTranslation, TokenUsage
 
 REQUEST_LOGGER = "lyrx.request_log"
 # The request line is written as `name=value` fields, e.g. `status=200 lines=4 ...`.
@@ -29,13 +29,13 @@ def test_ac33_success_writes_one_line_with_status_counts_duration_and_tokens(
     caplog.set_level(logging.DEBUG)
 
     with logged_request("/api/test", lines=4, characters=21) as log:
-        log.add_gemini(GeminiVersions(lines={}, usage=TokenUsage(100, 50), calls=2))
+        log.add_translation(SongTranslation(lines={}, usage=TokenUsage(100, 50), calls=2))
         log.add("results", 7)
 
     fields = only_request_line(caplog)
     assert fields["route"] == "/api/test"
     assert fields["status"] == "200"
-    assert fields["gemini_calls"] == "2"
+    assert fields["translator_calls"] == "2"
     assert fields["results"] == "7"
     assert fields["lines"] == "4"
     assert fields["characters"] == "21"

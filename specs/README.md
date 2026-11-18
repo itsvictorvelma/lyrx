@@ -20,10 +20,11 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 003 | Song search (too large; its built code is reused by 008) | shelved |
 | 007 | Compact stacked reading layout (replaced by the columns layout in 008) | shelved |
 | 008 | Find a song: type a name, read it in four columns | done |
-| 009 | Saved songs; paste removed | approved |
-| 010 | Synced playback: YouTube embed and optional MP3, line highlighting from LRCLIB timings | not started |
-| 011 | Design pass: one cohesive look for the whole app (includes the waiting visualizer) | not started |
-| 012 | Personal accounts, ready for hosting | not started |
+| 009 | Saved songs; paste removed | done |
+| 010 | Two translators: Groq first, Gemini as backup | approved |
+| 011 | Synced playback: YouTube embed and optional MP3, line highlighting from LRCLIB timings | not started |
+| 012 | Design pass: one cohesive look for the whole app (includes the waiting visualizer) | not started |
+| 013 | Personal accounts, ready for hosting | not started |
 | — | Next language | decided after 008 is in use |
 
 ## Ideas carried from the shelved specs

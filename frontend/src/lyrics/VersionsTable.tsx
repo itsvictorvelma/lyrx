@@ -42,7 +42,7 @@ export function VersionsTable({ lines }: VersionsTableProps) {
   );
 }
 
-// A lyric line Gemini could not do comes back with empty versions; say so in words.
+// A lyric line the translator could not do comes back with empty versions; say so in words.
 function VersionCell({ text }: { text: string }) {
   return text === "" ? (
     <span className="muted">{NOT_AVAILABLE_TEXT}</span>

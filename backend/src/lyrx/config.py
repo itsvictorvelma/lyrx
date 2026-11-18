@@ -3,6 +3,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import Literal, NamedTuple
 
 HOST = "127.0.0.1"
 PORT = 8000
@@ -43,15 +44,37 @@ DUPLICATE_DURATION_SECONDS = 2
 # Lyrics look Japanese when at least this fraction of their non-blank lines hold a kana.
 LOOKS_JAPANESE_FRACTION = 0.25
 
+
+class Translator(NamedTuple):
+    """One translator in the chain: its name in the log, its service, and the model asked."""
+
+    name: str
+    service: Literal["groq", "gemini"]
+    model: str
+
+
+# Tried in this order for every request (spec 010). When one is busy (429, 503, a timeout, or
+# no connection) the same request goes to the next. Each model has its own free limits and
+# load. Groq is first: in a test it was faster and as accurate; Gemini is the backup.
+TRANSLATORS = (
+    Translator("groq-gpt-oss-120b", "groq", "openai/gpt-oss-120b"),
+    Translator("gemini-3.5-flash-lite", "gemini", "gemini-3.5-flash-lite"),
+    Translator("gemini-3.1-flash-lite", "gemini", "gemini-3.1-flash-lite"),
+)
+
+GROQ_API_KEY_ENV_VAR = "GROQ_API_KEY"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_TIMEOUT_SECONDS = 45
+# Room for one chunk's three versions plus the model's short reasoning, with a margin.
+GROQ_MAX_OUTPUT_TOKENS = 8192
+# A reply larger than this is refused while it streams in; real replies are far smaller.
+GROQ_MAX_REPLY_BYTES = 512 * 1024
+
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
-# Flash-Lite: the free tier allows far more requests a day than Flash (about 500 against 20).
-# Each model has its own limit and its own load, so when one is overloaded (503) or out of
-# quota (429), the same request goes to the next.
-GEMINI_MODELS = ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
 GEMINI_URL_TEMPLATE = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
-# Seconds before one Gemini request gives up; it is then retried (see the waits below).
+# Seconds before one Gemini request gives up; it then moves on or is retried (waits below).
 GEMINI_TIMEOUT_SECONDS = 45
 # Room for one chunk's three versions (about 4,000 tokens for 40 lines), with a wide margin.
 GEMINI_MAX_OUTPUT_TOKENS = 8192
@@ -60,17 +83,22 @@ GEMINI_THINKING_LEVEL = "MINIMAL"
 # A song is cut into chunks of at most this many lines and characters (texts joined by "\n").
 # The chunks are sent at the same time. Smaller chunks come back sooner but cost more of the
 # free tier's per-minute and per-day request limits; 40 lines keeps most songs to 1 or 2 calls.
-GEMINI_CHUNK_LINES = 40
-GEMINI_CHUNK_CHARACTERS = 4000
+CHUNK_LINES = 40
+CHUNK_CHARACTERS = 4000
 # How many chunk requests run at once; the free tier limits requests per minute.
-GEMINI_PARALLEL_REQUESTS = 4
+PARALLEL_REQUESTS = 4
 # Each chunk request also carries the whole song as context, unless the song is longer than this.
-GEMINI_CONTEXT_MAX_CHARACTERS = 12000
+CONTEXT_MAX_CHARACTERS = 12000
 # Seconds to wait before each retry of an overloaded, timed-out, or unusable request.
 # Its length is the number of retries. A rate limit (429) or a block is never retried.
-GEMINI_RETRY_WAIT_SECONDS = (1.0, 3.0)
+RETRY_WAIT_SECONDS = (1.0, 3.0)
 
 
 def read_gemini_key() -> str | None:
     """The Gemini API key, read at call time. An empty value counts as unset."""
-    return os.environ.get(GEMINI_API_KEY_ENV_VAR) or None
+    return os.environ.get(GEMINI_API_KEY_ENV_VAR, "").strip() or None
+
+
+def read_groq_key() -> str | None:
+    """The Groq API key, read at call time. An empty value counts as unset."""
+    return os.environ.get(GROQ_API_KEY_ENV_VAR, "").strip() or None
