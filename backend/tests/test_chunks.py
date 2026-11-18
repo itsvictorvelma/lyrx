@@ -186,3 +186,13 @@ def test_a_line_still_bad_after_asking_again_is_shown_without_versions() -> None
     assert result.lines[2] == MISSING
     assert result.missing_lines == 1
     assert result.lines[3].english == "English 3"
+
+
+def test_a_typical_song_takes_two_calls_with_the_default_sizes() -> None:
+    """Fewer, larger chunks spend less of the free tier's request limits (spec 009)."""
+    song = [(index, f"君の声が遠くまで{index}") for index in range(60)]
+    fake = FakeGemini(answer=answer_with_placeholders)
+
+    run(fake, song)
+
+    assert len(fake.requests) == 2

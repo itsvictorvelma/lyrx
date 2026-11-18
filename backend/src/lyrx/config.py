@@ -50,14 +50,15 @@ GEMINI_URL = (
 )
 # Seconds before one Gemini request gives up; it is then retried (see the waits below).
 GEMINI_TIMEOUT_SECONDS = 45
-# Room for one chunk's three versions (about 1,500 tokens for 15 lines), with a wide margin.
+# Room for one chunk's three versions (about 4,000 tokens for 40 lines), with a wide margin.
 GEMINI_MAX_OUTPUT_TOKENS = 8192
 # Minimal thinking: the versions need context, not reasoning, and thinking adds wait time.
 GEMINI_THINKING_LEVEL = "MINIMAL"
 # A song is cut into chunks of at most this many lines and characters (texts joined by "\n").
-# The chunks are sent at the same time, so smaller chunks make a song come back sooner.
-GEMINI_CHUNK_LINES = 15
-GEMINI_CHUNK_CHARACTERS = 1500
+# The chunks are sent at the same time. Smaller chunks come back sooner but cost more of the
+# free tier's per-minute and per-day request limits; 40 lines keeps most songs to 1 or 2 calls.
+GEMINI_CHUNK_LINES = 40
+GEMINI_CHUNK_CHARACTERS = 4000
 # How many chunk requests run at once; the free tier limits requests per minute.
 GEMINI_PARALLEL_REQUESTS = 4
 # Each chunk request also carries the whole song as context, unless the song is longer than this.

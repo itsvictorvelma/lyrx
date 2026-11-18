@@ -23,7 +23,7 @@ You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with n
    ```
    Put your key after `GEMINI_API_KEY=` in `.env`. The file is gitignored, so the key is never committed.
 
-The free tier has daily and per-minute limits (shown in AI Studio). A song is a few small calls sent at once (about one per 15 lines). When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
+The free tier has daily and per-minute limits (shown in AI Studio). A song is one call per 40 lines, sent at the same time, so most songs take 1 or 2 calls. When the limit is reached, the page says so; try again later. Google may use what is sent on the free tier to improve its products.
 
 ## Run
 

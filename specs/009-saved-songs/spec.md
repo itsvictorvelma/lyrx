@@ -15,6 +15,7 @@ Every song the learner opens is saved on their computer. Opening it again is ins
 - **Search results** say "Saved" for songs already saved.
 - **Timing line.** A song opened from the database shows "Opened from your songs in 0.0 s".
 - **Paste removed** (decided by the user, 2026-11-18). Deleted with their tests: `POST /api/versions`, `read_paste`, the `empty_input` and `no_japanese` codes, the paste form and the "Paste the lyrics instead" link. When nothing is found, the page says "No song found for that name. Try the title and artist." The 256 KiB body cap stays for every route.
+- **Fewer Gemini requests** (added by the user, 2026-11-18, after hitting the free-tier limit): chunks grow from 15 to 40 lines, so most songs take 1 or 2 calls instead of 4 or more.
 - **Storage:** one SQLite file through Python's built-in `sqlite3` (no new dependency). Its path is a setting, default `data/lyrx.db` at the repo root, which `.gitignore` already covers (`*.db`).
 
 ## Out of scope
