@@ -184,7 +184,7 @@ export function PlayerBar(props: PlayerBarProps) {
         {source !== null && (
           <button
             type="button"
-            className="pill-button"
+            className="pill-button change-audio"
             aria-expanded={choosing}
             onClick={() => {
               setChoosing((open) => !open);

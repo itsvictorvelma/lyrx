@@ -31,7 +31,7 @@ export function SearchForm({ busy, onSearch }: SearchFormProps) {
           id="song-query"
           type="search"
           autoComplete="off"
-          placeholder="Search a song: title, artist, or both"
+          placeholder="Title, artist, or both"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);

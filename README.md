@@ -12,13 +12,19 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 The song and lyrics shown are invented for these screenshots.
 
-| Your songs | A song, dark |
-|---|---|
-| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png) |
+![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png)
 
-| A song, light | On a phone |
+| Your songs | Light theme |
 |---|---|
-| ![The same song in the light theme](docs/screenshots/song-light.png) | <img src="docs/screenshots/phone.png" alt="The song on a phone: the original next to one chosen column" width="260"> |
+| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![The same song in the light theme](docs/screenshots/song-light.png) |
+
+**On a phone:** the original next to one chosen column, with the player under the lyrics.
+
+<p>
+  <img src="docs/screenshots/phone-library.png" alt="The library on a phone: two tiles per row" width="300">
+  &nbsp;
+  <img src="docs/screenshots/phone-song.png" alt="A song on a phone: the original and hiragana columns with the player bar" width="300">
+</p>
 
 ## What works today
 
