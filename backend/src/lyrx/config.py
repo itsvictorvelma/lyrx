@@ -97,11 +97,6 @@ CONTEXT_MAX_CHARACTERS = 12000
 RETRY_WAIT_SECONDS = (1.0, 3.0)
 
 
-def read_gemini_key() -> str | None:
-    """The Gemini API key, read at call time. An empty value counts as unset."""
-    return os.environ.get(GEMINI_API_KEY_ENV_VAR, "").strip() or None
-
-
-def read_groq_key() -> str | None:
-    """The Groq API key, read at call time. An empty value counts as unset."""
-    return os.environ.get(GROQ_API_KEY_ENV_VAR, "").strip() or None
+def read_api_key(env_var: str) -> str | None:
+    """An API key from the environment, read at call time. An empty value counts as unset."""
+    return os.environ.get(env_var, "").strip() or None

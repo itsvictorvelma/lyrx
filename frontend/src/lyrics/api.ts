@@ -13,14 +13,19 @@ import type {
 export async function searchSongs(
   query: string,
 ): Promise<ApiResult<SearchResult[]>> {
-  const result = await postJson("/api/song-search", { query }, isSearchReply);
+  const result = await requestJson(
+    "POST",
+    "/api/song-search",
+    { query },
+    isSearchReply,
+  );
   return result.kind === "ok"
     ? { kind: "ok", value: result.value.results }
     : result;
 }
 
 export function getSongVersions(id: number): Promise<ApiResult<SongVersions>> {
-  return postJson("/api/song-versions", { id }, isSongVersionsReply);
+  return requestJson("POST", "/api/song-versions", { id }, isSongVersionsReply);
 }
 
 export async function listSavedSongs(): Promise<ApiResult<SavedSong[]>> {
@@ -72,14 +77,6 @@ export function savePlayback(
     isNull,
     204,
   );
-}
-
-function postJson<Reply>(
-  url: string,
-  body: unknown,
-  isValid: (value: unknown) => value is Reply,
-): Promise<ApiResult<Reply>> {
-  return requestJson("POST", url, body, isValid);
 }
 
 // One request; a reply with `okStatus` must pass `isValid`, any other must be the error shape.
@@ -143,11 +140,14 @@ function isLine(value: unknown): value is Line {
   );
 }
 
+function isVideoIdOrNull(value: unknown): value is string | null {
+  return value === null || (typeof value === "string" && VIDEO_ID.test(value));
+}
+
 function isPlayback(value: unknown): value is Playback {
   return (
     isRecord(value) &&
-    (value.videoId === null ||
-      (typeof value.videoId === "string" && VIDEO_ID.test(value.videoId))) &&
+    isVideoIdOrNull(value.videoId) &&
     Number.isInteger(value.offsetMs) &&
     Math.abs(Number(value.offsetMs)) <= MAX_OFFSET_MS
   );
@@ -187,8 +187,7 @@ function isSavedSong(value: unknown): value is SavedSong {
   return (
     isSong(value) &&
     isRecord(value) &&
-    (value.videoId === null ||
-      (typeof value.videoId === "string" && VIDEO_ID.test(value.videoId))) &&
+    isVideoIdOrNull(value.videoId) &&
     Number.isInteger(value.lastOpenedAt)
   );
 }

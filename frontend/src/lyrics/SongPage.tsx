@@ -11,7 +11,7 @@ import type { Line, Playback, Progress, SearchResult, Song } from "./types";
 import { VersionsTable } from "./VersionsTable";
 import type { PhoneColumn } from "./VersionsTable";
 
-export const SYNCED_TEXT = "Synced lyrics";
+const SYNCED_TEXT = "Synced lyrics";
 export const NO_TIMINGS_TEXT = "No line timings for this song.";
 const POLL_MS = 200;
 export const BACK_TO_LINE_TEXT = "Back to the current line";

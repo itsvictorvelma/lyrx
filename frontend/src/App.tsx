@@ -23,7 +23,7 @@ import { navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
-export const SERVER_UNREACHABLE_MESSAGE =
+const SERVER_UNREACHABLE_MESSAGE =
   "Could not reach the Lyrx server. Is it running?";
 
 type Status = "idle" | Stage;

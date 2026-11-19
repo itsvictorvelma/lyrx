@@ -1,6 +1,7 @@
 // Calm following: the lyrics stay still until the sung line passes 60% of the view, then glide once.
 import { useEffect } from "react";
 import type { RefObject } from "react";
+import { prefersReducedMotion } from "../mediaQuery";
 
 // Scroll only when the sung row passes this share of the view's height...
 export const SCROLL_AT = 0.6;
@@ -25,13 +26,6 @@ export function scrollTarget(
     return null;
   }
   return Math.max(0, row.top - viewHeight * LAND_AT);
-}
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
 }
 
 // Keeps the sung row in view while `following`; `rowSelector` finds it inside the view.

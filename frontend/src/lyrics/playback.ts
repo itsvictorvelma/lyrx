@@ -1,7 +1,7 @@
 // Playback rules without any player: a YouTube link to its video id, the line being sung, the sync.
 import type { Line } from "./types";
 
-export const OFFSET_STEP_MS = 250;
+const OFFSET_STEP_MS = 250;
 export const MAX_OFFSET_MS = 30_000;
 export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const YOUTUBE_HOSTS = new Set(["youtube.com", "music.youtube.com"]);

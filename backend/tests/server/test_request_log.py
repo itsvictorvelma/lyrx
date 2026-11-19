@@ -28,7 +28,8 @@ def test_ac33_success_writes_one_line_with_status_counts_duration_and_tokens(
     """A block that finishes logs status 200, its counts, its duration, and the tokens added."""
     caplog.set_level(logging.DEBUG)
 
-    with logged_request("/api/test", lines=4, characters=21) as log:
+    with logged_request("/api/test") as log:
+        log.count_lines(["aaaa", "bbbb", "cccc", "dddddd"])
         log.add_translation(SongTranslation(lines={}, usage=TokenUsage(100, 50), calls=2))
         log.add("results", 7)
 
@@ -52,7 +53,8 @@ def test_ac33_api_error_is_reraised_unchanged_and_logged_with_its_status_and_cod
     caplog.set_level(logging.DEBUG)
     error = ApiError("song_not_japanese")
 
-    with pytest.raises(ApiError) as raised, logged_request("/api/test", lines=2, characters=15):
+    with pytest.raises(ApiError) as raised, logged_request("/api/test") as log:
+        log.count_lines(["abcdefg", "abcdefg"])
         raise error
 
     assert raised.value is error
@@ -72,7 +74,7 @@ def test_ac33_other_exception_becomes_internal_error_without_its_cause(
     """Any other exception is replaced by internal_error, with no chained cause or context."""
     caplog.set_level(logging.DEBUG)
 
-    with pytest.raises(ApiError) as raised, logged_request("/api/test", lines=3, characters=10):
+    with pytest.raises(ApiError) as raised, logged_request("/api/test"):
         raise RuntimeError(SECRET_MESSAGE)
 
     assert raised.value.code == "internal_error"
@@ -86,7 +88,7 @@ def test_ac33_other_exception_is_logged_by_class_name_never_by_message(
     """The line says status=500 code=internal_error exception=<class>; the message never appears."""
     caplog.set_level(logging.DEBUG)
 
-    with pytest.raises(ApiError), logged_request("/api/test", lines=3, characters=10):
+    with pytest.raises(ApiError), logged_request("/api/test"):
         raise RuntimeError(SECRET_MESSAGE)
 
     fields = only_request_line(caplog)

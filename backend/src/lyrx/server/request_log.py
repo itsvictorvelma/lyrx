@@ -20,10 +20,10 @@ class RequestLog:
     Only codes and counts ever go in: never text from the request or the reply.
     """
 
-    def __init__(self, route: str, lines: int, characters: int) -> None:
+    def __init__(self, route: str) -> None:
         self.started = time.monotonic()
         self.route = route
-        self.fields: LogFields = {"lines": lines, "characters": characters}
+        self.fields: LogFields = {"lines": 0, "characters": 0}
 
     def count_lines(self, lines: list[str]) -> None:
         """The counts of the song's lines; characters as if joined by one `\\n` each."""
@@ -58,16 +58,16 @@ class RequestLog:
 
 
 @contextmanager
-def logged_request(route: str, lines: int = 0, characters: int = 0) -> Iterator[RequestLog]:
+def logged_request(route: str) -> Iterator[RequestLog]:
     """Times the `with` block and writes its one log line, whether it succeeds or fails.
 
-    The counts start at `lines` and `characters`; `count_lines` replaces them once known.
+    The line counts start at 0; `count_lines` replaces them once known.
 
     An `ApiError` is logged with its status and code, then re-raised. Any other exception
     becomes `internal_error`, logged with only its class name, never its message. The
     `CrashGuard` layer is the backstop for errors outside this block.
     """
-    log = RequestLog(route, lines, characters)
+    log = RequestLog(route)
     try:
         yield log
     except ApiError as error:

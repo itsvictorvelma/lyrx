@@ -1,9 +1,10 @@
 // While the server works: kana rain behind a terminal-style card with the steps, their marks, and the seconds.
 import { useEffect, useState } from "react";
-import { KanaRain, prefersReducedMotion } from "./KanaRain";
+import { prefersReducedMotion } from "../mediaQuery";
+import { KanaRain } from "./KanaRain";
 
-export const FINDING_TEXT = "Finding the song";
-export const OPENING_TEXT = "Getting the lyrics and translating";
+const FINDING_TEXT = "Finding the song";
+const OPENING_TEXT = "Getting the lyrics and translating";
 
 // The terminal spinner's frames, and how often it moves.
 const SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";

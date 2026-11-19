@@ -1,5 +1,6 @@
 // The sun/moon button: dark or light, remembered on this browser, else the system setting.
 import { useEffect, useState } from "react";
+import { matchesMedia } from "../mediaQuery";
 
 type Theme = "dark" | "light";
 
@@ -24,10 +25,7 @@ function storeTheme(theme: Theme): void {
 }
 
 function systemTheme(): Theme {
-  const prefersLight =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: light)").matches;
-  return prefersLight ? "light" : "dark";
+  return matchesMedia("(prefers-color-scheme: light)") ? "light" : "dark";
 }
 
 // Sets the theme on <html>, where styles.css reads it; null leaves it to the system.
