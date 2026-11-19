@@ -31,7 +31,10 @@ class ReadyTranslator:
 
 def ready_translators(clients: Mapping[str, httpx2.Client]) -> list[ReadyTranslator]:
     """The chain in order, without translators whose key is not set; keys are read now."""
-    keys = {"groq": config.read_groq_key(), "gemini": config.read_gemini_key()}
+    keys = {
+        "groq": config.read_api_key(config.GROQ_API_KEY_ENV_VAR),
+        "gemini": config.read_api_key(config.GEMINI_API_KEY_ENV_VAR),
+    }
     ready = [
         ReadyTranslator(
             translator.name, translator.service, translator.model, key, clients[translator.service]
@@ -58,10 +61,11 @@ def request_versions(
     bad: list[int] = []
     for index, text in wanted:
         reply_line = reply_lines.get(index)
+        # A line with no Japanese keeps its own text in every version; the reply's is ignored.
         if not has_japanese(text):
             good[index] = LineVersions(hiragana=text, romaji=text, english=text)
-        elif reply_line is not None and line_is_valid(reply_line, text):
-            good[index] = line_versions(reply_line, text)
+        elif reply_line is not None and line_is_valid(reply_line):
+            good[index] = line_versions(reply_line)
         else:
             bad.append(index)
     return ChunkReply(lines=good, bad_indexes=bad, usage=reply.usage, translator=translator.name)

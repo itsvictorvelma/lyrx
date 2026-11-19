@@ -71,8 +71,8 @@ def request_in_chunks(
 
 
 def run_all_or_stop(
-    request_chunk: Callable[[NumberedLines], "ChunkResult"], chunks: list[list[tuple[int, str]]]
-) -> list["ChunkResult"]:
+    request_chunk: Callable[[NumberedLines], ChunkResult], chunks: list[list[tuple[int, str]]]
+) -> list[ChunkResult]:
     """Every chunk's result, a few at a time. The first chunk to fail for good stops the song:
     chunks not yet sent are cancelled and its error propagates, so no more quota is spent."""
     pool = ThreadPoolExecutor(max_workers=config.PARALLEL_REQUESTS)

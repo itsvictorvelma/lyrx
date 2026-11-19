@@ -1,8 +1,9 @@
 // The four versions as a table: one row per lyric line, a gap between verses, the sung line marked.
 import { useEffect, useRef } from "react";
+import { prefersReducedMotion } from "../mediaQuery";
 import type { Line } from "./types";
 
-export const NOT_AVAILABLE_TEXT = "Not available";
+const NOT_AVAILABLE_TEXT = "Not available";
 
 // The column a phone shows next to the original; wider screens show all four.
 export type PhoneColumn = "hiragana" | "romaji" | "english";
@@ -29,16 +30,13 @@ export function VersionsTable({
 
   useEffect(() => {
     const row = currentRow.current;
-    // jsdom (the test browser) has neither scrollIntoView nor matchMedia, so both are checked.
+    // jsdom (the test browser) has no scrollIntoView, so it is checked.
     if (currentLine === null || row === null || !("scrollIntoView" in row)) {
       return;
     }
-    const reduceMotion =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     row.scrollIntoView({
       block: "center",
-      behavior: reduceMotion ? "auto" : "smooth",
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
     });
   }, [currentLine]);
 

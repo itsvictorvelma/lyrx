@@ -1,28 +1,24 @@
 // The player bar at the bottom of a song: audio controls, sync, the video window, and choosing audio.
 import { useCallback, useState } from "react";
+import { matchesMedia } from "../mediaQuery";
 import { AudioFilePlayer } from "./AudioFilePlayer";
 import { savePlayback } from "./api";
 import { nudgeOffset, parseVideoId } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerControls, VideoIcon } from "./PlayerControls";
-import type { Progress } from "./types";
+import type { Playback, Progress } from "./types";
 import { YouTubePlayer } from "./YouTubePlayer";
 
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
-export const PLAYER_FAILED_MESSAGE =
-  "Couldn't load the YouTube player. Try again.";
-export const SAVE_FAILED_MESSAGE =
-  "Couldn't save the video and sync for this song.";
+const PLAYER_FAILED_MESSAGE = "Couldn't load the YouTube player. Try again.";
+const SAVE_FAILED_MESSAGE = "Couldn't save the video and sync for this song.";
 
 // The width below which styles.css uses the phone layout.
 const PHONE_QUERY = "(max-width: 719px)";
 
 // The video window starts open, except on a phone, where it would leave little room for lyrics.
 function startsWithVideoShown(): boolean {
-  return !(
-    typeof window.matchMedia === "function" &&
-    window.matchMedia(PHONE_QUERY).matches
-  );
+  return !matchesMedia(PHONE_QUERY);
 }
 
 type Source =
@@ -61,7 +57,7 @@ export function PlayerBar(props: PlayerBarProps) {
   }, []);
 
   // A 404 means the song is not in the library, so nothing is kept; any other failure is said.
-  async function save(playback: { videoId: string | null; offsetMs: number }) {
+  async function save(playback: Playback) {
     const result = await savePlayback(songId, playback);
     const notSaved =
       result.kind === "error" && result.code === "song_not_found";

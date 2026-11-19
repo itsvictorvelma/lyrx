@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from lyrx import config
 from lyrx.errors import ApiError, ErrorCode
+from lyrx.schemas import Song
 
 HTTP_NOT_FOUND = 404
 
@@ -26,6 +27,17 @@ class LrclibRecord(BaseModel):
 
 
 RECORD_ADAPTER = TypeAdapter(LrclibRecord)
+
+
+def to_song(record: LrclibRecord) -> Song:
+    """The song a record is about, as the page shows it."""
+    return Song(
+        id=record.id,
+        track=record.track_name,
+        artist=record.artist_name,
+        album=record.album_name or "",
+        duration_seconds=round(record.duration),
+    )
 
 
 def search(query: str, client: httpx2.Client) -> list[LrclibRecord]:

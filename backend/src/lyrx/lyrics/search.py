@@ -36,11 +36,7 @@ def has_lyrics(record: LrclibRecord) -> bool:
 
 def to_result(record: LrclibRecord) -> SearchResult:
     return SearchResult(
-        id=record.id,
-        track=record.track_name,
-        artist=record.artist_name,
-        album=record.album_name or "",
-        duration_seconds=round(record.duration),
+        **lrclib.to_song(record).model_dump(),
         looks_japanese=looks_japanese(read_lyrics(record.plain_lyrics or "")),
     )
 

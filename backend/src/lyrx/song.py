@@ -8,7 +8,6 @@ from lyrx.errors import ApiError
 from lyrx.lyrics import lrclib
 from lyrx.lyrics.japanese import looks_japanese
 from lyrx.lyrics.lines import read_lyrics, start_times
-from lyrx.lyrics.lrclib import LrclibRecord
 from lyrx.schemas import Song, VersionLine
 from lyrx.translation.chain import ReadyTranslator
 from lyrx.translation.chunks import MISSING, request_in_chunks
@@ -35,7 +34,7 @@ def open_song(
         make_line(index, line, translation, start)
         for index, (line, start) in enumerate(zip(lines, starts, strict=True))
     ]
-    return to_song(record), lines, versions, translation
+    return lrclib.to_song(record), lines, versions, translation
 
 
 def make_line(
@@ -52,16 +51,6 @@ def make_line(
         romaji=line.romaji,
         english=line.english,
         start_ms=start_ms,
-    )
-
-
-def to_song(record: LrclibRecord) -> Song:
-    return Song(
-        id=record.id,
-        track=record.track_name,
-        artist=record.artist_name,
-        album=record.album_name or "",
-        duration_seconds=round(record.duration),
     )
 
 

@@ -5,7 +5,7 @@ import json
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from lyrx.errors import ApiError
-from lyrx.lyrics.japanese import has_japanese, is_kana, is_kanji
+from lyrx.lyrics.japanese import is_kana, is_kanji
 from lyrx.translation.results import LineVersions
 
 
@@ -42,10 +42,8 @@ def parse_reply_lines(text: str) -> dict[int, ReplyLine]:
     return lines
 
 
-def line_is_valid(reply_line: ReplyLine, original: str) -> bool:
-    """A Japanese line needs all three versions, hiragana without kanji, romaji without kana."""
-    if not has_japanese(original):
-        return True
+def line_is_valid(reply_line: ReplyLine) -> bool:
+    """All three versions present, the hiragana without kanji, the romaji without kana."""
     versions = (reply_line.hiragana, reply_line.romaji, reply_line.english)
     return (
         all(version.strip() for version in versions)
@@ -54,10 +52,8 @@ def line_is_valid(reply_line: ReplyLine, original: str) -> bool:
     )
 
 
-def line_versions(reply_line: ReplyLine, original: str) -> LineVersions:
-    """A line with no Japanese keeps its own text in every version; the reply's is ignored."""
-    if not has_japanese(original):
-        return LineVersions(hiragana=original, romaji=original, english=original)
+def line_versions(reply_line: ReplyLine) -> LineVersions:
+    """The reply line's three versions, trimmed."""
     return LineVersions(
         hiragana=reply_line.hiragana.strip(),
         romaji=reply_line.romaji.strip(),

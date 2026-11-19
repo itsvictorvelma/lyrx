@@ -1,11 +1,12 @@
 // Decorative kana falling behind the loading steps, in the theme's colours; still under reduced motion.
 import { useEffect, useRef } from "react";
+import { prefersReducedMotion } from "../mediaQuery";
 
 const KANA =
   "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン" +
   "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
 // Short everyday words a learner may catch as one column spells them out.
-export const RAIN_WORDS = [
+const RAIN_WORDS = [
   "うた",
   "こえ",
   "よる",
@@ -63,13 +64,6 @@ export function readRainColors(): RainColors {
     accent: style.getPropertyValue("--accent").trim(),
     background: style.getPropertyValue("--bg").trim(),
   };
-}
-
-export function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
 }
 
 export function KanaRain() {

@@ -3,8 +3,7 @@ import { useState } from "react";
 import { saveSong, unsaveSong } from "./api";
 import type { Playback } from "./types";
 
-export const SAVE_SONG_FAILED_MESSAGE =
-  "Couldn't update your songs. Try again.";
+const SAVE_SONG_FAILED_MESSAGE = "Couldn't update your songs. Try again.";
 
 interface SaveButtonProps {
   songId: number;

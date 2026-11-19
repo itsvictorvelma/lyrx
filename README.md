@@ -94,8 +94,10 @@ Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ES
 lyrx/
 ├── AGENTS.md              Rules and workflow
 ├── specs/                 One folder per feature
-├── docs/screenshots/      The README screenshots (invented songs only)
-├── scripts/check.sh       Every check in one command
+├── docs/                  README media: demo/ (screen recording, GIF), screenshots/ (invented songs only)
+├── scripts/
+│   ├── check.sh           Every check in one command
+│   └── check-quiet.sh     The same, one line when all pass (only the failing step's tail otherwise)
 ├── .env.example           The settings: GROQ_API_KEY and GEMINI_API_KEY
 ├── backend/               Python server (FastAPI, uv)
 │   ├── src/lyrx/
@@ -107,7 +109,7 @@ lyrx/
 │   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
 │   │   ├── library.py         The song cache and your saved songs, in one SQLite file
 │   │   ├── lyrics/            Finding and preparing lyrics
-│   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record shape
+│   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record → song
 │   │   │   ├── search.py          Typed text → a short ranked list of songs
 │   │   │   ├── lines.py           Lyrics → trimmed lines, and each line's start time
 │   │   │   └── japanese.py        Kana and kanji, and whether lyrics look Japanese
@@ -125,12 +127,14 @@ lyrx/
 │   │       ├── crash_guard.py     Turns any unexpected error into a plain 500
 │   │       └── request_log.py     One log line per request (no lyrics, no key)
 │   └── tests/             The same folders as src/lyrx, one test_<module>.py per module,
-│                          plus fake Groq, Gemini, and LRCLIB at the top
+│                          plus shared helpers at the top: fake Groq, Gemini, and LRCLIB,
+│                          the network guard, the error-shape check, and a raw ASGI runner
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
         ├── App.tsx            The app shell: header, library or song page, search, Focus mode, errors
         ├── routing.ts         Page addresses: / is the library, /song/{id} a song; Back and Forward
+        ├── mediaQuery.ts      Whether a media query matches (reduced motion, light theme, phone)
         ├── styles.css         Night-player colours (dark and light), pages, motion, phone layout
         ├── header/
         │   ├── Header.tsx         The bar on every page: wordmark, search box, theme button

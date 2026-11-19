@@ -28,4 +28,4 @@ def test_ac9_lrclib_gemini_and_groq_addresses_are_fixed_https_hosts() -> None:
 
 def test_an_empty_gemini_key_counts_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(config.GEMINI_API_KEY_ENV_VAR, "")
-    assert config.read_gemini_key() is None
+    assert config.read_api_key(config.GEMINI_API_KEY_ENV_VAR) is None
