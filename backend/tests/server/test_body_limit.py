@@ -26,7 +26,7 @@ from lyrx.app import SONG_SEARCH_PATH
 REQUEST_LOGGER = "lyrx.server.request_log"
 
 BODY_CAP_BYTES = 262_144
-NOT_LYRICS_MESSAGE = "This doesn't look like song lyrics."
+TOO_LARGE_MESSAGE = "The request is too large."
 JSON_HEADERS = {"Content-Type": "application/json"}
 # Broken JSON one byte over the cap: if it were parsed, the answer would be invalid_request.
 OVERSIZED_BODY = b"{" + b" " * BODY_CAP_BYTES
@@ -34,16 +34,16 @@ OVERSIZED_BODY = b"{" + b" " * BODY_CAP_BYTES
 OVERSIZED_CHUNKS = [b"{" + b" " * (BODY_CAP_BYTES // 2), b" " * (BODY_CAP_BYTES // 2)]
 
 
-def assert_not_lyrics_body(body: Any) -> None:
-    """Spec 003 AC-65: the exact sentence, no `details`, and no "too long" or "limit"."""
-    assert_error_shape(body, "not_lyrics")
-    assert body == {"code": "not_lyrics", "message": NOT_LYRICS_MESSAGE}
+def assert_too_large_body(body: Any) -> None:
+    """Spec 003 AC-65: the exact message, no `details`, and no "too long" or "limit"."""
+    assert_error_shape(body, "request_too_large")
+    assert body == {"code": "request_too_large", "message": TOO_LARGE_MESSAGE}
     text = json.dumps(body).lower()
     assert "too long" not in text
     assert "limit" not in text
 
 
-def test_spec003_ac65_body_over_256_kib_with_content_length_is_not_lyrics_before_parsing(
+def test_spec003_ac65_body_over_256_kib_with_content_length_is_too_large_before_parsing(
     client: TestClient, fake_gemini: FakeGemini
 ) -> None:
     assert len(OVERSIZED_BODY) == BODY_CAP_BYTES + 1
@@ -52,11 +52,11 @@ def test_spec003_ac65_body_over_256_kib_with_content_length_is_not_lyrics_before
 
     assert response.request.headers["content-length"] == str(BODY_CAP_BYTES + 1)
     assert response.status_code == 413
-    assert_not_lyrics_body(response.json())
+    assert_too_large_body(response.json())
     assert fake_gemini.requests == []
 
 
-def test_spec003_ac65_body_over_256_kib_without_content_length_is_not_lyrics(
+def test_spec003_ac65_body_over_256_kib_without_content_length_is_too_large(
     client: TestClient, fake_gemini: FakeGemini
 ) -> None:
     """The cap counts the bytes read, so a body with no Content-Length is capped."""
@@ -66,7 +66,7 @@ def test_spec003_ac65_body_over_256_kib_without_content_length_is_not_lyrics(
 
     assert "content-length" not in response.request.headers
     assert response.status_code == 413
-    assert_not_lyrics_body(response.json())
+    assert_too_large_body(response.json())
     assert fake_gemini.requests == []
 
 
@@ -77,7 +77,7 @@ def send_raw_request(
     return run_like_uvicorn(app, headers, body_messages(chunks))
 
 
-def test_spec003_ac65_body_over_256_kib_with_a_false_small_content_length_is_not_lyrics(
+def test_spec003_ac65_body_over_256_kib_with_a_false_small_content_length_is_too_large(
     app: FastAPI, fake_gemini: FakeGemini
 ) -> None:
     """A lying Content-Length cannot get a large body past the cap."""
@@ -86,7 +86,7 @@ def test_spec003_ac65_body_over_256_kib_with_a_false_small_content_length_is_not
     sent = send_raw_request(app, headers, OVERSIZED_CHUNKS)
 
     assert response_status(sent) == 413
-    assert_not_lyrics_body(json.loads(response_body(sent)))
+    assert_too_large_body(json.loads(response_body(sent)))
     assert fake_gemini.requests == []
 
 
@@ -103,11 +103,11 @@ def test_spec003_ac65_broken_body_of_exactly_256_kib_is_parsed_and_gets_the_norm
 
 
 def test_spec003_ac65_the_cap_applies_on_every_route(client: TestClient) -> None:
-    """The body cap runs before routing, so an unknown path gets `not_lyrics` too."""
+    """The body cap runs before routing, so an unknown path gets `request_too_large` too."""
     response = client.post("/api/no-such-route", content=OVERSIZED_BODY, headers=JSON_HEADERS)
 
     assert response.status_code == 413
-    assert_not_lyrics_body(response.json())
+    assert_too_large_body(response.json())
 
 
 # A client that disconnects mid-body never reaches the app (T7 follow-up).

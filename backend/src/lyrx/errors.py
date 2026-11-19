@@ -10,7 +10,7 @@ from lyrx.schemas import ErrorResponse
 ErrorCode = Literal[
     "invalid_request",
     "empty_search",
-    "not_lyrics",
+    "request_too_large",
     "host_not_allowed",
     "not_found",
     "method_not_allowed",
@@ -28,7 +28,7 @@ ErrorCode = Literal[
 ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "invalid_request": (400, "The request is not valid."),
     "empty_search": (400, "Type a song name first."),
-    "not_lyrics": (413, "This doesn't look like song lyrics."),
+    "request_too_large": (413, "The request is too large."),
     "host_not_allowed": (403, "This server only answers on 127.0.0.1 or localhost."),
     "not_found": (404, "There is nothing at this address."),
     "method_not_allowed": (405, "This address does not accept that method."),
