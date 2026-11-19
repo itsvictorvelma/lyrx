@@ -15,7 +15,7 @@ from lyrx.translation.prompt import NumberedLines
 from lyrx.translation.results import ChunkReply, LineVersions, TranslatorReply
 
 # Failures that say "this translator is busy or out of reach", so the next one may answer.
-BUSY_REASONS = frozenset({"http_429", "http_503", "timeout", "connect_error"})
+BUSY_REASONS = frozenset({"http_429", "http_503", "timeout", "deadline", "connect_error"})
 
 
 @dataclass(frozen=True)

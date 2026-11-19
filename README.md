@@ -120,6 +120,7 @@ lyrx/
 │   │   │   ├── checks.py          The checks on every reply: its JSON, then each line
 │   │   │   ├── groq.py            Groq: client, one request, reply shape
 │   │   │   ├── gemini.py          Gemini: client, one request, reply shape
+│   │   │   ├── reply_limits.py    Reads a reply within its byte cap and overall deadline
 │   │   │   └── results.py         The internal result shapes
 │   │   └── server/            Guards and logging around every request
 │   │       ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost

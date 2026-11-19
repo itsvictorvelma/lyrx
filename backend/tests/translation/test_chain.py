@@ -5,8 +5,15 @@ import logging
 import httpx2
 import pytest
 from conftest import SHIPPED_TRANSLATORS
+from fake_clock import trickled, use_clock
 from fake_gemini import FakeGemini, answer_with_placeholders, status, success
-from fake_groq import FakeGroq, groq_answer_with_placeholders, groq_reply, groq_status
+from fake_groq import (
+    FakeGroq,
+    groq_answer_with_placeholders,
+    groq_reply,
+    groq_status,
+    groq_success,
+)
 from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
@@ -118,6 +125,19 @@ def test_a_ready_translator_never_shows_its_key() -> None:
 )
 def test_ac2_a_busy_groq_hands_the_request_to_gemini(busy: ScriptedReply) -> None:
     groq, gemini, result = ask([busy], [success(VERSIONS)])
+
+    assert isinstance(result, ChunkReply)
+    assert result.translator == "gemini-3.5-flash-lite"
+    assert (len(groq.requests), len(gemini.requests)) == (1, 1)
+
+
+def test_spec019_ac5_a_groq_reply_past_the_deadline_hands_the_request_to_gemini(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Groq starts at 0 s and its second piece arrives at 50 s, past the 45 s deadline.
+    use_clock(monkeypatch, 0.0, 10.0, 50.0)
+
+    groq, gemini, result = ask([trickled(groq_success(VERSIONS))], [success(VERSIONS)])
 
     assert isinstance(result, ChunkReply)
     assert result.translator == "gemini-3.5-flash-lite"
