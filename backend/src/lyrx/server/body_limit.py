@@ -29,7 +29,7 @@ class BodySizeLimit:
         if body == "disconnected":
             return
         if body == "too_large":
-            too_large = error_response(ApiError("not_lyrics"))
+            too_large = error_response(ApiError("request_too_large"))
             await too_large(scope, receive, send)
             return
         await self.app(scope, replay_body(body, receive), send)
