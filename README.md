@@ -8,6 +8,18 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 [AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
 
+## Screenshots
+
+The song and lyrics shown are invented for these screenshots.
+
+| Your songs | A song, dark |
+|---|---|
+| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png) |
+
+| A song, light | On a phone |
+|---|---|
+| ![The same song in the light theme](docs/screenshots/song-light.png) | <img src="docs/screenshots/phone.png" alt="The song on a phone: the original next to one chosen column" width="260"> |
+
 ## What works today
 
 - **Your songs (home):** every song you open is saved and shows as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
@@ -70,6 +82,7 @@ Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ES
 lyrx/
 ├── AGENTS.md              Rules and workflow
 ├── specs/                 One folder per feature
+├── docs/screenshots/      The README screenshots (invented songs only)
 ├── scripts/check.sh       Every check in one command
 ├── .env.example           The settings: GROQ_API_KEY and GEMINI_API_KEY
 ├── backend/               Python server (FastAPI, uv)
