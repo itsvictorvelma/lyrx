@@ -142,6 +142,7 @@ lyrx/
             ├── SaveButton.tsx     The Save / Saved toggle on a song
             ├── OtherMatches.tsx   "Not this one?": the other results in a popover
             ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
+            ├── followLine.ts      Calm following: scroll only when the sung line passes 60% of the view
             ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, keeping the sync
             ├── PlayerControls.tsx Previous / play / next, position, Earlier/Later sync
             ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)

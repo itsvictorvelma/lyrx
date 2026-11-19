@@ -27,6 +27,7 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | — | Find the YouTube video automatically (needs a YouTube API key) | after 012 |
 | 013 | Design pass: night-player look, library home, song page with docked player and Focus mode, phone layout | done |
 | 016 | Save songs on purpose (Save button); fill in missing lines on reopen | approved |
+| 018 | Reading comfort: calm following, lead-in, tighter rows, roomier Focus mode | approved |
 | 015 | Study tools: hide a column, loop a line, keyboard shortcuts | not started |
 | 014 | Personal accounts, ready for hosting | not started |
 | — | Next language | decided after 008 is in use |

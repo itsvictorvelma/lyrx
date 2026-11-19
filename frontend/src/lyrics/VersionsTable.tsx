@@ -1,5 +1,4 @@
-// The four versions as a table: one row per lyric line, a gap between verses, the sung line marked.
-import { useEffect, useRef } from "react";
+// The four versions as a table: one row per lyric line, a gap between verses, the sung and next lines marked.
 import type { Line } from "./types";
 
 export const NOT_AVAILABLE_TEXT = "Not available";
@@ -9,12 +8,10 @@ export type PhoneColumn = "hiragana" | "romaji" | "english";
 
 interface VersionsTableProps {
   lines: Line[];
-  // The line being sung, highlighted and kept in view; null when nothing is playing.
+  // The line being sung, highlighted; null when nothing is playing. The song page keeps it in view.
   currentLine?: number | null;
   // Clicking a timed line's original text jumps the audio to it.
   onSeek?: (line: Line) => void;
-  // While audio plays, the lines not being sung are dimmed.
-  playing?: boolean;
   phoneColumn?: PhoneColumn;
 }
 
@@ -22,31 +19,12 @@ export function VersionsTable({
   lines,
   currentLine = null,
   onSeek,
-  playing = false,
   phoneColumn = "hiragana",
 }: VersionsTableProps) {
-  const currentRow = useRef<HTMLTableRowElement>(null);
-
-  useEffect(() => {
-    const row = currentRow.current;
-    // jsdom (the test browser) has neither scrollIntoView nor matchMedia, so both are checked.
-    if (currentLine === null || row === null || !("scrollIntoView" in row)) {
-      return;
-    }
-    const reduceMotion =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    row.scrollIntoView({
-      block: "center",
-      behavior: reduceMotion ? "auto" : "smooth",
-    });
-  }, [currentLine]);
+  const nextLine = nextLineAfter(lines, currentLine);
 
   return (
-    <table
-      className={playing ? "versions-table is-playing" : "versions-table"}
-      data-phone-column={phoneColumn}
-    >
+    <table className="versions-table" data-phone-column={phoneColumn}>
       <thead>
         <tr>
           <th scope="col" className="col-original">
@@ -68,8 +46,7 @@ export function VersionsTable({
           {verse.map((line) => (
             <tr
               key={line.index}
-              ref={line.index === currentLine ? currentRow : undefined}
-              className={line.index === currentLine ? "current" : undefined}
+              className={rowClass(line.index, currentLine, nextLine)}
               aria-current={line.index === currentLine ? "true" : undefined}
             >
               <td lang="ja" className="col-original">
@@ -103,6 +80,32 @@ export function VersionsTable({
       ))}
     </table>
   );
+}
+
+// "current" for the sung line, "next" for the one after it; the CSS draws the marks.
+function rowClass(
+  index: number,
+  currentLine: number | null,
+  nextLine: number | null,
+): string | undefined {
+  if (index === currentLine) {
+    return "current";
+  }
+  return index === nextLine ? "next" : undefined;
+}
+
+// The first line with text after the sung one, across a verse gap; null when nothing is sung.
+function nextLineAfter(
+  lines: Line[],
+  currentLine: number | null,
+): number | null {
+  if (currentLine === null) {
+    return null;
+  }
+  const next = lines.find(
+    (line) => line.index > currentLine && line.original !== "",
+  );
+  return next?.index ?? null;
 }
 
 // A lyric line the translator could not do comes back with empty versions; say so in words.

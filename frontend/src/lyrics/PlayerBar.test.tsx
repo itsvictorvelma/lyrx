@@ -156,6 +156,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  // jsdom has no scrollTo; the calm-following test adds one.
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
   delete window.YT;
 });
 
@@ -238,7 +241,7 @@ test("spec 012 AC-11: a song without timings says so and has no sync or seek but
   expect(screen.queryByRole("button", { name: /^Play from/ })).toBeNull();
 });
 
-test("AC-8: while the audio plays, the sung row is current and the table is dimmed", async () => {
+test("AC-8: while the audio plays, the sung row is current", async () => {
   playerSeconds = 5;
   playerPlaying = true;
   await openSavedSong(songReply(LINES, VIDEO_ID));
@@ -248,7 +251,81 @@ test("AC-8: while the audio plays, the sung row is current and the table is dimm
       "風が歌う",
     );
   });
-  expect(screen.getByRole("table").classList).toContain("is-playing");
+});
+
+test("spec 018 AC-2: a line is sung from 0.3 s before its start time, not earlier", async () => {
+  // 風が歌う starts at 4.0 s; at 3.6 s the line before is still sung.
+  playerSeconds = 3.6;
+  await openSavedSong(songReply(LINES, VIDEO_ID));
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "星の道",
+    );
+  });
+
+  playerSeconds = 3.75;
+
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "風が歌う",
+    );
+  });
+});
+
+test("spec 018 AC-3: the line after the sung one is marked next, across a verse gap", async () => {
+  playerSeconds = 5;
+  await openSavedSong(songReply(LINES, VIDEO_ID));
+
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "風が歌う",
+    );
+  });
+  const next = document.querySelectorAll("tr.next");
+  expect(next).toHaveLength(1);
+  expect(next[0]?.textContent).toContain("夜の月");
+});
+
+test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current line resumes it", async () => {
+  // A laid-out view: 400px tall, with the sung row near its bottom, so following scrolls.
+  const scrollTo = vi.fn();
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(400);
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: Element) {
+      const top = this.matches("tr.current") ? 360 : 0;
+      return { top, bottom: top + 40, height: 40 } as DOMRect;
+    },
+  );
+  HTMLElement.prototype.scrollTo = scrollTo;
+  playerSeconds = 5;
+  playerPlaying = true;
+  const user = await openSavedSong(songReply(LINES, VIDEO_ID));
+  await waitFor(() => {
+    expect(scrollTo).toHaveBeenCalled();
+  });
+  const lyrics = document.querySelector(".lyrics-scroll");
+  if (lyrics === null) {
+    throw new Error("no lyrics area");
+  }
+
+  // The page's own scrolling never pauses following.
+  fireEvent.scroll(lyrics);
+  expect(
+    screen.queryByRole("button", { name: "Back to the current line" }),
+  ).toBeNull();
+
+  fireEvent.wheel(lyrics, { deltaY: 200 });
+  const back = await screen.findByRole("button", {
+    name: "Back to the current line",
+  });
+  scrollTo.mockClear();
+  await user.click(back);
+
+  expect(
+    screen.queryByRole("button", { name: "Back to the current line" }),
+  ).toBeNull();
+  expect(scrollTo).toHaveBeenCalledWith({ top: 280, behavior: "smooth" });
+  expect(document.activeElement).toBe(lyrics);
 });
 
 test("AC-9: play/pause, previous and next line, and the position slider control the audio", async () => {

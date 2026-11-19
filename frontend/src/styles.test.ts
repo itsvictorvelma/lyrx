@@ -87,11 +87,49 @@ test("AC-13: reduced motion turns off animation, transitions, and smooth scrolli
   expect(block).toContain("scroll-behavior: auto !important");
 });
 
-test("dim rows use the dim colour, never transparency", () => {
-  const rule =
-    /\.versions-table\.is-playing tr:not\(\.current\) td \{([^}]*)\}/.exec(css);
-  expect(rule?.[1]).toContain("color: var(--dim)");
-  expect(rule?.[1]).not.toContain("opacity");
+// The body of the first rule whose selector is exactly `selector` (outside media queries).
+function ruleBody(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`).exec(css)?.[1] ?? "";
+}
+
+test("spec 018 AC-4: no glow on the sung line, no dimmed rows, romaji bright and English quiet", () => {
+  expect(css).not.toContain("is-playing");
+  expect(css).not.toMatch(/tr\.current[^{]*\{[^}]*text-shadow/);
+  expect(ruleBody(".versions-table td.col-romaji")).toContain(
+    "color: var(--text)",
+  );
+  expect(ruleBody(".versions-table .col-english")).toContain(
+    "color: var(--dim)",
+  );
+});
+
+test("spec 018 AC-6: tighter rows, narrower width, new sizes, and a verse divider", () => {
+  const expected: [selector: string, declaration: string][] = [
+    [".versions-table", "max-width: 72rem"],
+    [".versions-table td", "--row-pad: 0.5rem"],
+    [".versions-table .col-original", "width: 27%"],
+    [".versions-table .col-hiragana", "width: 26%"],
+    [".versions-table .col-romaji", "width: 25%"],
+    [".versions-table .col-english", "width: 22%"],
+    [".versions-table .col-original", "font-size: 1.25rem"],
+    [".versions-table .col-hiragana", "font-size: 1.0625rem"],
+    [".versions-table .col-romaji", "font-size: 1rem"],
+    [".versions-table .col-english", "font-size: 0.9375rem"],
+    [
+      ".versions-table tbody + tbody tr:first-child td",
+      "border-top: 1px solid var(--line)",
+    ],
+    [".is-focus .versions-table", "max-width: 81rem"],
+    [".is-focus .versions-table td", "--row-pad: 0.75rem"],
+    [".is-focus .versions-table td.col-original", "font-size: 1.625rem"],
+    [".is-focus .versions-table td.col-hiragana", "font-size: 1.3125rem"],
+    [".is-focus .versions-table td.col-romaji", "font-size: 1.1875rem"],
+    [".is-focus .versions-table td.col-english", "font-size: 1.0625rem"],
+  ];
+  for (const [selector, declaration] of expected) {
+    expect(ruleBody(selector), selector).toContain(declaration);
+  }
 });
 
 test("AC-11: below 720px only the chosen column shows next to the original", () => {
