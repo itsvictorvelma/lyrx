@@ -91,7 +91,8 @@ async function requestJson<Reply>(
   } catch {
     return { kind: "unreadable" };
   }
-  const reply = okStatus === 204 ? null : parseJson(text);
+  // Only a 204 has no body; an error reply always carries its code and message.
+  const reply = response.status === 204 ? null : parseJson(text);
   if (response.status === okStatus) {
     return isValid(reply)
       ? { kind: "ok", value: reply }

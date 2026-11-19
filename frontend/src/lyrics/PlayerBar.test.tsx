@@ -282,3 +282,30 @@ test("AC-11: the phone tabs pick the column shown next to the original", async (
   await user.click(screen.getByRole("button", { name: "EN" }));
   expect(table.dataset.phoneColumn).toBe("english");
 });
+
+test("spec 012: saving the video of a song that is not saved is quiet, not an error", async () => {
+  const user = await openSavedSong(songReply(LINES));
+  const answerByAddress = fakeFetch.getMockImplementation();
+  fakeFetch.mockImplementation((input, init) =>
+    init?.method === "PUT"
+      ? Promise.resolve(
+          new Response(
+            JSON.stringify({ code: "song_not_found", message: "Not saved." }),
+            { status: 404 },
+          ),
+        )
+      : (answerByAddress?.(input, init) ?? Promise.reject(new TypeError())),
+  );
+  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
+
+  await user.type(
+    screen.getByLabelText("YouTube link"),
+    `https://youtu.be/${VIDEO_ID}`,
+  );
+  await user.click(screen.getByRole("button", { name: "Play video" }));
+
+  await waitFor(() => {
+    expect(putBodies()).toHaveLength(1);
+  });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
