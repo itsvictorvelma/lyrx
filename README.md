@@ -8,6 +8,12 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 [AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
 
+## Demo
+
+[![Searching for a song: kana rain while it loads, then the lyrics in four columns](docs/demo/preview.gif)](docs/demo/lyrx-demo.mp4)
+
+Click the preview for the full demo video (1 min 44 s, with sound).
+
 ## Screenshots
 
 The song and lyrics shown are invented for these screenshots.
