@@ -500,7 +500,8 @@ button:disabled {
 /* Waiting */
 
 .progress-head p {
-  font-size: 1.5rem;
+  margin: 0;
+  font-size: 1.0625rem;
   font-weight: 700;
 }
 
@@ -510,28 +511,40 @@ button:disabled {
   color: var(--dim);
 }
 
+.progress-head .prompt,
+.progress-head .cursor {
+  color: var(--accent);
+}
+
+.progress-head .cursor {
+  margin-left: 0.25rem;
+  animation: blink 1s step-end infinite;
+}
+
 .steps {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 1.5rem 0 2rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1.25rem 0 2rem;
   padding: 0;
+  font-size: 0.875rem;
   list-style: none;
 }
 
 .step {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  gap: 0.75rem;
 }
 
 .step-waiting {
   color: var(--dim);
+}
+
+.step-mark {
+  min-width: 4.5ch;
+  font-weight: 700;
+  white-space: pre;
 }
 
 .step-done .step-mark,
@@ -539,36 +552,68 @@ button:disabled {
   color: var(--accent);
 }
 
-.placeholder-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
-
-.placeholder-row {
+.search-progress {
+  position: relative;
   display: grid;
-  grid-template-columns: 1.3fr 1.15fr 1.15fr 1fr;
-  gap: 1.5rem;
-  padding: 1.125rem 1.25rem;
+  flex: 1 1 auto;
+  place-items: center;
+  min-height: 24rem;
+  padding: 2rem 1rem;
+  overflow: hidden;
+}
+
+.kana-rain {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The steps sit on a card above the rain, so their text keeps its contrast. */
+.progress-card {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, 36rem);
+  padding: 0 1.5rem 1.5rem;
+  font-family:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", "Noto Sans JP",
+    monospace;
   background: var(--surface);
-  border-radius: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  box-shadow:
+    var(--shadow),
+    0 0 24px var(--accent-glow);
+  animation: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-.shimmer {
-  height: 0.875rem;
-  background: linear-gradient(
-    90deg,
-    var(--surface) 0%,
-    var(--surface-2) 50%,
-    var(--surface) 100%
-  );
-  background-size: 200% 100%;
-  border-radius: 6px;
-  animation: shimmer 1.4s linear infinite;
+.progress-card .steps {
+  margin-bottom: 0;
 }
 
-.shimmer-wide {
-  height: 1.25rem;
+/* The terminal window's title bar. */
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 -1.5rem 1.25rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.terminal-dots span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
 }
 
 /* Song page */
@@ -1123,19 +1168,15 @@ button:disabled {
   }
 }
 
-@keyframes shimmer {
-  from {
-    background-position: 200% 0;
-  }
-
-  to {
-    background-position: -200% 0;
-  }
-}
-
 @keyframes pulse {
   50% {
     opacity: 0.35;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
   }
 }
 
