@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { navigate } from "../routing";
 import { OtherMatches } from "./OtherMatches";
-import { currentLineIndex, hasTimings } from "./playback";
+import { useFollowLine } from "./followLine";
+import { currentLineIndex, hasTimings, LEAD_IN_MS } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerBar } from "./PlayerBar";
 import { SaveButton } from "./SaveButton";
@@ -13,6 +14,16 @@ import type { PhoneColumn } from "./VersionsTable";
 const SYNCED_TEXT = "Synced lyrics";
 export const NO_TIMINGS_TEXT = "No line timings for this song.";
 const POLL_MS = 200;
+export const BACK_TO_LINE_TEXT = "Back to the current line";
+// Keys that scroll the lyrics when a line in them has focus; pressing one pauses following.
+const SCROLL_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+]);
 const STOPPED: Progress = { timeMs: null, durationMs: null, playing: false };
 
 const PHONE_COLUMNS: { column: PhoneColumn; label: string; lang: string }[] = [
@@ -43,6 +54,9 @@ export function SongPage(props: SongPageProps) {
   const [phoneColumn, setPhoneColumn] = useState<PhoneColumn>("hiragana");
   // The player now loaded, if any; read on a timer, so it is not state.
   const clock = useRef<AudioClock | null>(null);
+  const lyricsRef = useRef<HTMLDivElement>(null);
+  // Off once the learner scrolls the lyrics themselves, until they press "Back to the current line".
+  const [following, setFollowing] = useState(true);
   const timed = hasTimings(lines);
 
   const readProgress = useCallback(() => {
@@ -70,7 +84,22 @@ export function SongPage(props: SongPageProps) {
   const currentLine =
     progress.timeMs === null
       ? null
-      : currentLineIndex(lines, progress.timeMs, offsetMs);
+      : currentLineIndex(lines, progress.timeMs + LEAD_IN_MS, offsetMs);
+  useFollowLine(
+    lyricsRef,
+    currentLine,
+    following,
+    "tr.current",
+    focus ? "focus" : "normal",
+  );
+
+  // Only the learner's own scrolling pauses following, never the page's.
+  // ponytail: dragging the scrollbar doesn't pause; a pointer listener on the scrollbar could add it.
+  function pauseFollowing() {
+    if (currentLine !== null) {
+      setFollowing(false);
+    }
+  }
 
   function seekToLine(line: Line | undefined) {
     if (line?.startMs !== null && line?.startMs !== undefined) {
@@ -157,14 +186,39 @@ export function SongPage(props: SongPageProps) {
           </button>
         </div>
       )}
-      <div className="lyrics-scroll">
-        <VersionsTable
-          lines={lines}
-          currentLine={currentLine}
-          playing={progress.playing}
-          phoneColumn={phoneColumn}
-          onSeek={seekToLine}
-        />
+      <div className="lyrics-area">
+        <div
+          ref={lyricsRef}
+          className="lyrics-scroll"
+          tabIndex={-1}
+          onWheel={pauseFollowing}
+          onTouchMove={pauseFollowing}
+          onKeyDown={(event) => {
+            if (SCROLL_KEYS.has(event.key)) {
+              pauseFollowing();
+            }
+          }}
+        >
+          <VersionsTable
+            lines={lines}
+            currentLine={currentLine}
+            phoneColumn={phoneColumn}
+            onSeek={seekToLine}
+          />
+        </div>
+        {!following && currentLine !== null && (
+          <button
+            type="button"
+            className="pill-button back-to-line"
+            onClick={() => {
+              setFollowing(true);
+              // The button goes away, so keep keyboard focus in the lyrics instead of the page.
+              lyricsRef.current?.focus();
+            }}
+          >
+            <span aria-hidden="true">↓</span> {BACK_TO_LINE_TEXT}
+          </button>
+        )}
       </div>
       <PlayerBar
         songId={song.id}

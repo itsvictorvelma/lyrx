@@ -29,6 +29,10 @@ export function parseVideoId(link: string): string | null {
   return id !== null && id !== undefined && VIDEO_ID.test(id) ? id : null;
 }
 
+// A line counts as sung this long before its start time, so the eyes arrive in time.
+// ponytail: two lines starting less than this apart can't both be landed on by Previous; rare in songs.
+export const LEAD_IN_MS = 300;
+
 // The index of the line being sung: the last line whose start plus the offset has passed.
 export function currentLineIndex(
   lines: Line[],
