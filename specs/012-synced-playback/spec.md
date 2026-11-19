@@ -1,6 +1,6 @@
 # 012 — Synced playback
 
-Status: approved (by the user, 2026-11-18)
+Status: done (merged in PR #29, 2026-11-18)
 
 ## Goal
 

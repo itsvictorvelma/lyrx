@@ -23,7 +23,7 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 009 | Saved songs; paste removed | done |
 | 010 | Two translators: Groq first, Gemini as backup | done |
 | 011 | Tidy the backend: folders by area, schemas split, unused cleanup removed | done |
-| 012 | Synced playback: YouTube by link and your own MP3, line highlighting from LRCLIB timings | approved |
+| 012 | Synced playback: YouTube by link and your own MP3, line highlighting from LRCLIB timings | done |
 | — | Find the YouTube video automatically (needs a YouTube API key) | after 012 |
 | 013 | Design pass: one cohesive look for the whole app (includes the waiting visualizer) | not started |
 | 014 | Personal accounts, ready for hosting | not started |
