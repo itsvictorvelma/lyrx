@@ -1,6 +1,6 @@
 # 016 — Save songs on purpose; fill in missing lines
 
-Status: approved (by the user, 2026-11-19)
+Status: done (merged in PR #34, 2026-11-19)
 
 ## Goal
 

@@ -1,9 +1,13 @@
-// While the server works: the steps with done / in progress / waiting marks, seconds, placeholder rows.
+// While the server works: kana rain behind a terminal-style card with the steps, their marks, and the seconds.
 import { useEffect, useState } from "react";
+import { KanaRain, prefersReducedMotion } from "./KanaRain";
 
 export const FINDING_TEXT = "Finding the song";
 export const OPENING_TEXT = "Getting the lyrics and translating";
-const PLACEHOLDER_ROWS = 8;
+
+// The terminal spinner's frames, and how often it moves.
+const SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+const SPINNER_MS = 80;
 
 export type Stage = "finding" | "opening" | "opening-found";
 
@@ -29,67 +33,77 @@ export function SearchProgress({ stage }: { stage: Stage }) {
   const active = steps.find((step) => step.state === "active");
 
   return (
-    <section
-      className="page search-progress"
-      aria-label="Getting your song ready"
-    >
-      <div className="progress-head">
-        <p role="status" aria-live="polite">
-          {active === undefined ? null : `${active.label}…`}
-          {/* Remounted per step, so the count restarts at 0 for each request. */}
-          <ElapsedSeconds key={stage} />
-        </p>
-      </div>
-      <ol className="steps" aria-label="Steps">
-        {steps.map((step) => (
-          <li key={step.label} className={`step step-${step.state}`}>
-            <StepMark state={step.state} />
-            {step.label}
-            <span className="visually-hidden">
-              {step.state === "done"
-                ? " (done)"
-                : step.state === "active"
-                  ? " (in progress)"
-                  : " (waiting)"}
+    <section className="search-progress" aria-label="Getting your song ready">
+      <KanaRain />
+      <div className="progress-card">
+        <div className="terminal-bar" aria-hidden="true">
+          <span className="terminal-dots">
+            <span />
+            <span />
+            <span />
+          </span>
+          lyrx@歌詞 ~ translate
+        </div>
+        <div className="progress-head">
+          <p role="status" aria-live="polite">
+            <span className="prompt" aria-hidden="true">
+              &gt;{" "}
             </span>
-          </li>
-        ))}
-      </ol>
-      <div className="placeholder-rows" aria-hidden="true">
-        {Array.from({ length: PLACEHOLDER_ROWS }, (_, row) => (
-          <div key={row} className="placeholder-row">
-            <span className="shimmer shimmer-wide" />
-            <span className="shimmer" />
-            <span className="shimmer" />
-            <span className="shimmer" />
-          </div>
-        ))}
+            {active === undefined ? null : `${active.label}…`}
+            {/* Remounted per step, so the count restarts at 0 for each request. */}
+            <ElapsedSeconds key={stage} />
+            <span className="cursor" aria-hidden="true">
+              █
+            </span>
+          </p>
+        </div>
+        <ol className="steps" aria-label="Steps">
+          {steps.map((step) => (
+            <li key={step.label} className={`step step-${step.state}`}>
+              <StepMark state={step.state} />
+              {step.label}
+              <span className="visually-hidden">
+                {step.state === "done"
+                  ? " (done)"
+                  : step.state === "active"
+                    ? " (in progress)"
+                    : " (waiting)"}
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
 }
 
+// "[ OK ]", a spinning "[ ⠹ ]", or "[ -- ]"; decorative, since the step says its state in words.
 function StepMark({ state }: { state: Step["state"] }) {
-  if (state === "done") {
-    return (
-      <svg viewBox="0 0 24 24" className="icon step-mark" aria-hidden="true">
-        <path d="M20 6 9 17l-5-5" />
-      </svg>
-    );
-  }
+  const inside =
+    state === "done" ? "OK" : state === "active" ? <Spinner /> : "--";
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className={state === "active" ? "icon step-mark spin" : "icon step-mark"}
-      aria-hidden="true"
-    >
-      {state === "active" ? (
-        <path d="M21 12a9 9 0 1 1-6.2-8.6" />
-      ) : (
-        <circle cx="12" cy="12" r="8" />
-      )}
-    </svg>
+    <span className="step-mark" aria-hidden="true">
+      [ {inside} ]
+    </span>
   );
+}
+
+function Spinner() {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    if (prefersReducedMotion()) {
+      return;
+    }
+    const timer = setInterval(() => {
+      setFrame((count) => (count + 1) % SPINNER_FRAMES.length);
+    }, SPINNER_MS);
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+
+  return <>{SPINNER_FRAMES[frame]}</>;
 }
 
 function ElapsedSeconds() {
