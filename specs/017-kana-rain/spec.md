@@ -1,6 +1,6 @@
 # 017 — Kana rain while a song loads
 
-Status: approved
+Status: done (merged in PR #35, 2026-11-19)
 
 ## Goal
 
