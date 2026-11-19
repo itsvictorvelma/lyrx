@@ -1,173 +1,1122 @@
-/* Page styles: the approved neutral colors, a Japanese font stack, and a visible focus outline. */
-:root {
-  --color-text: #1a1a1a;
-  --color-muted: #5c5c5c;
-  --color-border: #d0d0d0;
-  --color-page: #ffffff;
-  --color-error: #a40000;
+/* Lyrx styles: night-player tokens (dark and light), the pages, motion, and the phone layout. */
 
-  color-scheme: light dark;
-  color: var(--color-text);
-  background: var(--color-page);
-  font-family:
-    system-ui, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic",
-    "Noto Sans JP", "Meiryo", sans-serif;
-  line-height: 1.6;
+/* Light tokens; dark ones follow, chosen by the system or by the theme button (data-theme). */
+:root {
+  --bg: #faf8fa;
+  --surface: #ffffff;
+  --surface-2: #f1edf2;
+  --line: #e4dfe6;
+  --text: #1b1820;
+  --dim: #6a6575;
+  --accent: #c92a74;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(201 42 116 / 8%);
+  --accent-glow: rgb(201 42 116 / 22%);
+  --error: #a40000;
+  --shadow: 0 12px 32px rgb(27 24 32 / 12%);
+  --tile-bg-sl: 55% 92%;
+  --tile-fg-sl: 50% 32%;
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-text: #ececec;
-    --color-muted: #a8a8a8;
-    --color-border: #444444;
-    --color-page: #161616;
-    --color-error: #ff8a80;
+  :root:not([data-theme="light"]) {
+    --bg: #0e0d12;
+    --surface: #18161d;
+    --surface-2: #24212b;
+    --line: #2a2731;
+    --text: #f3f0f5;
+    --dim: #9c97a8;
+    --accent: #ff7ab6;
+    --accent-ink: #1a0a12;
+    --accent-soft: rgb(255 122 182 / 12%);
+    --accent-glow: rgb(255 122 182 / 35%);
+    --error: #ff8a80;
+    --shadow: 0 12px 32px rgb(0 0 0 / 50%);
+    --tile-bg-sl: 30% 18%;
+    --tile-fg-sl: 85% 80%;
+
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e0d12;
+  --surface: #18161d;
+  --surface-2: #24212b;
+  --line: #2a2731;
+  --text: #f3f0f5;
+  --dim: #9c97a8;
+  --accent: #ff7ab6;
+  --accent-ink: #1a0a12;
+  --accent-soft: rgb(255 122 182 / 12%);
+  --accent-glow: rgb(255 122 182 / 35%);
+  --error: #ff8a80;
+  --shadow: 0 12px 32px rgb(0 0 0 / 50%);
+  --tile-bg-sl: 30% 18%;
+  --tile-fg-sl: 85% 80%;
+
+  color-scheme: dark;
+}
+
+:root {
+  color: var(--text);
+  background: var(--bg);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic UI",
+    "Yu Gothic",
+    "Meiryo",
+    "Noto Sans JP",
+    sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
 }
 
-main {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1.5rem;
+h1,
+p {
+  margin: 0;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-/* The result heading is focused by code; show the ring only for keyboard focus. */
-h2:focus:not(:focus-visible) {
-  outline: none;
+button,
+input {
+  font: inherit;
+  color: inherit;
 }
 
 button {
-  padding: 0.4rem 1rem;
-  font: inherit;
-}
-
-.error {
-  color: var(--color-error);
-}
-
-.search-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.search-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-input[type="search"] {
-  flex: 1;
-  min-width: 0;
-  padding: 0.4rem 0.5rem;
-  font: inherit;
-  color: inherit;
-  background: var(--color-page);
-  border: 1px solid var(--color-muted);
-}
-
-.muted {
-  color: var(--color-muted);
-}
-
-.link-button {
-  padding: 0;
-  color: inherit;
-  text-decoration: underline;
-  background: none;
-  border: none;
   cursor: pointer;
 }
 
-.other-matches ul {
-  padding-left: 1.25rem;
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
-.other-matches li {
-  margin: 0.25rem 0;
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-/* Only the table scrolls sideways on a narrow screen, never the page. */
-.table-scroll {
-  overflow-x: auto;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.error {
+  color: var(--error);
+}
+
+.icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-filled {
+  fill: currentcolor;
+  stroke: none;
+}
+
+/* Buttons */
+
+.pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.pill-button:hover {
+  border-color: var(--accent);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.icon-button:hover {
+  background: var(--surface-2);
+}
+
+.icon-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.play-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 0 28px var(--accent-glow);
+  transition: transform 0.15s;
+}
+
+.play-button:active {
+  transform: scale(0.94);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.segmented button {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+/* Pressed is shown by weight too, never by colour alone. */
+.segmented button[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* App frame: the song page fills the window exactly; the library scrolls as a page. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app.is-song {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+  animation: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.page-error {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 78rem;
+  margin: 1rem auto 0;
+  padding: 0 2rem;
+}
+
+/* Header */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 0.75rem 2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.wordmark-kana {
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.search-form {
+  flex: 1 1 20rem;
+  max-width: 35rem;
+  margin: 0 auto;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  box-sizing: border-box;
+  height: 2.75rem;
+  padding: 0 0.25rem 0 1rem;
+  color: var(--dim);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.search-box input::placeholder {
+  color: var(--dim);
+}
+
+.find-button {
+  height: 2.25rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+}
+
+/* Library */
+
+.library-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.library-head h1,
+.library-empty h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.library-head p,
+.library-empty p {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.library-empty {
+  padding-top: 6rem;
+  text-align: center;
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: 2rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  position: relative;
+}
+
+.tile-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.tile-open:hover {
+  transform: translateY(-4px);
+}
+
+.tile-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.625rem;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: hsl(var(--tile-hue) var(--tile-bg-sl));
+  border-radius: 14px;
+  transition: box-shadow 0.3s;
+}
+
+.tile-open:hover .tile-art {
+  box-shadow: 0 0 32px var(--accent-glow);
+}
+
+.tile-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tile-glyph {
+  font-size: 5.5rem;
+  font-weight: 700;
+  color: hsl(var(--tile-hue) var(--tile-fg-sl));
+}
+
+.tile-play {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.25s,
+    transform 0.25s;
+}
+
+.tile-open:hover .tile-play,
+.tile-open:focus-visible .tile-play {
+  opacity: 1;
+  transform: none;
+}
+
+.tile-title {
+  font-weight: 600;
+}
+
+.tile-meta {
+  font-size: 0.8125rem;
+  color: var(--dim);
+}
+
+.tile-remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: var(--text);
+  background: var(--surface);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tile:hover .tile-remove,
+.tile-remove:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tile-remove {
+    opacity: 1;
+  }
+}
+
+/* Waiting */
+
+.progress-head p {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.progress-head span {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--dim);
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.5rem 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.step-waiting {
+  color: var(--dim);
+}
+
+.step-done .step-mark,
+.step-active .step-mark {
+  color: var(--accent);
+}
+
+.placeholder-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.placeholder-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1.15fr 1.15fr 1fr;
+  gap: 1.5rem;
+  padding: 1.125rem 1.25rem;
+  background: var(--surface);
+  border-radius: 12px;
+}
+
+.shimmer {
+  height: 0.875rem;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    var(--surface-2) 50%,
+    var(--surface) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.shimmer-wide {
+  height: 1.25rem;
+}
+
+/* Song page */
+
+.song-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  animation: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.song-head,
+.focus-strip {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 0.75rem 2rem 0.5rem;
+}
+
+.song-title-block {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.song-title-block h1 {
+  font-size: 1.875rem;
+  letter-spacing: -0.01em;
+}
+
+.song-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.synced {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.focus-title {
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.other-matches {
+  position: relative;
+}
+
+.other-matches summary {
+  list-style: none;
+}
+
+.other-matches summary::-webkit-details-marker {
+  display: none;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 10;
+  width: min(22rem, 80vw);
+  margin: 0;
+  padding: 0.5rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  animation: fade-up 0.2s ease both;
+}
+
+.match-button {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+}
+
+.match-button:hover {
+  background: var(--surface-2);
+}
+
+/* The lyrics: the only part of the song page that scrolls; room at the bottom clears the video. */
+.lyrics-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 1rem 2rem 14rem;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 2rem,
+    #000 calc(100% - 4rem),
+    transparent 100%
+  );
 }
 
 .versions-table {
   width: 100%;
-  border-collapse: collapse;
+  max-width: 74rem;
+  margin: 0 auto;
+  table-layout: fixed;
+  border-spacing: 0;
 }
 
 .versions-table th {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
   text-align: left;
-  color: var(--color-muted);
-  font-weight: normal;
-  border-bottom: 1px solid var(--color-border);
+  text-transform: uppercase;
+  color: var(--dim);
 }
 
-.versions-table th,
+/* Cells align to the top (a button lines up by its last line, so baseline drifts when a line
+   wraps); --shift nudges the smaller columns down so first lines share a baseline. */
 .versions-table td {
-  padding: 0.35rem 1rem 0.35rem 0;
+  --row-pad: 0.875rem;
+
+  padding: calc(var(--row-pad) + var(--shift, 0px)) 1.25rem var(--row-pad);
   vertical-align: top;
+  transition:
+    background-color 0.4s,
+    color 0.4s,
+    box-shadow 0.4s;
+}
+
+.versions-table .col-original {
+  width: 30%;
+  font-size: 1.3125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.versions-table .col-hiragana {
+  width: 26%;
+  font-size: 1.1875rem;
+}
+
+.versions-table .col-romaji {
+  width: 24%;
+  font-size: 1rem;
+}
+
+.versions-table .col-english {
+  width: 20%;
+  font-size: 0.9375rem;
+  color: var(--dim);
+}
+
+.versions-table td.col-hiragana {
+  --shift: 1px;
+}
+
+.versions-table td.col-romaji {
+  --shift: 4px;
+}
+
+.versions-table td.col-english {
+  --shift: 5px;
+}
+
+.versions-table th.col-original,
+.versions-table th.col-hiragana,
+.versions-table th.col-romaji,
+.versions-table th.col-english {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 /* A verse gap: each table body after the first starts with space above it. */
 .versions-table tbody + tbody tr:first-child td {
-  padding-top: 1.5rem;
+  padding-top: calc(2rem + var(--shift, 0px));
 }
 
-.saved-songs {
-  margin-top: 2rem;
+/* While audio plays, lines not being sung use the dim colour (never transparency, for contrast). */
+.versions-table.is-playing tr:not(.current) td {
+  color: var(--dim);
 }
 
-.saved-songs ul {
-  padding-left: 1.25rem;
-}
-
-.saved-songs li {
-  margin: 0.35rem 0;
-}
-
-.playback {
-  margin: 1.5rem 0;
-}
-
-/* A 16:9 box for the YouTube player, as wide as the column allows. */
-.video-frame {
-  max-width: 40rem;
-  aspect-ratio: 16 / 9;
-}
-
-.sync {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-/* The line being sung: a bar on the left and a tinted row, so it never relies on color alone. */
+/* The line being sung: a tinted row, a bar on the left, a glow on the text; never colour alone. */
 .versions-table tr.current td {
-  background: var(--color-border);
+  background: var(--accent-soft);
 }
 
 .versions-table tr.current td:first-child {
-  border-left: 4px solid var(--color-text);
-  padding-left: 0.6rem;
+  border-radius: 12px 0 0 12px;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.versions-table tr.current td:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.versions-table tr.current .col-original {
+  text-shadow: 0 0 18px var(--accent-glow);
 }
 
 .seek-button {
+  padding: 0;
+  font: inherit;
   text-align: left;
-  text-decoration: none;
+  color: inherit;
+  background: none;
+  border: 0;
 }
 
 .seek-button:hover {
-  text-decoration: underline;
+  color: var(--accent);
+}
+
+/* Focus mode: bigger text and more room. */
+.is-focus .versions-table {
+  max-width: 88rem;
+}
+
+.is-focus .versions-table td {
+  --row-pad: 1.25rem;
+
+  padding-right: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.is-focus .versions-table td.col-original {
+  font-size: 1.75rem;
+}
+
+.is-focus .versions-table td.col-hiragana {
+  --shift: 3px;
+
+  font-size: 1.4375rem;
+}
+
+.is-focus .versions-table td.col-romaji {
+  --shift: 9px;
+
+  font-size: 1.125rem;
+}
+
+.is-focus .versions-table td.col-english {
+  --shift: 10px;
+
+  font-size: 1.0625rem;
+}
+
+/* Player bar */
+
+.player-bar {
+  position: relative;
+  padding: 0.75rem 2rem;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.player-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  max-width: 78rem;
+  margin: 0 auto;
+}
+
+.transport,
+.audio-chooser,
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.audio-chooser {
+  gap: 0.5rem;
+}
+
+.sync {
+  font-size: 0.8125rem;
+}
+
+.sync span {
+  min-width: 7rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.position {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.position input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.link-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 78rem;
+  margin: 0 auto 0.75rem;
+  font-size: 0.875rem;
+}
+
+.link-form input {
+  flex: 1 1 16rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.player-bar > .error {
+  max-width: 78rem;
+  margin: 0 auto 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* The video plays in a small window above the bar, at the right. */
+.video-window {
+  position: absolute;
+  right: 2rem;
+  bottom: calc(100% + 1rem);
+  width: 17rem;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: fade-up 0.25s ease both;
+}
+
+/* Hidden off-screen at a playable size, not removed, so the video keeps playing. */
+.video-window.is-hidden {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 200px;
+  height: 200px;
+  pointer-events: none;
+}
+
+.video-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.video-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* The phone column tabs show only on narrow screens. */
+.phone-tabs {
+  display: none;
+}
+
+/* Phone */
+
+@media (max-width: 719px) {
+  .page {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .site-header {
+    padding: 0.5rem 1rem;
+  }
+
+  .site-header > .icon-button {
+    margin-left: auto;
+  }
+
+  .search-form {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem 1rem;
+  }
+
+  .song-head,
+  .focus-strip {
+    padding: 0.5rem 1rem;
+  }
+
+  .song-title-block h1 {
+    font-size: 1.375rem;
+  }
+
+  .phone-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex-basis: 100%;
+    order: 5;
+  }
+
+  .focus-button {
+    display: none;
+  }
+
+  .lyrics-scroll {
+    padding: 0.5rem 0.75rem 8rem;
+  }
+
+  .versions-table th {
+    padding: 0.75rem;
+  }
+
+  .versions-table td {
+    --row-pad: 0.75rem;
+
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .versions-table .col-original {
+    width: 55%;
+    font-size: 1.125rem;
+  }
+
+  .versions-table td.col-hiragana {
+    --shift: 0px;
+
+    font-size: 1.0625rem;
+  }
+
+  .versions-table td.col-romaji {
+    --shift: 1px;
+  }
+
+  .versions-table td.col-english {
+    --shift: 2px;
+  }
+
+  .versions-table[data-phone-column="hiragana"] :is(.col-romaji, .col-english),
+  .versions-table[data-phone-column="romaji"] :is(.col-hiragana, .col-english),
+  .versions-table[data-phone-column="english"] :is(.col-hiragana, .col-romaji) {
+    display: none;
+  }
+
+  .versions-table :is(.col-hiragana, .col-romaji, .col-english) {
+    width: 45%;
+  }
+
+  .player-bar {
+    padding: 0.625rem 1rem 1rem;
+  }
+
+  .position {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .sync span {
+    min-width: 5.5rem;
+  }
+
+  /* On a phone the video sits in the bar, above the controls, so it never covers the lyrics. */
+  .video-window:not(.is-hidden) {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 22rem;
+    margin: 0 auto 0.625rem;
+  }
+}
+
+/* Motion */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

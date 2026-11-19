@@ -1,41 +1,39 @@
-// The Lyrx page: find a song, open the best match, show it in four columns; your saved songs.
+// The Lyrx app: the header, then the library at `/` or a song at `/song/{id}`; search from anywhere.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Header } from "./header/Header";
+import { LibraryPage } from "./library/LibraryPage";
 import {
   getSongVersions,
   listSavedSongs,
   removeSavedSong,
   searchSongs,
 } from "./lyrics/api";
-import { OtherMatches } from "./lyrics/OtherMatches";
-import { PlaybackPanel } from "./lyrics/PlaybackPanel";
-import { currentLineIndex, hasTimings } from "./lyrics/playback";
-import type { AudioClock } from "./lyrics/playback";
-import { SavedSongs } from "./lyrics/SavedSongs";
-import { SearchForm } from "./lyrics/SearchForm";
+import { SearchProgress } from "./lyrics/SearchProgress";
+import type { Stage } from "./lyrics/SearchProgress";
+import { SongPage } from "./lyrics/SongPage";
 import type {
   ApiResult,
   Line,
   Playback,
+  SavedSong,
   SearchResult,
   Song,
 } from "./lyrics/types";
-import { VersionsTable } from "./lyrics/VersionsTable";
-import { WaitingStatus } from "./lyrics/WaitingStatus";
+import { navigate, songPath, useRoute } from "./routing";
+import type { Route } from "./routing";
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
 export const SERVER_UNREACHABLE_MESSAGE =
   "Could not reach the Lyrx server. Is it running?";
-const FINDING_TEXT = "Finding the song…";
-const OPENING_TEXT = "Getting the lyrics and translating…";
 
-type Status = "idle" | "finding" | "opening";
+type Status = "idle" | Stage;
 
 interface Shown {
   song: Song;
   lines: Line[];
   fromLibrary: boolean;
   playback: Playback;
-  // When this open happened; it keys the playback panel, so every open starts it fresh.
+  // When this open happened; it keys the song page, so every open starts it fresh.
   openedAt: number;
   // How long the steps took, in milliseconds; shown for development.
   findMs?: number;
@@ -75,44 +73,70 @@ export function App() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [shown, setShown] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savedSongs, setSavedSongs] = useState<Song[]>([]);
-  const [offsetMs, setOffsetMs] = useState(0);
-  const [currentLine, setCurrentLine] = useState<number | null>(null);
-  // The player now playing, if any; read on a timer, so it is not state.
-  const clock = useRef<AudioClock | null>(null);
-
-  const handleClock = useCallback((next: AudioClock | null) => {
-    clock.current = next;
-    if (next === null) {
-      setCurrentLine(null);
-    }
-  }, []);
-
-  // Five times a second, the line being sung; React skips the render when it has not changed.
-  useEffect(() => {
-    if (shown === null) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      const timeMs = clock.current?.timeMs() ?? null;
-      setCurrentLine(
-        timeMs === null
-          ? null
-          : currentLineIndex(shown.lines, timeMs, offsetMs),
-      );
-    }, 200);
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [shown, offsetMs]);
+  const [savedSongs, setSavedSongs] = useState<SavedSong[]>([]);
+  const [focus, setFocus] = useState(false);
+  // The song shown or being opened, so a route change opens a song only once.
+  const openedId = useRef<number | null>(null);
+  // How long the search took, handed to the open that follows it.
+  const pendingFindMs = useRef<number | undefined>(undefined);
   const busy = status !== "idle";
 
-  async function refreshSavedSongs() {
+  const refreshSavedSongs = useCallback(async () => {
     const result = await listSavedSongs();
     if (result.kind === "ok") {
       setSavedSongs(result.value);
     }
-  }
+  }, []);
+
+  // Every move clears the error and Focus mode. The library refreshes its tiles, stops a
+  // song still opening, and forgets the open song, so opening it again fetches it fresh.
+  const handleRouteChange = useCallback(
+    (next: Route) => {
+      setError(null);
+      setFocus(false);
+      if (next.page === "library") {
+        openedId.current = null;
+        setStatus((current) => (current === "finding" ? current : "idle"));
+        void refreshSavedSongs();
+      }
+    },
+    [refreshSavedSongs],
+  );
+  const route = useRoute(handleRouteChange);
+
+  const openSong = useCallback(
+    async (id: number) => {
+      openedId.current = id;
+      const findMs = pendingFindMs.current;
+      pendingFindMs.current = undefined;
+      setStatus(findMs === undefined ? "opening" : "opening-found");
+      setShown(null);
+      setError(null);
+      const started = performance.now();
+      const result = await getSongVersions(id);
+      if (openedId.current !== id) {
+        return;
+      }
+      setStatus("idle");
+      if (result.kind === "ok") {
+        setShown({
+          ...result.value,
+          findMs,
+          openedAt: started,
+          versionsMs: performance.now() - started,
+        });
+        void refreshSavedSongs();
+        return;
+      }
+      openedId.current = null;
+      // A song the server does not have is an unknown address: show the library instead.
+      if (result.kind === "error" && result.code === "song_not_found") {
+        navigate("/", { replace: true });
+      }
+      setError(messageFor(result));
+    },
+    [refreshSavedSongs],
+  );
 
   // The saved songs load once when the page opens.
   useEffect(() => {
@@ -127,31 +151,18 @@ export function App() {
     };
   }, []);
 
-  async function openSong(id: number, findMs?: number) {
-    setStatus("opening");
-    setShown(null);
-    setError(null);
-    const started = performance.now();
-    const result = await getSongVersions(id);
-    setStatus("idle");
-    if (result.kind === "ok") {
-      setShown({
-        ...result.value,
-        findMs,
-        openedAt: started,
-        versionsMs: performance.now() - started,
-      });
-      setOffsetMs(result.value.playback.offsetMs);
-      void refreshSavedSongs();
-    } else {
-      setError(messageFor(result));
+  // A song address opens that song, unless it is already shown or opening.
+  useEffect(() => {
+    if (route.page === "song" && openedId.current !== route.id) {
+      void openSong(route.id);
     }
-  }
+  }, [route, openSong]);
 
   async function find(query: string) {
+    // A song still opening must not end this search when its reply arrives.
+    openedId.current = null;
     setStatus("finding");
     setResults([]);
-    setShown(null);
     setError(null);
     const started = performance.now();
     const result = await searchSongs(query);
@@ -167,10 +178,14 @@ export function App() {
       setStatus("idle");
       return;
     }
-    await openSong(best.id, findMs);
+    pendingFindMs.current = findMs;
+    navigate(songPath(best.id));
   }
 
-  async function removeSong(song: Song) {
+  async function removeSong(song: SavedSong) {
+    if (!window.confirm(`Remove ${song.track} from your songs?`)) {
+      return;
+    }
     setError(null);
     const result = await removeSavedSong(song.id);
     if (result.kind === "ok") {
@@ -185,79 +200,57 @@ export function App() {
     }
   }
 
-  const otherResults = results.filter((result) => result.id !== shown?.song.id);
+  const songShown =
+    route.page === "song" && shown?.song.id === route.id ? shown : null;
 
   return (
-    <main>
-      <h1>Lyrx</h1>
-      <SearchForm
-        busy={busy}
-        onSearch={(query) => {
-          void find(query);
-        }}
-      />
-      <WaitingStatus
-        text={
-          status === "finding"
-            ? FINDING_TEXT
-            : status === "opening"
-              ? OPENING_TEXT
-              : null
-        }
-      />
-      {error !== null && (
-        <p role="alert" className="error">
-          <strong>Error:</strong> {error}
-        </p>
-      )}
-      {shown !== null && (
-        <>
-          <p className="song-line">
-            <strong>{shown.song.track}</strong> — {shown.song.artist}{" "}
-            <span className="muted">(lyrics from LRCLIB)</span>
-          </p>
-          <p className="muted timing">{timingText(shown)}</p>
-        </>
-      )}
-      <OtherMatches
-        results={otherResults}
-        busy={busy}
-        onPick={(result) => {
-          void openSong(result.id);
-        }}
-      />
-      {shown !== null && (
-        <PlaybackPanel
-          key={shown.openedAt}
-          songId={shown.song.id}
-          savedVideoId={shown.playback.videoId}
-          offsetMs={offsetMs}
-          hasTimings={hasTimings(shown.lines)}
-          onOffsetChange={setOffsetMs}
-          onClock={handleClock}
-        />
-      )}
-      {shown !== null && (
-        <VersionsTable
-          lines={shown.lines}
-          currentLine={currentLine}
-          onSeek={(line) => {
-            if (line.startMs !== null) {
-              clock.current?.seekMs(line.startMs + offsetMs);
-            }
+    <div className={songShown !== null && !busy ? "app is-song" : "app"}>
+      {!focus && (
+        <Header
+          busy={busy}
+          onSearch={(query) => {
+            void find(query);
           }}
         />
       )}
-      <SavedSongs
-        songs={savedSongs}
-        busy={busy}
-        onOpen={(song) => {
-          void openSong(song.id);
-        }}
-        onRemove={(song) => {
-          void removeSong(song);
-        }}
-      />
-    </main>
+      <main className="app-main">
+        {error !== null && (
+          <p role="alert" className="error page-error">
+            <strong>Error:</strong> {error}
+          </p>
+        )}
+        {busy ? (
+          <SearchProgress stage={status} />
+        ) : route.page === "library" ? (
+          <LibraryPage
+            songs={savedSongs}
+            onOpen={(song) => {
+              navigate(songPath(song.id));
+            }}
+            onRemove={(song) => {
+              void removeSong(song);
+            }}
+          />
+        ) : (
+          songShown !== null && (
+            <SongPage
+              key={songShown.openedAt}
+              song={songShown.song}
+              lines={songShown.lines}
+              playback={songShown.playback}
+              timing={timingText(songShown)}
+              otherMatches={results.filter(
+                (result) => result.id !== songShown.song.id,
+              )}
+              focus={focus}
+              onPickMatch={(match) => {
+                navigate(songPath(match.id));
+              }}
+              onFocusChange={setFocus}
+            />
+          )
+        )}
+      </main>
+    </div>
   );
 }

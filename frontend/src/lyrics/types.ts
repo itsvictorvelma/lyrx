@@ -16,12 +16,25 @@ export interface Playback {
   offsetMs: number;
 }
 
+// Where the audio is, as last read from the player; null before a player is ready.
+export interface Progress {
+  timeMs: number | null;
+  durationMs: number | null;
+  playing: boolean;
+}
+
 export interface Song {
   id: number;
   track: string;
   artist: string;
   album: string;
   durationSeconds: number;
+}
+
+// A saved song in the library: its linked video, and when it was last opened (Unix milliseconds).
+export interface SavedSong extends Song {
+  videoId: string | null;
+  lastOpenedAt: number;
 }
 
 export interface SearchResult extends Song {

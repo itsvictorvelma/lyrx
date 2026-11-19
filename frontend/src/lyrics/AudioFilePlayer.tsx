@@ -19,6 +19,15 @@ export function AudioFilePlayer({ file, onClock }: AudioFilePlayerProps) {
     element.src = url;
     onClock({
       timeMs: () => element.currentTime * 1000,
+      durationMs: () =>
+        Number.isFinite(element.duration) ? element.duration * 1000 : null,
+      isPlaying: () => !element.paused,
+      play: () => {
+        void element.play().catch(() => undefined);
+      },
+      pause: () => {
+        element.pause();
+      },
       seekMs: (milliseconds) => {
         element.currentTime = milliseconds / 1000;
       },
@@ -31,7 +40,7 @@ export function AudioFilePlayer({ file, onClock }: AudioFilePlayerProps) {
   }, [file, onClock]);
 
   return (
-    <audio ref={audio} controls aria-label={`Playing ${file.name}`}>
+    <audio ref={audio} aria-label={`Playing ${file.name}`}>
       Your browser cannot play this file.
     </audio>
   );

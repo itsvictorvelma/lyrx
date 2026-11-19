@@ -25,7 +25,8 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 011 | Tidy the backend: folders by area, schemas split, unused cleanup removed | done |
 | 012 | Synced playback: YouTube by link and your own MP3, line highlighting from LRCLIB timings | approved |
 | — | Find the YouTube video automatically (needs a YouTube API key) | after 012 |
-| 013 | Design pass: one cohesive look for the whole app (includes the waiting visualizer) | not started |
+| 013 | Design pass: night-player look, library home, song page with docked player and Focus mode, phone layout | approved |
+| 015 | Study tools: hide a column, loop a line, keyboard shortcuts | not started |
 | 014 | Personal accounts, ready for hosting | not started |
 | — | Next language | decided after 008 is in use |
 

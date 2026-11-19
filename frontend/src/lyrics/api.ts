@@ -4,6 +4,7 @@ import type {
   ApiResult,
   Line,
   Playback,
+  SavedSong,
   SearchResult,
   Song,
   SongVersions,
@@ -22,7 +23,7 @@ export function getSongVersions(id: number): Promise<ApiResult<SongVersions>> {
   return postJson("/api/song-versions", { id }, isSongVersionsReply);
 }
 
-export async function listSavedSongs(): Promise<ApiResult<Song[]>> {
+export async function listSavedSongs(): Promise<ApiResult<SavedSong[]>> {
   const result = await requestJson(
     "GET",
     "/api/songs",
@@ -166,9 +167,21 @@ function isSearchResult(value: unknown): value is SearchResult {
   );
 }
 
-function isSavedSongsReply(value: unknown): value is { songs: Song[] } {
+function isSavedSong(value: unknown): value is SavedSong {
   return (
-    isRecord(value) && Array.isArray(value.songs) && value.songs.every(isSong)
+    isSong(value) &&
+    isRecord(value) &&
+    (value.videoId === null ||
+      (typeof value.videoId === "string" && VIDEO_ID.test(value.videoId))) &&
+    Number.isInteger(value.lastOpenedAt)
+  );
+}
+
+function isSavedSongsReply(value: unknown): value is { songs: SavedSong[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.songs) &&
+    value.songs.every(isSavedSong)
   );
 }
 

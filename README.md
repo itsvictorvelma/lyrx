@@ -10,14 +10,16 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 ## What works today
 
-- **Find a song:** type a title, an artist, or both. The best match opens; "Not this song?" lists the others.
-- **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available".
-- **Your songs:** every song you open is saved and reopens instantly.
-- **Play along:** paste a YouTube link or pick an audio file from your computer; the line being sung is highlighted (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are saved with the song. Your file is never uploaded.
+- **Your songs (home):** every song you open is saved and shows as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
+- **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
+- **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
+- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line glows and stays centred (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are saved with the song. Your file is never uploaded.
+- **Focus mode:** hides everything but the lyrics and the player, with bigger text.
+- **Dark and light:** follows your system; the sun/moon button switches and remembers it.
 
 ## Coming next
 
-1. One cohesive design for the whole app.
+1. Study tools: hide a column to test yourself, loop a line, keyboard shortcuts.
 2. Personal accounts, so family and friends can use a hosted copy.
 3. Finding the YouTube video automatically.
 
@@ -102,18 +104,27 @@ lyrx/
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
-        ├── App.tsx            The page and its state: find, open, saved songs, errors
-        ├── styles.css         Neutral colors, Japanese font stack, visible focus
+        ├── App.tsx            The app shell: header, library or song page, search, Focus mode, errors
+        ├── routing.ts         Page addresses: / is the library, /song/{id} a song; Back and Forward
+        ├── styles.css         Night-player colours (dark and light), pages, motion, phone layout
+        ├── header/
+        │   ├── Header.tsx         The bar on every page: wordmark, search box, theme button
+        │   ├── SearchForm.tsx     The search box and Find button
+        │   └── ThemeButton.tsx    The sun/moon button: remembered choice, else the system setting
+        ├── library/
+        │   ├── LibraryPage.tsx    Home: your songs as tiles, sorting, the empty welcome
+        │   ├── SongTile.tsx       One tile: thumbnail or first character, title, Remove
+        │   └── songTiles.ts       Thumbnail address, title colour, "Opened …", sort orders
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
             ├── api.ts             The requests to the server, and the checks on their replies
-            ├── SearchForm.tsx     The search box and Find button
-            ├── OtherMatches.tsx   "Not this song?": the other results
+            ├── SearchProgress.tsx The waiting steps, seconds counter, and placeholder rows
+            ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar
+            ├── OtherMatches.tsx   "Not this one?": the other results in a popover
             ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
-            ├── WaitingStatus.tsx  The waiting line with its seconds counter
-            ├── SavedSongs.tsx     "Your songs": open or remove a saved song
-            ├── PlaybackPanel.tsx  "Play along": YouTube link, audio file, Earlier/Later sync
+            ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, saving
+            ├── PlayerControls.tsx Previous / play / next, position, Earlier/Later sync
             ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
             ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser
-            └── playback.ts        Link → video id, the line being sung, the sync
+            └── playback.ts        Link → video id, the line being sung, the sync, the player clock
 ```

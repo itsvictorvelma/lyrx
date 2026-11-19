@@ -60,8 +60,18 @@ export function hasTimings(lines: Line[]): boolean {
   return lines.some((line) => line.startMs !== null);
 }
 
-// What the page needs from any player: where it is now, and a way to jump.
+// What the page needs from any player: where it is, how long it is, and the controls.
 export interface AudioClock {
   timeMs: () => number | null;
+  durationMs: () => number | null;
+  isPlaying: () => boolean;
+  play: () => void;
+  pause: () => void;
   seekMs: (milliseconds: number) => void;
+}
+
+// "1:05" for 65,400 milliseconds.
+export function formatClock(milliseconds: number): string {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  return `${String(Math.floor(seconds / 60))}:${String(seconds % 60).padStart(2, "0")}`;
 }

@@ -1,9 +1,10 @@
-// Checks playing along on the whole page, with a fake YouTube player: links, highlight, seek, sync.
-import { render, screen, waitFor } from "@testing-library/react";
+// Checks the song page with a fake YouTube player: links, the player bar, highlight, seek, sync, tabs.
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../App";
-import { BAD_LINK_MESSAGE, NO_TIMINGS_TEXT } from "./PlaybackPanel";
+import { BAD_LINK_MESSAGE } from "./PlayerBar";
+import { NO_TIMINGS_TEXT } from "./SongPage";
 import type { YouTubePlayerHandle } from "./YouTubePlayer";
 import type { Line } from "./types";
 
@@ -34,8 +35,9 @@ function timed(index: number, original: string, startMs: number | null): Line {
   };
 }
 
-// The fake player: its time is set by the test, and its seeks are recorded.
+// The fake player: its time is set by the test; seeks and play/pause are recorded.
 let playerSeconds = 0;
+let playerPlaying = false;
 const seeks: number[] = [];
 const createdFor: string[] = [];
 
@@ -44,6 +46,14 @@ class FakePlayer implements YouTubePlayerHandle {
     createdFor.push(options.videoId);
   }
   getCurrentTime = () => playerSeconds;
+  getDuration = () => 60;
+  getPlayerState = () => (playerPlaying ? 1 : 2);
+  playVideo = () => {
+    playerPlaying = true;
+  };
+  pauseVideo = () => {
+    playerPlaying = false;
+  };
   seekTo = (seconds: number) => {
     seeks.push(seconds);
   };
@@ -82,6 +92,8 @@ function stubServer(reply: Response) {
         artist: "ミナト",
         album: "",
         durationSeconds: 214,
+        videoId: null,
+        lastOpenedAt: Date.now(),
       };
       return Promise.resolve(
         new Response(JSON.stringify({ songs: [song] }), { status: 200 }),
@@ -110,14 +122,16 @@ async function openSavedSong(reply: Response) {
   const user = userEvent.setup();
   render(<App />);
   await user.click(
-    await screen.findByRole("button", { name: "星の歌 — ミナト, 3:34" }),
+    await screen.findByRole("button", { name: "Open 星の歌 by ミナト" }),
   );
   await screen.findByRole("table");
   return user;
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/");
   playerSeconds = 0;
+  playerPlaying = false;
   seeks.length = 0;
   createdFor.length = 0;
   fakeFetch.mockReset();
@@ -130,8 +144,9 @@ afterEach(() => {
   delete window.YT;
 });
 
-test("AC-7: a YouTube link plays that video and is saved with the song", async () => {
+test("spec 012 AC-7: a YouTube link plays that video and is saved with the song", async () => {
   const user = await openSavedSong(songReply(LINES));
+  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
 
   await user.type(
     screen.getByLabelText("YouTube link"),
@@ -145,8 +160,9 @@ test("AC-7: a YouTube link plays that video and is saved with the song", async (
   expect(putBodies()).toEqual([{ videoId: VIDEO_ID, offsetMs: 0 }]);
 });
 
-test("AC-7: any other link shows the error and embeds nothing", async () => {
+test("spec 012 AC-7: any other link shows the error and embeds nothing", async () => {
   const user = await openSavedSong(songReply(LINES));
+  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
 
   await user.type(
     screen.getByLabelText("YouTube link"),
@@ -159,7 +175,7 @@ test("AC-7: any other link shows the error and embeds nothing", async () => {
   expect(putBodies()).toEqual([]);
 });
 
-test("AC-8: the line being sung is highlighted, moved by the saved sync", async () => {
+test("spec 012 AC-8: the line being sung is highlighted, moved by the saved sync", async () => {
   playerSeconds = 5;
   await openSavedSong(songReply(LINES, VIDEO_ID, 500));
 
@@ -171,7 +187,7 @@ test("AC-8: the line being sung is highlighted, moved by the saved sync", async 
   expect(screen.getByText("Sync: +0.50 s")).toBeTruthy();
 });
 
-test("AC-9: clicking a line jumps the video to its start plus the sync", async () => {
+test("spec 012 AC-9: clicking a line jumps the video to its start plus the sync", async () => {
   const user = await openSavedSong(songReply(LINES, VIDEO_ID, 500));
   await waitFor(() => {
     expect(createdFor).toEqual([VIDEO_ID]);
@@ -182,7 +198,7 @@ test("AC-9: clicking a line jumps the video to its start plus the sync", async (
   expect(seeks).toEqual([9.5]);
 });
 
-test("AC-10: Later and Earlier move the sync by a quarter second and save it", async () => {
+test("spec 012 AC-10: Later and Earlier move the sync by a quarter second and save it", async () => {
   const user = await openSavedSong(songReply(LINES, VIDEO_ID));
 
   await user.click(screen.getByRole("button", { name: "Later" }));
@@ -197,7 +213,7 @@ test("AC-10: Later and Earlier move the sync by a quarter second and save it", a
   ]);
 });
 
-test("AC-11: a song without timings says so and has no sync or seek buttons", async () => {
+test("spec 012 AC-11: a song without timings says so and has no sync or seek buttons", async () => {
   await openSavedSong(
     songReply(LINES.map((line) => ({ ...line, startMs: null }))),
   );
@@ -205,4 +221,64 @@ test("AC-11: a song without timings says so and has no sync or seek buttons", as
   expect(screen.getByText(NO_TIMINGS_TEXT)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Later" })).toBeNull();
   expect(screen.queryByRole("button", { name: /^Play from/ })).toBeNull();
+});
+
+test("AC-8: while the audio plays, the sung row is current and the table is dimmed", async () => {
+  playerSeconds = 5;
+  playerPlaying = true;
+  await openSavedSong(songReply(LINES, VIDEO_ID));
+
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "風が歌う",
+    );
+  });
+  expect(screen.getByRole("table").classList).toContain("is-playing");
+});
+
+test("AC-9: play/pause, previous and next line, and the position slider control the audio", async () => {
+  const user = await openSavedSong(songReply(LINES, VIDEO_ID, 500));
+  await waitFor(() => {
+    expect(createdFor).toEqual([VIDEO_ID]);
+  });
+
+  await user.click(screen.getByRole("button", { name: "Play" }));
+  expect(playerPlaying).toBe(true);
+  expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Pause" }));
+  expect(playerPlaying).toBe(false);
+
+  await user.click(screen.getByRole("button", { name: "Next line" }));
+  fireEvent.change(screen.getByLabelText("Position"), {
+    target: { value: "30000" },
+  });
+  expect(seeks).toEqual([1.5, 30]);
+
+  playerSeconds = 9.6;
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "夜の月",
+    );
+  });
+  await user.click(screen.getByRole("button", { name: "Previous line" }));
+  expect(seeks).toEqual([1.5, 30, 4.5]);
+});
+
+test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", async () => {
+  await openSavedSong(songReply(LINES));
+
+  expect(screen.getByRole("button", { name: "Add YouTube link" })).toBeTruthy();
+  expect(screen.getByLabelText("Play a file")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
+});
+
+test("AC-11: the phone tabs pick the column shown next to the original", async () => {
+  const user = await openSavedSong(songReply(LINES));
+  const table = screen.getByRole("table");
+  expect(table.dataset.phoneColumn).toBe("hiragana");
+
+  await user.click(screen.getByRole("button", { name: "Romaji" }));
+  expect(table.dataset.phoneColumn).toBe("romaji");
+  await user.click(screen.getByRole("button", { name: "EN" }));
+  expect(table.dataset.phoneColumn).toBe("english");
 });
