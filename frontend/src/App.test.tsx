@@ -131,12 +131,14 @@ function songReply(
   result: SearchResult,
   songLines: Line[] = lines,
   fromLibrary = false,
+  saved = fromLibrary,
 ) {
   return jsonResponse(200, {
     song: asSong(result),
     lines: songLines,
     fromLibrary,
     playback: { videoId: null, offsetMs: 0 },
+    saved,
   });
 }
 
@@ -210,16 +212,18 @@ test("AC-1: clicking a library tile opens the song from your songs", async () =>
   await screen.findByRole("table");
   expect(window.location.pathname).toBe("/song/101");
   expect(
-    screen.getByText(/^Opened from your songs in \d+\.\d s$/),
+    screen.getByText(/^Already translated · opened in \d+\.\d s$/),
   ).toBeTruthy();
 });
 
-test("AC-4: Remove asks first; confirming takes the song off, cancelling keeps it", async () => {
+// Spec 016 AC-9: Remove now calls DELETE …/saved; the song stays cached, so opening it again is
+// instant (checked by the server test for spec 016 AC-5).
+test("AC-4 and spec 016 AC-9: Remove asks first; confirming takes the song off, cancelling keeps it", async () => {
   respond(
     "GET /api/songs",
     jsonResponse(200, { songs: [asSaved(bestMatch), asSaved(liveMatch)] }),
   );
-  respond("DELETE /api/songs/101", jsonResponse(204, null));
+  respond("DELETE /api/songs/101/saved", jsonResponse(204, null));
   const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
   const user = userEvent.setup();
   render(<App />);
@@ -453,7 +457,7 @@ test("timingText formats milliseconds as seconds", () => {
     "Versions in 0.9 s",
   );
   expect(timingText({ fromLibrary: true, versionsMs: 30 })).toBe(
-    "Opened from your songs in 0.0 s",
+    "Already translated · opened in 0.0 s",
   );
 });
 
@@ -467,7 +471,7 @@ test("removing a song clears its Saved mark in the search results", async () => 
     songReply(bestMatch),
     songReply(bestMatch),
   );
-  respond("DELETE /api/songs/202", jsonResponse(204, null));
+  respond("DELETE /api/songs/202/saved", jsonResponse(204, null));
   const user = await findSong();
   await screen.findByRole("table");
 

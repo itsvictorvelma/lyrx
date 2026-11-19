@@ -5,7 +5,7 @@ import { LibraryPage } from "./library/LibraryPage";
 import {
   getSongVersions,
   listSavedSongs,
-  removeSavedSong,
+  unsaveSong,
   searchSongs,
 } from "./lyrics/api";
 import { SearchProgress } from "./lyrics/SearchProgress";
@@ -33,6 +33,7 @@ interface Shown {
   lines: Line[];
   fromLibrary: boolean;
   playback: Playback;
+  saved: boolean;
   // When this open happened; it keys the song page, so every open starts it fresh.
   openedAt: number;
   // How long the steps took, in milliseconds; shown for development.
@@ -40,13 +41,13 @@ interface Shown {
   versionsMs: number;
 }
 
-// "Found in 0.4 s · versions in 12.3 s", or the library or versions part alone.
+// "Found in 0.4 s · versions in 12.3 s", or the already-translated or versions part alone.
 export function timingText(
   shown: Pick<Shown, "fromLibrary" | "findMs" | "versionsMs">,
 ): string {
   const versions = formatSeconds(shown.versionsMs);
   if (shown.fromLibrary) {
-    return `Opened from your songs in ${versions}`;
+    return `Already translated · opened in ${versions}`;
   }
   return shown.findMs === undefined
     ? `Versions in ${versions}`
@@ -187,17 +188,20 @@ export function App() {
       return;
     }
     setError(null);
-    const result = await removeSavedSong(song.id);
+    const result = await unsaveSong(song.id);
     if (result.kind === "ok") {
       setSavedSongs((songs) => songs.filter((saved) => saved.id !== song.id));
-      setResults((found) =>
-        found.map((match) =>
-          match.id === song.id ? { ...match, saved: false } : match,
-        ),
-      );
+      markSaved(song.id, false);
     } else {
       setError(messageFor(result));
     }
+  }
+
+  // Keeps the search results' "saved" marks in step with the library.
+  function markSaved(id: number, saved: boolean) {
+    setResults((found) =>
+      found.map((match) => (match.id === id ? { ...match, saved } : match)),
+    );
   }
 
   const songShown =
@@ -238,6 +242,7 @@ export function App() {
               song={songShown.song}
               lines={songShown.lines}
               playback={songShown.playback}
+              saved={songShown.saved}
               timing={timingText(songShown)}
               otherMatches={results.filter(
                 (result) => result.id !== songShown.song.id,
@@ -247,6 +252,9 @@ export function App() {
                 navigate(songPath(match.id));
               }}
               onFocusChange={setFocus}
+              onSavedChange={(saved) => {
+                markSaved(songShown.song.id, saved);
+              }}
             />
           )
         )}

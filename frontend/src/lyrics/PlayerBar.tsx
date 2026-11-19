@@ -35,6 +35,7 @@ interface PlayerBarProps {
   hasTimings: boolean;
   progress: Progress;
   onOffsetChange: (offsetMs: number) => void;
+  onVideoChange: (videoId: string) => void;
   onClock: (clock: AudioClock | null) => void;
   onTogglePlay: () => void;
   onSeek: (milliseconds: number) => void;
@@ -59,7 +60,7 @@ export function PlayerBar(props: PlayerBarProps) {
     setError(PLAYER_FAILED_MESSAGE);
   }, []);
 
-  // A 404 means the song is not saved, so nothing is kept; any other failure is said.
+  // A 404 means the song is not in the library, so nothing is kept; any other failure is said.
   async function save(playback: { videoId: string | null; offsetMs: number }) {
     const result = await savePlayback(songId, playback);
     const notSaved =
@@ -77,6 +78,7 @@ export function PlayerBar(props: PlayerBarProps) {
     }
     setError(null);
     setVideoId(id);
+    props.onVideoChange(id);
     setSource({ kind: "youtube", videoId: id });
     setVideoShown(startsWithVideoShown());
     setLinkFormOpen(false);

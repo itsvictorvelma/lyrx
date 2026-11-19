@@ -122,5 +122,5 @@ def test_routes_are_sync_functions_so_blocking_calls_run_off_the_event_loop(
 ) -> None:
     routes = [route for route in app.routes if isinstance(route, APIRoute) and route.path == path]
 
-    assert len(routes) == 1
-    assert not inspect.iscoroutinefunction(routes[0].endpoint)
+    assert routes
+    assert not any(inspect.iscoroutinefunction(route.endpoint) for route in routes)

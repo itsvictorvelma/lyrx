@@ -84,8 +84,11 @@ class SongVersionsResponse(BaseModel):
 
     song: Song
     lines: list[VersionLine]
+    # True when the reply came from the server's cache instead of a new translation.
     from_library: bool = Field(default=False, serialization_alias="fromLibrary")
     playback: Playback = Playback()
+    # Whether the song is in the learner's library.
+    saved: bool = False
 
 
 class ErrorResponse(BaseModel):

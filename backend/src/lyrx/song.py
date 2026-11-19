@@ -11,7 +11,7 @@ from lyrx.lyrics.lines import read_lyrics, start_times
 from lyrx.lyrics.lrclib import LrclibRecord
 from lyrx.schemas import Song, VersionLine
 from lyrx.translation.chain import ReadyTranslator
-from lyrx.translation.chunks import request_in_chunks
+from lyrx.translation.chunks import MISSING, request_in_chunks
 from lyrx.translation.results import SongTranslation
 
 
@@ -63,3 +63,32 @@ def to_song(record: LrclibRecord) -> Song:
         album=record.album_name or "",
         duration_seconds=round(record.duration),
     )
+
+
+def missing_lines(versions: Sequence[VersionLine]) -> list[VersionLine]:
+    """Lines with text but no versions: the translators could not do them yet."""
+    return [
+        line
+        for line in versions
+        if line.original and not (line.hiragana or line.romaji or line.english)
+    ]
+
+
+def fill_missing_lines(
+    versions: Sequence[VersionLine], translators: Sequence[ReadyTranslator]
+) -> tuple[list[VersionLine], SongTranslation]:
+    """The lines with any missing ones that now pass filled in, and the translation result.
+
+    Only the missing lines are sent, with the whole song as context. A line that was already
+    done is never replaced; a line that fails again stays missing.
+    """
+    wanted = [(line.index, line.original) for line in missing_lines(versions)]
+    whole_song = [(line.index, line.original) for line in versions if line.original]
+    translation = request_in_chunks(wanted, translators, whole_song)
+    filled = [
+        line
+        if translation.lines.get(line.index, MISSING) == MISSING
+        else make_line(line.index, line.original, translation, line.start_ms)
+        for line in versions
+    ]
+    return filled, translation

@@ -62,7 +62,12 @@ class FakePlayer implements YouTubePlayerHandle {
 
 const fakeFetch = vi.fn<typeof fetch>();
 
-function songReply(lines: Line[], videoId: string | null = null, offsetMs = 0) {
+function songReply(
+  lines: Line[],
+  videoId: string | null = null,
+  offsetMs = 0,
+  saved = true,
+) {
   const song = {
     id: 101,
     track: "星の歌",
@@ -76,6 +81,7 @@ function songReply(lines: Line[], videoId: string | null = null, offsetMs = 0) {
       lines,
       fromLibrary: true,
       playback: { videoId, offsetMs },
+      saved,
     }),
     { status: 200 },
   );
@@ -102,11 +108,20 @@ function stubServer(reply: Response) {
     if (method === "POST" && url === "/api/song-versions") {
       return Promise.resolve(reply.clone());
     }
-    if (method === "PUT") {
+    if (method === "PUT" || method === "DELETE") {
       return Promise.resolve(new Response(null, { status: 204 }));
     }
     return Promise.reject(new TypeError(`no fake reply for ${method} ${url}`));
   });
+}
+
+// The calls to one address with one method, each with its parsed body.
+function callsTo(method: string, url: string): unknown[] {
+  return fakeFetch.mock.calls
+    .filter(([input, init]) => input === url && init?.method === method)
+    .map(([, init]): unknown =>
+      typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    );
 }
 
 function putBodies(): unknown[] {
@@ -308,4 +323,55 @@ test("spec 012: saving the video of a song that is not saved is quiet, not an er
     expect(putBodies()).toHaveLength(1);
   });
   expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("spec 016 AC-8: Save keeps the song with the video and sync now playing; Saved again unsaves it", async () => {
+  const user = await openSavedSong(songReply(LINES, null, 0, false));
+  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
+  await user.type(
+    screen.getByLabelText("YouTube link"),
+    `https://youtu.be/${VIDEO_ID}`,
+  );
+  await user.click(screen.getByRole("button", { name: "Play video" }));
+  await user.click(screen.getByRole("button", { name: "Later" }));
+  const save = screen.getByRole("button", { name: "Save" });
+  expect(save.getAttribute("aria-pressed")).toBe("false");
+
+  await user.click(save);
+
+  const saved = await screen.findByRole("button", { name: "Saved" });
+  expect(saved.getAttribute("aria-pressed")).toBe("true");
+  expect(callsTo("PUT", "/api/songs/101/saved")).toEqual([
+    { videoId: VIDEO_ID, offsetMs: 250 },
+  ]);
+
+  await user.click(saved);
+
+  const saveAgain = await screen.findByRole("button", { name: "Save" });
+  expect(saveAgain.getAttribute("aria-pressed")).toBe("false");
+  expect(callsTo("DELETE", "/api/songs/101/saved")).toHaveLength(1);
+});
+
+test("spec 016: a failed Save says so and keeps the button as it was", async () => {
+  const user = await openSavedSong(songReply(LINES, null, 0, false));
+  const answerByAddress = fakeFetch.getMockImplementation();
+  fakeFetch.mockImplementation((input, init) =>
+    init?.method === "PUT"
+      ? Promise.resolve(
+          new Response(
+            JSON.stringify({ code: "internal_error", message: "Failed." }),
+            { status: 500 },
+          ),
+        )
+      : (answerByAddress?.(input, init) ?? Promise.reject(new TypeError())),
+  );
+
+  await user.click(screen.getByRole("button", { name: "Save" }));
+
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "Couldn't update your songs.",
+  );
+  expect(
+    screen.getByRole("button", { name: "Save" }).getAttribute("aria-pressed"),
+  ).toBe("false");
 });

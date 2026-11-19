@@ -34,11 +34,16 @@ class ChunkResult:
 
 
 def request_in_chunks(
-    lines: NumberedLines, translators: Sequence[ReadyTranslator]
+    lines: NumberedLines,
+    translators: Sequence[ReadyTranslator],
+    whole_song: NumberedLines | None = None,
 ) -> SongTranslation:
-    """All chunks at once; if any chunk fails for good, the whole song fails with its error."""
+    """All chunks at once; if any chunk fails for good, the whole song fails with its error.
+
+    `whole_song` is the context when `lines` are only some of the song's lines.
+    """
     started = time.monotonic()
-    context = song_context(lines)
+    context = song_context(lines if whole_song is None else whole_song)
 
     def request_chunk(chunk: NumberedLines) -> ChunkResult:
         return request_one_chunk(chunk if context is None else context, chunk, translators)
