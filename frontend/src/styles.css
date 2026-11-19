@@ -159,6 +159,16 @@ button:disabled {
   border-color: var(--accent);
 }
 
+/* Saved: the accent outline and a filled bookmark, with aria-pressed for screen readers. */
+.save-button.is-saved {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.save-error {
+  font-size: 0.8125rem;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;

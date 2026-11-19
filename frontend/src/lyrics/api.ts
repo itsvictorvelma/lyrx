@@ -35,10 +35,25 @@ export async function listSavedSongs(): Promise<ApiResult<SavedSong[]>> {
     : result;
 }
 
-export function removeSavedSong(id: number): Promise<ApiResult<null>> {
+// Puts a song the server has opened in the library, with its video and sync.
+export function saveSong(
+  id: number,
+  playback: Playback,
+): Promise<ApiResult<null>> {
+  return requestJson(
+    "PUT",
+    `/api/songs/${String(id)}/saved`,
+    playback,
+    isNull,
+    204,
+  );
+}
+
+// Takes a song out of the library; the server still keeps its translation.
+export function unsaveSong(id: number): Promise<ApiResult<null>> {
   return requestJson(
     "DELETE",
-    `/api/songs/${String(id)}`,
+    `/api/songs/${String(id)}/saved`,
     undefined,
     isNull,
     204,
@@ -204,6 +219,7 @@ function isSongVersionsReply(value: unknown): value is SongVersions {
     isSong(value.song) &&
     isLineList(value.lines) &&
     typeof value.fromLibrary === "boolean" &&
+    typeof value.saved === "boolean" &&
     isPlayback(value.playback)
   );
 }
