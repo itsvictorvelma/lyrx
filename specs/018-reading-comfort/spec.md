@@ -1,6 +1,6 @@
 # 018 — Reading comfort: calm following, tighter rows
 
-Status: approved (by the user, 2026-11-19, from the mockup https://claude.ai/artifact/3yheYZhUbizfW6mxPQVA1C)
+Status: done (merged in PR #36, 2026-11-19)
 
 ## Goal
 
