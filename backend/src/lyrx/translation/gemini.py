@@ -15,6 +15,7 @@ from lyrx.translation.prompt import (
     NumberedLines,
     build_user_message,
 )
+from lyrx.translation.reply_limits import deadline_from_now, read_within_limits
 from lyrx.translation.results import TokenUsage, TranslatorReply
 
 # Finish reasons where Gemini's own filters stopped the reply.
@@ -89,8 +90,8 @@ def ask_gemini(
 
     Any failure raises an `ApiError` with a code and a short log reason, never error text.
     """
-    response = send_request(model, api_key, client, json.dumps(build_body(context, wanted)))
-    envelope = parse_envelope(response)
+    content = send_request(model, api_key, client, json.dumps(build_body(context, wanted)))
+    envelope = parse_envelope(content)
     usage = envelope.usage_metadata
     return TranslatorReply(
         text=reply_text(envelope),
@@ -116,18 +117,17 @@ def build_body(context: NumberedLines, wanted: NumberedLines) -> dict[str, Any]:
     }
 
 
-def send_request(model: str, api_key: str, client: httpx2.Client, content: str) -> httpx2.Response:
-    """Exactly one POST to one model."""
-    # ponytail: the reply is read with no byte cap. It is bounded by maxOutputTokens and comes
-    # from a fixed host; stream it with a cap if that ever changes.
-    # ponytail: the timeout applies to each step (connect, read), not the whole request, so a
-    # reply that trickles in can take longer than 45 s; add a total deadline if that shows up.
+def send_request(model: str, api_key: str, client: httpx2.Client, content: str) -> bytes:
+    """Exactly one POST to one model; the reply body, refused as soon as it passes a limit."""
+    deadline = deadline_from_now()
     try:
-        response = client.post(
+        with client.stream(
+            "POST",
             config.GEMINI_URL_TEMPLATE.format(model=model),
             headers={"x-goog-api-key": api_key},
             content=content,
-        )
+        ) as response:
+            body = read_within_limits(response, config.GEMINI_MAX_REPLY_BYTES, deadline)
     except httpx2.TimeoutException:
         raise ApiError("translation_unavailable", reason="timeout") from None
     except httpx2.RequestError:
@@ -136,13 +136,13 @@ def send_request(model: str, api_key: str, client: httpx2.Client, content: str) 
         raise ApiError("translation_rate_limited", reason="http_429")
     if not response.is_success:
         raise ApiError("translation_unavailable", reason=f"http_{response.status_code}")
-    return response
+    return body
 
 
-def parse_envelope(response: httpx2.Response) -> GeminiEnvelope:
+def parse_envelope(content: bytes) -> GeminiEnvelope:
     """The reply around the text; anything that is not the expected JSON is invalid."""
     try:
-        return GeminiEnvelope.model_validate_json(response.content)
+        return GeminiEnvelope.model_validate_json(content)
     except (ValidationError, RecursionError):
         raise ApiError("translation_invalid", reason="bad_envelope") from None
 

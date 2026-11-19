@@ -72,6 +72,8 @@ GROQ_TIMEOUT_SECONDS = 45
 GROQ_MAX_OUTPUT_TOKENS = 8192
 # A reply larger than this is refused while it streams in; real replies are far smaller.
 GROQ_MAX_REPLY_BYTES = 512 * 1024
+# Seconds one translator request may take in total, however slowly its reply trickles in.
+TRANSLATOR_DEADLINE_SECONDS = 45
 
 GEMINI_API_KEY_ENV_VAR = "GEMINI_API_KEY"
 GEMINI_URL_TEMPLATE = (
@@ -81,6 +83,8 @@ GEMINI_URL_TEMPLATE = (
 GEMINI_TIMEOUT_SECONDS = 45
 # Room for one chunk's three versions (about 4,000 tokens for 40 lines), with a wide margin.
 GEMINI_MAX_OUTPUT_TOKENS = 8192
+# A reply larger than this is refused while it streams in; real replies are far smaller.
+GEMINI_MAX_REPLY_BYTES = 512 * 1024
 # Minimal thinking: the versions need context, not reasoning, and thinking adds wait time.
 GEMINI_THINKING_LEVEL = "MINIMAL"
 # A song is cut into chunks of at most this many lines and characters (texts joined by "\n").

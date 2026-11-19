@@ -229,3 +229,17 @@ def test_an_outage_is_translation_unavailable_with_a_reason_but_no_error_text(
 def test_the_log_reason_names_the_finish_reason_only_if_it_looks_like_one() -> None:
     assert fail_once(stopped("RECITATION")).reason == "finish_RECITATION"
     assert fail_once(stopped("weird text; rm -rf")).reason == "finish_OTHER"
+
+
+def test_spec019_ac3_a_reply_over_the_byte_cap_is_refused_and_one_at_it_is_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reply_size = len(success(VERSIONS).content)
+
+    monkeypatch.setattr(config, "GEMINI_MAX_REPLY_BYTES", reply_size - 1)
+    error = fail_once(success(VERSIONS))
+    assert (error.code, error.reason) == ("translation_invalid", "too_large")
+
+    monkeypatch.setattr(config, "GEMINI_MAX_REPLY_BYTES", reply_size)
+    _, result = run_once(success(VERSIONS))
+    assert sorted(result.lines) == sorted(VERSIONS)

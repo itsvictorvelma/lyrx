@@ -14,6 +14,7 @@ from lyrx.translation.prompt import (
     NumberedLines,
     build_user_message,
 )
+from lyrx.translation.reply_limits import deadline_from_now, read_within_limits
 from lyrx.translation.results import TokenUsage, TranslatorReply
 
 HTTP_BAD_REQUEST = 400
@@ -104,8 +105,7 @@ def build_body(model: str, context: NumberedLines, wanted: NumberedLines) -> dic
 
 def send_request(api_key: str, client: httpx2.Client, content: str) -> bytes:
     """Exactly one POST; the reply body, refused as soon as it passes the byte cap."""
-    # ponytail: the timeout applies to each step (connect, read), not the whole request, so a
-    # reply that trickles in can take longer than 45 s; add a total deadline if that shows up.
+    deadline = deadline_from_now()
     try:
         with client.stream(
             "POST",
@@ -113,7 +113,7 @@ def send_request(api_key: str, client: httpx2.Client, content: str) -> bytes:
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             content=content,
         ) as response:
-            body = read_capped(response)
+            body = read_within_limits(response, config.GROQ_MAX_REPLY_BYTES, deadline)
     except httpx2.TimeoutException:
         raise ApiError("translation_unavailable", reason="timeout") from None
     except httpx2.RequestError:
@@ -125,16 +125,6 @@ def send_request(api_key: str, client: httpx2.Client, content: str) -> bytes:
     if not response.is_success:
         raise ApiError("translation_unavailable", reason=f"http_{response.status_code}")
     return body
-
-
-def read_capped(response: httpx2.Response) -> bytes:
-    """The body, refused as soon as it passes `config.GROQ_MAX_REPLY_BYTES`."""
-    content = bytearray()
-    for piece in response.iter_bytes():
-        content.extend(piece)
-        if len(content) > config.GROQ_MAX_REPLY_BYTES:
-            raise ApiError("translation_invalid", reason="too_large")
-    return bytes(content)
 
 
 def parse_reply(content: bytes) -> GroqReply:
