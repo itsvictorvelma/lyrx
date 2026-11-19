@@ -45,8 +45,11 @@ export interface SearchResult extends Song {
 export interface SongVersions {
   song: Song;
   lines: Line[];
+  // True when the server had already translated the song (its cache), not a new translation.
   fromLibrary: boolean;
   playback: Playback;
+  // Whether the song is in the learner's library.
+  saved: boolean;
 }
 
 export type ApiResult<Value> =

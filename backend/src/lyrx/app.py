@@ -28,7 +28,7 @@ from lyrx.server.body_limit import BodySizeLimit
 from lyrx.server.crash_guard import CrashGuard
 from lyrx.server.host_check import HostCheck
 from lyrx.server.request_log import RequestLog, logged_request
-from lyrx.song import open_song
+from lyrx.song import fill_missing_lines, missing_lines, open_song
 from lyrx.translation.chain import ready_translators
 from lyrx.translation.gemini import make_gemini_client
 from lyrx.translation.groq import make_groq_client
@@ -36,7 +36,7 @@ from lyrx.translation.groq import make_groq_client
 SONG_SEARCH_PATH = "/api/song-search"
 SONG_VERSIONS_PATH = "/api/song-versions"
 SAVED_SONGS_PATH = "/api/songs"
-SAVED_SONG_PATH = "/api/songs/{song_id}"
+SAVED_SONG_PATH = "/api/songs/{song_id}/saved"
 PLAYBACK_PATH = "/api/songs/{song_id}/playback"
 
 ROUTING_ERROR_CODES: dict[int, ErrorCode] = {404: "not_found", 405: "method_not_allowed"}
@@ -74,13 +74,13 @@ def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
 
 
 def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersionsResponse:
-    """Open a song: from the library if saved; otherwise the keys, LRCLIB, translators, save."""
+    """Open a song: from the cache (missing lines asked again); else LRCLIB, translators, cache."""
     with logged_request(SONG_VERSIONS_PATH) as log:
         log.add("lrclib_id", body.id)
-        saved = library.find_song_or_none(body.id)
-        log.add("from_library", "true" if saved else "false")
-        if saved is not None:
-            return saved.model_copy(update={"from_library": True})
+        cached = library.find_song_or_none(body.id)
+        log.add("from_library", "true" if cached else "false")
+        if cached is not None:
+            return refill_quietly(cached, request, log).model_copy(update={"from_library": True})
         # Keys are read per request, so setting one after start works.
         translators = ready_translators(request.app.state.translator_clients)
         song, lines, versions, translation = open_song(
@@ -89,15 +89,37 @@ def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersio
         log.count_lines(lines)
         log.add_translation(translation)
         reply = SongVersionsResponse(song=song, lines=versions)
-        if translation.missing_lines == 0:
-            save_quietly(reply, log)
+        cache_quietly(reply, log)
         return reply
 
 
-def save_quietly(reply: SongVersionsResponse, log: RequestLog) -> None:
-    """A failed save is logged as `save_failed` and never fails the reply."""
+def refill_quietly(
+    cached: SongVersionsResponse, request: Request, log: RequestLog
+) -> SongVersionsResponse:
+    """The cached song with its missing lines asked again; any failure returns it as it was."""
+    missing = len(missing_lines(cached.lines))
+    if missing == 0:
+        return cached
     try:
-        library.save_song(reply)
+        translators = ready_translators(request.app.state.translator_clients)
+        lines, translation = fill_missing_lines(cached.lines, translators)
+    except ApiError as error:
+        log.add("refill_failed", error.code)
+        return cached
+    log.add_translation(translation)
+    log.add("refilled_lines", missing - translation.missing_lines)
+    try:
+        library.replace_lines(cached.song.id, lines)
+    except sqlite3.Error:
+        # The new lines are still shown; they are asked for again on the next open.
+        log.add("save_failed", "true")
+    return cached.model_copy(update={"lines": lines})
+
+
+def cache_quietly(reply: SongVersionsResponse, log: RequestLog) -> None:
+    """A failed cache write is logged as `save_failed` and never fails the reply."""
+    try:
+        library.cache_song(reply)
     except sqlite3.Error:
         log.add("save_failed", "true")
 
@@ -110,11 +132,22 @@ def list_saved_songs() -> SavedSongsResponse:
         return SavedSongsResponse(songs=songs)
 
 
-def remove_saved_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]) -> Response:
-    """Removes one saved song: 204, or 404 when it was not saved."""
+def save_song(
+    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback
+) -> Response:
+    """Puts a cached song in the library with its video and nudge: 204, or 404 when not cached."""
     with logged_request(SAVED_SONG_PATH) as log:
         log.add("lrclib_id", song_id)
-        if not library.remove_song(song_id):
+        if not library.save_song_to_library(song_id, body):
+            raise ApiError("song_not_found")
+        return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+def unsave_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]) -> Response:
+    """Takes a song out of the library (it stays cached): 204, or 404 when it was not saved."""
+    with logged_request(SAVED_SONG_PATH) as log:
+        log.add("lrclib_id", song_id)
+        if not library.unsave_song(song_id):
             raise ApiError("song_not_found")
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -166,6 +199,7 @@ def create_app(
     app.add_api_route(SONG_SEARCH_PATH, find_songs, methods=["POST"])
     app.add_api_route(SONG_VERSIONS_PATH, get_song_versions, methods=["POST"])
     app.add_api_route(SAVED_SONGS_PATH, list_saved_songs, methods=["GET"])
-    app.add_api_route(SAVED_SONG_PATH, remove_saved_song, methods=["DELETE"])
+    app.add_api_route(SAVED_SONG_PATH, save_song, methods=["PUT"])
+    app.add_api_route(SAVED_SONG_PATH, unsave_song, methods=["DELETE"])
     app.add_api_route(PLAYBACK_PATH, save_song_playback, methods=["PUT"])
     return app

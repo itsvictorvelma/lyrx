@@ -2,7 +2,7 @@
 
 An app for learning a Japanese song. Type the song's name, and Lyrx shows every line in four columns: Original, Hiragana, Romaji, and English.
 
-The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). A free AI translator makes the hiragana, romaji, and English for every line: Groq first, Gemini as the backup when Groq is busy. The server checks every reply before showing it. Every song you open is saved on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no quota.
+The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). A free AI translator makes the hiragana, romaji, and English for every line: Groq first, Gemini as the backup when Groq is busy. The server checks every reply before showing it. Every song you open is kept on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no quota. A line the translator could not do is asked for again, on its own, the next time you open the song.
 
 It runs on your own computer, on `127.0.0.1`, for now.
 
@@ -12,20 +12,26 @@ It runs on your own computer, on `127.0.0.1`, for now.
 
 The song and lyrics shown are invented for these screenshots.
 
-| Your songs | A song, dark |
-|---|---|
-| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png) |
+![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png)
 
-| A song, light | On a phone |
+| Your songs | Light theme |
 |---|---|
-| ![The same song in the light theme](docs/screenshots/song-light.png) | <img src="docs/screenshots/phone.png" alt="The song on a phone: the original next to one chosen column" width="260"> |
+| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![The same song in the light theme](docs/screenshots/song-light.png) |
+
+**On a phone:** the original next to one chosen column, with the player under the lyrics.
+
+<p>
+  <img src="docs/screenshots/phone-library.png" alt="The library on a phone: two tiles per row" width="300">
+  &nbsp;
+  <img src="docs/screenshots/phone-song.png" alt="A song on a phone: the original and hiragana columns with the player bar" width="300">
+</p>
 
 ## What works today
 
-- **Your songs (home):** every song you open is saved and shows as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
+- **Your songs (home):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
 - **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
-- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line glows and stays centred (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are saved with the song. Your file is never uploaded.
+- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line glows and stays centred (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are kept once you save the song. Your file is never uploaded.
 - **Focus mode:** hides everything but the lyrics and the player, with bigger text.
 - **Dark and light:** follows your system; the sun/moon button switches and remembers it.
 
@@ -93,7 +99,7 @@ lyrx/
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
 │   │   ├── schemas.py         What the page sends and receives
 │   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
-│   │   ├── library.py         Saved songs in one SQLite file
+│   │   ├── library.py         The song cache and your saved songs, in one SQLite file
 │   │   ├── lyrics/            Finding and preparing lyrics
 │   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record shape
 │   │   │   ├── search.py          Typed text → a short ranked list of songs
@@ -134,9 +140,10 @@ lyrx/
             ├── SearchProgress.tsx While a song loads: kana rain and the terminal-style steps card
             ├── KanaRain.tsx       The falling kana behind the loading steps (canvas)
             ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar
+            ├── SaveButton.tsx     The Save / Saved toggle on a song
             ├── OtherMatches.tsx   "Not this one?": the other results in a popover
             ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
-            ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, saving
+            ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, keeping the sync
             ├── PlayerControls.tsx Previous / play / next, position, Earlier/Later sync
             ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
             ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser

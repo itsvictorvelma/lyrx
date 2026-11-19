@@ -5,6 +5,7 @@ import { OtherMatches } from "./OtherMatches";
 import { currentLineIndex, hasTimings } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerBar } from "./PlayerBar";
+import { SaveButton } from "./SaveButton";
 import type { Line, Playback, Progress, SearchResult, Song } from "./types";
 import { VersionsTable } from "./VersionsTable";
 import type { PhoneColumn } from "./VersionsTable";
@@ -24,16 +25,20 @@ interface SongPageProps {
   song: Song;
   lines: Line[];
   playback: Playback;
+  saved: boolean;
   timing: string;
   otherMatches: SearchResult[];
   focus: boolean;
   onPickMatch: (match: SearchResult) => void;
   onFocusChange: (focus: boolean) => void;
+  onSavedChange: (saved: boolean) => void;
 }
 
 export function SongPage(props: SongPageProps) {
   const { song, lines, focus } = props;
   const [offsetMs, setOffsetMs] = useState(props.playback.offsetMs);
+  const [videoId, setVideoId] = useState(props.playback.videoId);
+  const [saved, setSaved] = useState(props.saved);
   const [progress, setProgress] = useState<Progress>(STOPPED);
   const [phoneColumn, setPhoneColumn] = useState<PhoneColumn>("hiragana");
   // The player now loaded, if any; read on a timer, so it is not state.
@@ -128,6 +133,15 @@ export function SongPage(props: SongPageProps) {
             </p>
           </div>
           <PhoneTabs value={phoneColumn} onChange={setPhoneColumn} />
+          <SaveButton
+            songId={song.id}
+            saved={saved}
+            playback={{ videoId, offsetMs }}
+            onSavedChange={(next) => {
+              setSaved(next);
+              props.onSavedChange(next);
+            }}
+          />
           <OtherMatches
             results={props.otherMatches}
             onPick={props.onPickMatch}
@@ -159,6 +173,7 @@ export function SongPage(props: SongPageProps) {
         hasTimings={timed}
         progress={progress}
         onOffsetChange={setOffsetMs}
+        onVideoChange={setVideoId}
         onClock={handleClock}
         onTogglePlay={() => {
           if (clock.current?.isPlaying() === true) {
