@@ -1,6 +1,6 @@
 # 013 — Design pass
 
-Status: approved
+Status: done (merged in PR #31, 2026-11-19)
 
 ## Goal
 
