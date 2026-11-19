@@ -131,7 +131,8 @@ lyrx/
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
             ├── api.ts             The requests to the server, and the checks on their replies
-            ├── SearchProgress.tsx The waiting steps, seconds counter, and placeholder rows
+            ├── SearchProgress.tsx While a song loads: kana rain and the terminal-style steps card
+            ├── KanaRain.tsx       The falling kana behind the loading steps (canvas)
             ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar
             ├── OtherMatches.tsx   "Not this one?": the other results in a popover
             ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
