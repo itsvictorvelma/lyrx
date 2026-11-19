@@ -1,119 +1,19 @@
 // Checks the song page with a fake YouTube player: links, the player bar, highlight, seek, sync, tabs.
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { App } from "../App";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { expect, test, vi } from "vitest";
+import {
+  fakeFetch,
+  fakePlayer,
+  installFakeSongPage,
+  LINES,
+  openSavedSong,
+  songReply,
+  VIDEO_ID,
+} from "./fakeSongPage";
 import { BAD_LINK_MESSAGE } from "./PlayerBar";
 import { NO_TIMINGS_TEXT } from "./SongPage";
-import type { YouTubePlayerHandle } from "./YouTubePlayer";
-import type { Line } from "./types";
 
-const VIDEO_ID = "abcDEF12_-z";
-// Invented lines; the blank one is a verse gap.
-const LINES: Line[] = [
-  timed(0, "星の道", 1000),
-  timed(1, "風が歌う", 4000),
-  {
-    index: 2,
-    original: "",
-    hiragana: "",
-    romaji: "",
-    english: "",
-    startMs: null,
-  },
-  timed(3, "夜の月", 9000),
-];
-
-function timed(index: number, original: string, startMs: number | null): Line {
-  return {
-    index,
-    original,
-    hiragana: "かな",
-    romaji: "kana",
-    english: `English ${String(index)}`,
-    startMs,
-  };
-}
-
-// The fake player: its time is set by the test; seeks and play/pause are recorded.
-let playerSeconds = 0;
-let playerPlaying = false;
-const seeks: number[] = [];
-const createdFor: string[] = [];
-
-class FakePlayer implements YouTubePlayerHandle {
-  constructor(_element: HTMLElement, options: { videoId: string }) {
-    createdFor.push(options.videoId);
-  }
-  getCurrentTime = () => playerSeconds;
-  getDuration = () => 60;
-  getPlayerState = () => (playerPlaying ? 1 : 2);
-  playVideo = () => {
-    playerPlaying = true;
-  };
-  pauseVideo = () => {
-    playerPlaying = false;
-  };
-  seekTo = (seconds: number) => {
-    seeks.push(seconds);
-  };
-  destroy = () => undefined;
-}
-
-const fakeFetch = vi.fn<typeof fetch>();
-
-function songReply(
-  lines: Line[],
-  videoId: string | null = null,
-  offsetMs = 0,
-  saved = true,
-) {
-  const song = {
-    id: 101,
-    track: "星の歌",
-    artist: "ミナト",
-    album: "",
-    durationSeconds: 214,
-  };
-  return new Response(
-    JSON.stringify({
-      song,
-      lines,
-      fromLibrary: true,
-      playback: { videoId, offsetMs },
-      saved,
-    }),
-    { status: 200 },
-  );
-}
-
-function stubServer(reply: Response) {
-  fakeFetch.mockImplementation((input, init) => {
-    const method = init?.method ?? "GET";
-    const url = typeof input === "string" ? input : "";
-    if (method === "GET" && url === "/api/songs") {
-      const song = {
-        id: 101,
-        track: "星の歌",
-        artist: "ミナト",
-        album: "",
-        durationSeconds: 214,
-        videoId: null,
-        lastOpenedAt: Date.now(),
-      };
-      return Promise.resolve(
-        new Response(JSON.stringify({ songs: [song] }), { status: 200 }),
-      );
-    }
-    if (method === "POST" && url === "/api/song-versions") {
-      return Promise.resolve(reply.clone());
-    }
-    if (method === "PUT" || method === "DELETE") {
-      return Promise.resolve(new Response(null, { status: 204 }));
-    }
-    return Promise.reject(new TypeError(`no fake reply for ${method} ${url}`));
-  });
-}
+installFakeSongPage();
 
 // The calls to one address with one method, each with its parsed body.
 function callsTo(method: string, url: string): unknown[] {
@@ -132,36 +32,6 @@ function putBodies(): unknown[] {
     );
 }
 
-async function openSavedSong(reply: Response) {
-  stubServer(reply);
-  const user = userEvent.setup();
-  render(<App />);
-  await user.click(
-    await screen.findByRole("button", { name: "Open 星の歌 by ミナト" }),
-  );
-  await screen.findByRole("table");
-  return user;
-}
-
-beforeEach(() => {
-  window.history.replaceState(null, "", "/");
-  playerSeconds = 0;
-  playerPlaying = false;
-  seeks.length = 0;
-  createdFor.length = 0;
-  fakeFetch.mockReset();
-  vi.stubGlobal("fetch", fakeFetch);
-  window.YT = { Player: FakePlayer };
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-  // jsdom has no scrollTo; the calm-following test adds one.
-  Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
-  delete window.YT;
-});
-
 test("spec 012 AC-7: a YouTube link plays that video and is saved with the song", async () => {
   const user = await openSavedSong(songReply(LINES));
   await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
@@ -173,7 +43,7 @@ test("spec 012 AC-7: a YouTube link plays that video and is saved with the song"
   await user.click(screen.getByRole("button", { name: "Play video" }));
 
   await waitFor(() => {
-    expect(createdFor).toEqual([VIDEO_ID]);
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
   });
   expect(putBodies()).toEqual([{ videoId: VIDEO_ID, offsetMs: 0 }]);
 });
@@ -189,31 +59,31 @@ test("spec 012 AC-7: any other link shows the error and embeds nothing", async (
   await user.click(screen.getByRole("button", { name: "Play video" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe(BAD_LINK_MESSAGE);
-  expect(createdFor).toEqual([]);
+  expect(fakePlayer.createdFor).toEqual([]);
   expect(putBodies()).toEqual([]);
 });
 
 test("spec 012 AC-8: the line being sung is highlighted, moved by the saved sync", async () => {
-  playerSeconds = 5;
+  fakePlayer.seconds = 5;
   await openSavedSong(songReply(LINES, VIDEO_ID, 500));
 
   await waitFor(() => {
     const current = document.querySelector('tr[aria-current="true"]');
     expect(current?.textContent).toContain("風が歌う");
   });
-  expect(createdFor).toEqual([VIDEO_ID]);
+  expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
   expect(screen.getByText("Sync: +0.50 s")).toBeTruthy();
 });
 
 test("spec 012 AC-9: clicking a line jumps the video to its start plus the sync", async () => {
   const user = await openSavedSong(songReply(LINES, VIDEO_ID, 500));
   await waitFor(() => {
-    expect(createdFor).toEqual([VIDEO_ID]);
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
   });
 
   await user.click(screen.getByRole("button", { name: "Play from: 夜の月" }));
 
-  expect(seeks).toEqual([9.5]);
+  expect(fakePlayer.seeks).toEqual([9.5]);
 });
 
 test("spec 012 AC-10: Later and Earlier move the sync by a quarter second and save it", async () => {
@@ -242,8 +112,8 @@ test("spec 012 AC-11: a song without timings says so and has no sync or seek but
 });
 
 test("AC-8: while the audio plays, the sung row is current", async () => {
-  playerSeconds = 5;
-  playerPlaying = true;
+  fakePlayer.seconds = 5;
+  fakePlayer.playing = true;
   await openSavedSong(songReply(LINES, VIDEO_ID));
 
   await waitFor(() => {
@@ -255,7 +125,7 @@ test("AC-8: while the audio plays, the sung row is current", async () => {
 
 test("spec 018 AC-2: a line is sung from 0.3 s before its start time, not earlier", async () => {
   // 風が歌う starts at 4.0 s; at 3.6 s the line before is still sung.
-  playerSeconds = 3.6;
+  fakePlayer.seconds = 3.6;
   await openSavedSong(songReply(LINES, VIDEO_ID));
   await waitFor(() => {
     expect(document.querySelector("tr.current")?.textContent).toContain(
@@ -263,7 +133,7 @@ test("spec 018 AC-2: a line is sung from 0.3 s before its start time, not earlie
     );
   });
 
-  playerSeconds = 3.75;
+  fakePlayer.seconds = 3.75;
 
   await waitFor(() => {
     expect(document.querySelector("tr.current")?.textContent).toContain(
@@ -273,7 +143,7 @@ test("spec 018 AC-2: a line is sung from 0.3 s before its start time, not earlie
 });
 
 test("spec 018 AC-3: the line after the sung one is marked next, across a verse gap", async () => {
-  playerSeconds = 5;
+  fakePlayer.seconds = 5;
   await openSavedSong(songReply(LINES, VIDEO_ID));
 
   await waitFor(() => {
@@ -297,8 +167,8 @@ test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current 
     },
   );
   HTMLElement.prototype.scrollTo = scrollTo;
-  playerSeconds = 5;
-  playerPlaying = true;
+  fakePlayer.seconds = 5;
+  fakePlayer.playing = true;
   const user = await openSavedSong(songReply(LINES, VIDEO_ID));
   await waitFor(() => {
     expect(scrollTo).toHaveBeenCalled();
@@ -331,29 +201,29 @@ test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current 
 test("AC-9: play/pause, previous and next line, and the position slider control the audio", async () => {
   const user = await openSavedSong(songReply(LINES, VIDEO_ID, 500));
   await waitFor(() => {
-    expect(createdFor).toEqual([VIDEO_ID]);
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
   });
 
   await user.click(screen.getByRole("button", { name: "Play" }));
-  expect(playerPlaying).toBe(true);
+  expect(fakePlayer.playing).toBe(true);
   expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Pause" }));
-  expect(playerPlaying).toBe(false);
+  expect(fakePlayer.playing).toBe(false);
 
   await user.click(screen.getByRole("button", { name: "Next line" }));
   fireEvent.change(screen.getByLabelText("Position"), {
     target: { value: "30000" },
   });
-  expect(seeks).toEqual([1.5, 30]);
+  expect(fakePlayer.seeks).toEqual([1.5, 30]);
 
-  playerSeconds = 9.6;
+  fakePlayer.seconds = 9.6;
   await waitFor(() => {
     expect(document.querySelector("tr.current")?.textContent).toContain(
       "夜の月",
     );
   });
   await user.click(screen.getByRole("button", { name: "Previous line" }));
-  expect(seeks).toEqual([1.5, 30, 4.5]);
+  expect(fakePlayer.seeks).toEqual([1.5, 30, 4.5]);
 });
 
 test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", async () => {
@@ -369,9 +239,10 @@ test("AC-11: the phone tabs pick the column shown next to the original", async (
   const table = screen.getByRole("table");
   expect(table.dataset.phoneColumn).toBe("hiragana");
 
-  await user.click(screen.getByRole("button", { name: "Romaji" }));
+  const tabs = within(screen.getByRole("group", { name: "Second column" }));
+  await user.click(tabs.getByRole("button", { name: "Romaji" }));
   expect(table.dataset.phoneColumn).toBe("romaji");
-  await user.click(screen.getByRole("button", { name: "EN" }));
+  await user.click(tabs.getByRole("button", { name: "EN" }));
   expect(table.dataset.phoneColumn).toBe("english");
 });
 

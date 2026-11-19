@@ -1,6 +1,6 @@
 # 019 — Translator request limits
 
-Status: approved
+Status: done (merged in PR #41, 2026-11-19)
 
 ## Goal
 

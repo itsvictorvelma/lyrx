@@ -1,4 +1,4 @@
-// The player bar's controls: previous / play / next, the position slider, sync, the video toggle.
+// The player bar's controls: previous / play / next, loop, the position slider, sync, the video toggle.
 import { formatClock, formatOffset } from "./playback";
 import type { Progress } from "./types";
 
@@ -8,6 +8,10 @@ interface PlayerControlsProps {
   hasTimings: boolean;
   hasVideo: boolean;
   videoShown: boolean;
+  looping: boolean;
+  // A line is sung and the song has timings, so there is a line to loop.
+  canLoop: boolean;
+  onToggleLoop: () => void;
   onNudge: (direction: 1 | -1) => void;
   onToggleVideo: () => void;
   onTogglePlay: () => void;
@@ -16,7 +20,7 @@ interface PlayerControlsProps {
   onNextLine: () => void;
 }
 
-// Previous / play / next, the position slider, the sync nudge, and the video toggle.
+// Previous / play / next, loop, the position slider, the sync nudge, and the video toggle.
 export function PlayerControls(props: PlayerControlsProps) {
   const { progress, offsetMs, hasTimings } = props;
   const timeMs = progress.timeMs ?? 0;
@@ -68,6 +72,16 @@ export function PlayerControls(props: PlayerControlsProps) {
             <path d="M5 4l10 8-10 8V4z" />
             <path d="M19 5v14" />
           </svg>
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Loop line"
+          aria-pressed={props.looping}
+          disabled={!props.canLoop}
+          onClick={props.onToggleLoop}
+        >
+          <LoopIcon />
         </button>
       </div>
       <div className="position">
@@ -124,6 +138,17 @@ export function PlayerControls(props: PlayerControlsProps) {
         </button>
       )}
     </>
+  );
+}
+
+export function LoopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M17 2l4 4-4 4" />
+      <path d="M3 11V9a3 3 0 0 1 3-3h15" />
+      <path d="M7 22l-4-4 4-4" />
+      <path d="M21 13v2a3 3 0 0 1-3 3H3" />
+    </svg>
   );
 }
 

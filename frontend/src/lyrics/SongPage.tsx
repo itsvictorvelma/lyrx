@@ -1,15 +1,27 @@
-// A song: its header row (or the Focus strip), the lyrics rows, and the player bar fixed below.
+// A song: its header row (or the Focus strip), the lyrics rows, the player bar fixed below, and the study tools.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { navigate } from "../routing";
+import { HideColumnToggles, PhoneTabs } from "./ColumnButtons";
 import { OtherMatches } from "./OtherMatches";
 import { useFollowLine } from "./followLine";
+import { useHiddenColumns } from "./hiddenColumns";
+import { loopRange } from "./lineLoop";
 import { currentLineIndex, hasTimings, LEAD_IN_MS } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerBar } from "./PlayerBar";
 import { SaveButton } from "./SaveButton";
-import type { Line, Playback, Progress, SearchResult, Song } from "./types";
+import { ShortcutList } from "./ShortcutList";
+import { useShortcuts } from "./shortcuts";
+import type { Shortcut } from "./shortcuts";
+import type {
+  Line,
+  Playback,
+  Progress,
+  SearchResult,
+  Song,
+  VersionColumn,
+} from "./types";
 import { VersionsTable } from "./VersionsTable";
-import type { PhoneColumn } from "./VersionsTable";
 
 const SYNCED_TEXT = "Synced lyrics";
 export const NO_TIMINGS_TEXT = "No line timings for this song.";
@@ -25,12 +37,6 @@ const SCROLL_KEYS = new Set([
   "End",
 ]);
 const STOPPED: Progress = { timeMs: null, durationMs: null, playing: false };
-
-const PHONE_COLUMNS: { column: PhoneColumn; label: string; lang: string }[] = [
-  { column: "hiragana", label: "かな", lang: "ja" },
-  { column: "romaji", label: "Romaji", lang: "en" },
-  { column: "english", label: "EN", lang: "en" },
-];
 
 interface SongPageProps {
   song: Song;
@@ -51,7 +57,11 @@ export function SongPage(props: SongPageProps) {
   const [videoId, setVideoId] = useState(props.playback.videoId);
   const [saved, setSaved] = useState(props.saved);
   const [progress, setProgress] = useState<Progress>(STOPPED);
-  const [phoneColumn, setPhoneColumn] = useState<PhoneColumn>("hiragana");
+  const [phoneColumn, setPhoneColumn] = useState<VersionColumn>("hiragana");
+  const { hidden, revealed, toggleColumn, revealCell } = useHiddenColumns();
+  // The line being looped; null when not looping. Never saved.
+  const [loopLine, setLoopLine] = useState<number | null>(null);
+  const [shortcutListOpen, setShortcutListOpen] = useState(false);
   // The player now loaded, if any; read on a timer, so it is not state.
   const clock = useRef<AudioClock | null>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -81,10 +91,12 @@ export function SongPage(props: SongPageProps) {
     };
   }, [readProgress]);
 
-  const currentLine =
+  const playingLine =
     progress.timeMs === null
       ? null
       : currentLineIndex(lines, progress.timeMs + LEAD_IN_MS, offsetMs);
+  // While looping, the looped line is the sung one, even in the lead-in to the line after it.
+  const currentLine = loopLine ?? playingLine;
   useFollowLine(
     lyricsRef,
     currentLine,
@@ -101,14 +113,101 @@ export function SongPage(props: SongPageProps) {
     }
   }
 
+  // Moving to a line while looping moves the loop there too.
   function seekToLine(line: Line | undefined) {
     if (line?.startMs !== null && line?.startMs !== undefined) {
       clock.current?.seekMs(line.startMs + offsetMs);
       readProgress();
+      if (loopLine !== null) {
+        setLoopLine(line.index);
+      }
     }
   }
 
   const timedLines = lines.filter((line) => line.startMs !== null);
+
+  function previousLine() {
+    const before = timedLines.filter(
+      (line) => currentLine !== null && line.index < currentLine,
+    );
+    seekToLine(before.at(-1) ?? timedLines[0]);
+  }
+
+  function nextLine() {
+    seekToLine(
+      timedLines.find(
+        (line) => currentLine === null || line.index > currentLine,
+      ),
+    );
+  }
+
+  function togglePlay() {
+    if (clock.current?.isPlaying() === true) {
+      clock.current.pause();
+    } else {
+      clock.current?.play();
+    }
+    readProgress();
+  }
+
+  // Always true while looping, so the loop can be turned off.
+  const canLoop = timed && currentLine !== null;
+  function toggleLoop() {
+    setLoopLine(loopLine === null ? currentLine : null);
+  }
+
+  // Past the looped line's end, jump back to its start. Runs on each progress poll.
+  const loop =
+    loopLine === null
+      ? null
+      : loopRange(lines, loopLine, offsetMs, progress.durationMs);
+  const loopStartMs = loop?.startMs ?? null;
+  const loopEndMs = loop?.endMs ?? null;
+  useEffect(() => {
+    if (
+      loopStartMs !== null &&
+      loopEndMs !== null &&
+      progress.timeMs !== null &&
+      progress.timeMs >= loopEndMs
+    ) {
+      clock.current?.seekMs(loopStartMs);
+    }
+  }, [loopStartMs, loopEndMs, progress.timeMs]);
+
+  // A shortcut does what its button does, and nothing when that button is disabled.
+  function runShortcut(shortcut: Shortcut) {
+    switch (shortcut.kind) {
+      case "togglePlay":
+        togglePlay();
+        break;
+      case "previousLine":
+        if (timed) previousLine();
+        break;
+      case "nextLine":
+        if (timed) nextLine();
+        break;
+      case "toggleLoop":
+        if (canLoop) toggleLoop();
+        break;
+      case "toggleColumn":
+        toggleColumn(shortcut.column);
+        break;
+      case "toggleFocus":
+        props.onFocusChange(!focus);
+        break;
+      case "escape":
+        if (shortcutListOpen) {
+          setShortcutListOpen(false);
+        } else if (focus) {
+          props.onFocusChange(false);
+        }
+        break;
+      case "toggleShortcutList":
+        setShortcutListOpen((open) => !open);
+        break;
+    }
+  }
+  useShortcuts(runShortcut);
 
   return (
     <section className={focus ? "song-page is-focus" : "song-page"}>
@@ -119,6 +218,7 @@ export function SongPage(props: SongPageProps) {
           </span>
           <span className="dim">{song.artist}</span>
           <span className="spacer" />
+          <HideColumnToggles hidden={hidden} onToggle={toggleColumn} />
           <PhoneTabs value={phoneColumn} onChange={setPhoneColumn} />
           <button
             type="button"
@@ -161,6 +261,7 @@ export function SongPage(props: SongPageProps) {
               <span className="timing">{props.timing}</span>
             </p>
           </div>
+          <HideColumnToggles hidden={hidden} onToggle={toggleColumn} />
           <PhoneTabs value={phoneColumn} onChange={setPhoneColumn} />
           <SaveButton
             songId={song.id}
@@ -204,6 +305,10 @@ export function SongPage(props: SongPageProps) {
             currentLine={currentLine}
             phoneColumn={phoneColumn}
             onSeek={seekToLine}
+            hidden={hidden}
+            revealed={revealed}
+            onReveal={revealCell}
+            loopLine={loopLine}
           />
         </div>
         {!following && currentLine !== null && (
@@ -229,32 +334,30 @@ export function SongPage(props: SongPageProps) {
         onOffsetChange={setOffsetMs}
         onVideoChange={setVideoId}
         onClock={handleClock}
-        onTogglePlay={() => {
-          if (clock.current?.isPlaying() === true) {
-            clock.current.pause();
-          } else {
-            clock.current?.play();
-          }
-          readProgress();
-        }}
+        onTogglePlay={togglePlay}
         onSeek={(milliseconds) => {
+          // Dragging the slider ends a loop.
+          setLoopLine(null);
           clock.current?.seekMs(milliseconds);
           readProgress();
         }}
-        onPreviousLine={() => {
-          const before = timedLines.filter(
-            (line) => currentLine !== null && line.index < currentLine,
-          );
-          seekToLine(before.at(-1) ?? timedLines[0]);
-        }}
-        onNextLine={() => {
-          seekToLine(
-            timedLines.find(
-              (line) => currentLine === null || line.index > currentLine,
-            ),
-          );
+        onPreviousLine={previousLine}
+        onNextLine={nextLine}
+        looping={loopLine !== null}
+        canLoop={canLoop}
+        onToggleLoop={toggleLoop}
+        shortcutListOpen={shortcutListOpen}
+        onToggleShortcutList={() => {
+          setShortcutListOpen((open) => !open);
         }}
       />
+      {shortcutListOpen && (
+        <ShortcutList
+          onClose={() => {
+            setShortcutListOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -275,36 +378,6 @@ function sameProgress(a: Progress, b: Progress): boolean {
     a.timeMs === b.timeMs &&
     a.durationMs === b.durationMs &&
     a.playing === b.playing
-  );
-}
-
-interface PhoneTabsProps {
-  value: PhoneColumn;
-  onChange: (column: PhoneColumn) => void;
-}
-
-// On a phone, which version shows next to the original. Hidden on wider screens by styles.css.
-function PhoneTabs({ value, onChange }: PhoneTabsProps) {
-  return (
-    <div
-      className="segmented phone-tabs"
-      role="group"
-      aria-label="Second column"
-    >
-      {PHONE_COLUMNS.map(({ column, label, lang }) => (
-        <button
-          key={column}
-          type="button"
-          lang={lang}
-          aria-pressed={value === column}
-          onClick={() => {
-            onChange(column);
-          }}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
   );
 }
 

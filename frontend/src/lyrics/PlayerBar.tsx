@@ -37,6 +37,11 @@ interface PlayerBarProps {
   onSeek: (milliseconds: number) => void;
   onPreviousLine: () => void;
   onNextLine: () => void;
+  looping: boolean;
+  canLoop: boolean;
+  onToggleLoop: () => void;
+  shortcutListOpen: boolean;
+  onToggleShortcutList: () => void;
 }
 
 export function PlayerBar(props: PlayerBarProps) {
@@ -169,6 +174,9 @@ export function PlayerBar(props: PlayerBarProps) {
             onSeek={props.onSeek}
             onPreviousLine={props.onPreviousLine}
             onNextLine={props.onNextLine}
+            looping={props.looping}
+            canLoop={props.canLoop}
+            onToggleLoop={props.onToggleLoop}
             hasVideo={source.kind === "youtube"}
             videoShown={videoShown}
             onNudge={nudge}
@@ -190,6 +198,16 @@ export function PlayerBar(props: PlayerBarProps) {
             {choosing ? "Back to player" : "Change audio"}
           </button>
         )}
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Keyboard shortcuts"
+          aria-haspopup="dialog"
+          aria-expanded={props.shortcutListOpen}
+          onClick={props.onToggleShortcutList}
+        >
+          <KeyboardIcon />
+        </button>
       </div>
     </footer>
   );
@@ -229,6 +247,15 @@ function AudioChooser({
         />
       </label>
     </div>
+  );
+}
+
+function KeyboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+    </svg>
   );
 }
 
