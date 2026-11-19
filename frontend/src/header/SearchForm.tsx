@@ -1,4 +1,4 @@
-// The one search box: a labeled input and the Find button.
+// The one search box: a labeled input with a search icon and the Find button.
 import { useState, type SubmitEvent } from "react";
 
 interface SearchFormProps {
@@ -18,18 +18,26 @@ export function SearchForm({ busy, onSearch }: SearchFormProps) {
   }
 
   return (
-    <form className="search-form" onSubmit={handleSubmit}>
-      <label htmlFor="song-query">Song name or artist</label>
-      <div className="search-row">
+    <form className="search-form" role="search" onSubmit={handleSubmit}>
+      <label htmlFor="song-query" className="visually-hidden">
+        Song name or artist
+      </label>
+      <div className="search-box">
+        <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
           id="song-query"
           type="search"
+          autoComplete="off"
+          placeholder="Search a song: title, artist, or both"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
           }}
         />
-        <button type="submit" disabled={!canSearch}>
+        <button type="submit" className="find-button" disabled={!canSearch}>
           Find
         </button>
       </div>

@@ -9,7 +9,7 @@ from contextlib import closing, contextmanager
 from pydantic import TypeAdapter, ValidationError
 
 from lyrx import config
-from lyrx.schemas import Playback, Song, SongVersionsResponse, VersionLine
+from lyrx.schemas import Playback, SavedSong, Song, SongVersionsResponse, VersionLine
 
 logger = logging.getLogger(__name__)
 
@@ -139,16 +139,24 @@ def save_song(reply: SongVersionsResponse) -> None:
         )
 
 
-def list_songs() -> list[Song]:
+def list_songs() -> list[SavedSong]:
     """Every saved song without its lines, most recently opened first."""
     with connect() as connection:
         rows = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds FROM saved_songs"
-            " ORDER BY last_opened_at DESC, id DESC"
+            "SELECT id, track, artist, album, duration_seconds, video_id, last_opened_at"
+            " FROM saved_songs ORDER BY last_opened_at DESC, id DESC"
         ).fetchall()
     return [
-        Song(id=song_id, track=track, artist=artist, album=album, duration_seconds=duration)
-        for song_id, track, artist, album, duration in rows
+        SavedSong(
+            id=song_id,
+            track=track,
+            artist=artist,
+            album=album,
+            duration_seconds=duration,
+            video_id=to_playback(video_id, 0).video_id,
+            last_opened_at=round(opened_at * 1000),
+        )
+        for song_id, track, artist, album, duration, video_id, opened_at in rows
     ]
 
 

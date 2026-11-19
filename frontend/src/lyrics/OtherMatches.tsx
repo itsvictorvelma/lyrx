@@ -1,25 +1,24 @@
-// "Not this song?": the other search results as buttons that open that song instead.
+// "Not this one?": a popover of the other search results; each opens that song instead.
 import type { SearchResult } from "./types";
 
 interface OtherMatchesProps {
   results: SearchResult[];
-  busy: boolean;
   onPick: (result: SearchResult) => void;
 }
 
-export function OtherMatches({ results, busy, onPick }: OtherMatchesProps) {
+export function OtherMatches({ results, onPick }: OtherMatchesProps) {
   if (results.length === 0) {
     return null;
   }
   return (
     <details className="other-matches">
-      <summary>Not this song?</summary>
-      <ul>
+      <summary className="pill-button">Not this one?</summary>
+      <ul className="popover">
         {results.map((result) => (
           <li key={result.id}>
             <button
               type="button"
-              disabled={busy}
+              className="match-button"
               onClick={() => {
                 onPick(result);
               }}
@@ -28,9 +27,9 @@ export function OtherMatches({ results, busy, onPick }: OtherMatchesProps) {
               {formatDuration(result.durationSeconds)}
             </button>
             {result.looksJapanese ? null : (
-              <span className="muted"> Not Japanese</span>
+              <span className="dim"> Not Japanese</span>
             )}
-            {result.saved ? <span className="muted"> Saved</span> : null}
+            {result.saved ? <span className="dim"> Saved</span> : null}
           </li>
         ))}
       </ul>

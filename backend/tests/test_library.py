@@ -2,6 +2,7 @@
 
 import logging
 import sqlite3
+import time
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -95,7 +96,31 @@ def test_ac4_the_list_is_most_recently_opened_first_without_lines(
     songs = client.get(SAVED_SONGS_PATH).json()["songs"]
 
     assert [song["id"] for song in songs] == [1, 3, 2]
-    assert set(songs[0]) == {"id", "track", "artist", "album", "durationSeconds"}
+    assert set(songs[0]) == {
+        "id",
+        "track",
+        "artist",
+        "album",
+        "durationSeconds",
+        "videoId",
+        "lastOpenedAt",
+    }
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec013_ac12_the_list_has_each_songs_video_and_last_opened_time(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    before_ms = time.time() * 1000
+    for song_id in (1, 2):
+        open_new_song(client, fake_lrclib, fake_gemini, song_id)
+    client.put(f"{SAVED_SONGS_PATH}/1/playback", json={"videoId": "abcdefghijk", "offsetMs": 0})
+
+    songs = {song["id"]: song for song in client.get(SAVED_SONGS_PATH).json()["songs"]}
+
+    assert songs[1]["videoId"] == "abcdefghijk"
+    assert songs[2]["videoId"] is None
+    assert songs[2]["lastOpenedAt"] >= before_ms - 1000
 
 
 @pytest.mark.usefixtures("gemini_key")

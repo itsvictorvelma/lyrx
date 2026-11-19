@@ -1,9 +1,10 @@
-// Checks the whole page: find, open the best match, switch, saved songs, errors, timing.
-import { render, screen, within } from "@testing-library/react";
+// Checks the whole app: search, song addresses and Back, the library, Remove, Focus mode, errors.
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App, FALLBACK_MESSAGE, timingText } from "./App";
-import type { Line, SearchResult, Song } from "./lyrics/types";
+import type { Line, SavedSong, SearchResult, Song } from "./lyrics/types";
+import { navigate } from "./routing";
 
 // A fake server: each address answers from its own queue; the saved list is empty by default.
 const queues = new Map<string, Response[]>();
@@ -21,6 +22,8 @@ function respond(key: string, ...responses: Response[]) {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/");
+  vi.spyOn(window, "confirm").mockReturnValue(true);
   queues.clear();
   fakeFetch.mockReset();
   fakeFetch.mockImplementation((input, init) => {
@@ -39,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 // Invented songs and lyrics only.
@@ -115,6 +119,14 @@ function asSong(result: SearchResult): Song {
   };
 }
 
+function asSaved(
+  result: SearchResult,
+  lastOpenedAt = Date.now(),
+  videoId: string | null = null,
+): SavedSong {
+  return { ...asSong(result), videoId, lastOpenedAt };
+}
+
 function songReply(
   result: SearchResult,
   songLines: Line[] = lines,
@@ -144,16 +156,17 @@ async function findSong(query = "星の歌") {
   return user;
 }
 
-test("Find searches, opens the best match, and shows a four-column table", async () => {
+test("AC-5: Find searches, opens the best match at its address, in four columns", async () => {
   respond("POST /api/song-search", jsonResponse(200, { results }));
   respond("POST /api/song-versions", songReply(bestMatch));
 
   await findSong();
 
   const table = await screen.findByRole("table");
+  expect(window.location.pathname).toBe("/song/101");
   expect(bodyOf("POST", "/api/song-search")).toEqual({ query: "星の歌" });
   expect(bodyOf("POST", "/api/song-versions")).toEqual({ id: 101 });
-  expect(screen.getByText("(lyrics from LRCLIB)")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "星の歌" })).toBeTruthy();
   const headers = within(table)
     .getAllByRole("columnheader")
     .map((cell) => cell.textContent);
@@ -163,7 +176,7 @@ test("Find searches, opens the best match, and shows a four-column table", async
   expect(within(table).getByText("kaze ga utau")).toBeTruthy();
 });
 
-test("picking another match opens that song; results say Saved and Not Japanese", async () => {
+test("Not this one? opens another match; results say Saved and Not Japanese", async () => {
   respond("POST /api/song-search", jsonResponse(200, { results }));
   respond(
     "POST /api/song-versions",
@@ -173,7 +186,7 @@ test("picking another match opens that song; results say Saved and Not Japanese"
   const user = await findSong();
   await screen.findByRole("table");
 
-  await user.click(screen.getByText("Not this song?"));
+  await user.click(screen.getByText("Not this one?"));
   expect(screen.getByText("Not Japanese")).toBeTruthy();
   expect(screen.getByText("Saved")).toBeTruthy();
   await user.click(
@@ -181,45 +194,146 @@ test("picking another match opens that song; results say Saved and Not Japanese"
   );
 
   expect(await screen.findByText("Live road")).toBeTruthy();
+  expect(window.location.pathname).toBe("/song/202");
 });
 
-test("Your songs lists saved songs; clicking one opens it from the library", async () => {
-  respond("GET /api/songs", jsonResponse(200, { songs: [asSong(bestMatch)] }));
+test("AC-1: clicking a library tile opens the song from your songs", async () => {
+  respond("GET /api/songs", jsonResponse(200, { songs: [asSaved(bestMatch)] }));
   respond("POST /api/song-versions", songReply(bestMatch, lines, true));
   const user = userEvent.setup();
   render(<App />);
 
-  const list = await screen.findByRole("region", { name: "Your songs" });
   await user.click(
-    within(list).getByRole("button", { name: "星の歌 — ミナト, 3:34" }),
+    await screen.findByRole("button", { name: "Open 星の歌 by ミナト" }),
   );
 
   await screen.findByRole("table");
+  expect(window.location.pathname).toBe("/song/101");
   expect(
     screen.getByText(/^Opened from your songs in \d+\.\d s$/),
   ).toBeTruthy();
 });
 
-test("Remove takes a song off the list", async () => {
+test("AC-4: Remove asks first; confirming takes the song off, cancelling keeps it", async () => {
   respond(
     "GET /api/songs",
-    jsonResponse(200, { songs: [asSong(bestMatch), asSong(liveMatch)] }),
+    jsonResponse(200, { songs: [asSaved(bestMatch), asSaved(liveMatch)] }),
   );
   respond("DELETE /api/songs/101", jsonResponse(204, null));
+  const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
   const user = userEvent.setup();
   render(<App />);
+  const remove = await screen.findByRole("button", { name: "Remove 星の歌" });
 
-  await user.click(
-    await screen.findByRole("button", { name: "Remove 星の歌" }),
-  );
+  await user.click(remove);
+  expect(confirm).toHaveBeenCalledWith("Remove 星の歌 from your songs?");
+  expect(screen.getByRole("button", { name: "Remove 星の歌" })).toBeTruthy();
 
+  await user.click(remove);
   expect(screen.queryByRole("button", { name: "Remove 星の歌" })).toBeNull();
-  expect(
-    fakeFetch.mock.calls.some(([, init]) => init?.method === "DELETE"),
-  ).toBe(true);
   expect(
     screen.getByRole("button", { name: "Remove 星の歌 (live)" }),
   ).toBeTruthy();
+});
+
+test("AC-6: a song address opens that song; Back returns to the library", async () => {
+  window.history.replaceState(null, "", "/song/101");
+  respond("POST /api/song-versions", songReply(bestMatch, lines, true));
+  render(<App />);
+
+  await screen.findByRole("table");
+  expect(bodyOf("POST", "/api/song-versions")).toEqual({ id: 101 });
+
+  await act(async () => {
+    window.history.replaceState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await Promise.resolve();
+  });
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.getByText("Your songs will show up here.")).toBeTruthy();
+});
+
+test("AC-6: a song the server does not have shows the library with the reason", async () => {
+  window.history.replaceState(null, "", "/song/999");
+  respond(
+    "POST /api/song-versions",
+    jsonResponse(404, {
+      code: "song_not_found",
+      message: "That song was not found.",
+    }),
+  );
+  render(<App />);
+
+  expect((await screen.findByRole("alert")).textContent).toContain(
+    "That song was not found.",
+  );
+  expect(window.location.pathname).toBe("/");
+  expect(screen.getByText("Your songs will show up here.")).toBeTruthy();
+});
+
+test("leaving a song and opening it again fetches it fresh and refreshes the tiles", async () => {
+  const saved = () => jsonResponse(200, { songs: [asSaved(bestMatch)] });
+  respond("GET /api/songs", saved(), saved(), saved(), saved(), saved());
+  respond(
+    "POST /api/song-versions",
+    songReply(bestMatch, lines, true),
+    songReply(bestMatch, [{ ...firstLine, english: "Fresh road" }], true),
+  );
+  const user = userEvent.setup();
+  render(<App />);
+  const tile = { name: "Open 星の歌 by ミナト" };
+
+  await user.click(await screen.findByRole("button", tile));
+  await screen.findByRole("table");
+  await user.click(screen.getByRole("button", { name: "Back to your songs" }));
+  await user.click(await screen.findByRole("button", tile));
+
+  expect(await screen.findByText("Fresh road")).toBeTruthy();
+  const listCalls = fakeFetch.mock.calls.filter(
+    ([input, init]) =>
+      urlOf(input) === "/api/songs" && (init?.method ?? "GET") === "GET",
+  );
+  // On load, after each open, and on returning to the library.
+  expect(listCalls.length).toBeGreaterThanOrEqual(4);
+});
+
+test("AC-6: an unknown address shows the library", async () => {
+  window.history.replaceState(null, "", "/song/abc");
+  render(<App />);
+
+  expect(await screen.findByText("Your songs will show up here.")).toBeTruthy();
+  expect(
+    fakeFetch.mock.calls.some(
+      ([input]) => urlOf(input) === "/api/song-versions",
+    ),
+  ).toBe(false);
+});
+
+test("AC-10: Focus hides the header and song header; Exit focus and leaving end it", async () => {
+  respond("POST /api/song-search", jsonResponse(200, { results }));
+  respond(
+    "POST /api/song-versions",
+    songReply(bestMatch),
+    songReply(bestMatch),
+  );
+  const user = await findSong();
+  await screen.findByRole("table");
+
+  await user.click(screen.getByRole("button", { name: "Focus" }));
+  expect(screen.queryByRole("search")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "星の歌" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Exit focus" }));
+  expect(screen.getByRole("search")).toBeTruthy();
+
+  await user.click(screen.getByRole("button", { name: "Focus" }));
+  act(() => {
+    navigate("/");
+  });
+  act(() => {
+    navigate("/song/101");
+  });
+  expect(await screen.findByRole("button", { name: "Focus" })).toBeTruthy();
+  expect(screen.getByRole("search")).toBeTruthy();
 });
 
 test("no song found shows the server's hint and there is no paste form", async () => {
@@ -289,7 +403,7 @@ test("a line the translator could not do says Not available", async () => {
   expect(screen.getAllByText("Not available")).toHaveLength(3);
 });
 
-test("the waiting line counts the seconds", async () => {
+test("AC-5: while searching, the steps and the seconds show", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   let finish: (response: Response) => void = () => undefined;
   const pending = new Promise<Response>((resolve) => {
@@ -308,6 +422,13 @@ test("the waiting line counts the seconds", async () => {
   const status = screen.getByRole("status");
   expect(status.textContent).toContain("Finding the song…");
   expect(status.textContent).toContain("3 s");
+  const steps = within(screen.getByRole("list", { name: "Steps" }));
+  expect(steps.getByText(/Finding the song/).textContent).toContain(
+    "(in progress)",
+  );
+  expect(
+    steps.getByText(/Getting the lyrics and translating/).textContent,
+  ).toContain("(waiting)");
   finish(jsonResponse(200, { results: [] }));
   vi.useRealTimers();
 });
@@ -337,23 +458,27 @@ test("timingText formats milliseconds as seconds", () => {
 });
 
 test("removing a song clears its Saved mark in the search results", async () => {
-  // Once when the page opens, once more after the song opens.
-  respond(
-    "GET /api/songs",
-    jsonResponse(200, { songs: [asSong(liveMatch)] }),
-    jsonResponse(200, { songs: [asSong(liveMatch)] }),
-  );
+  // On load, after the open, and on returning to the library.
+  const saved = () => jsonResponse(200, { songs: [asSaved(liveMatch)] });
+  respond("GET /api/songs", saved(), saved(), saved());
   respond("POST /api/song-search", jsonResponse(200, { results }));
-  respond("POST /api/song-versions", songReply(bestMatch));
+  respond(
+    "POST /api/song-versions",
+    songReply(bestMatch),
+    songReply(bestMatch),
+  );
   respond("DELETE /api/songs/202", jsonResponse(204, null));
   const user = await findSong();
   await screen.findByRole("table");
-  await user.click(screen.getByText("Not this song?"));
-  expect(screen.getByText("Saved")).toBeTruthy();
 
+  await user.click(screen.getByRole("button", { name: "Back to your songs" }));
   await user.click(
     screen.getByRole("button", { name: "Remove 星の歌 (live)" }),
   );
+  act(() => {
+    navigate("/song/101");
+  });
 
+  await user.click(await screen.findByText("Not this one?"));
   expect(screen.queryByText("Saved")).toBeNull();
 });

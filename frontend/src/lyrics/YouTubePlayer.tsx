@@ -8,9 +8,16 @@ const EMBED_HOST = "https://www.youtube-nocookie.com";
 // The few parts of YouTube's player script the page uses; its types are not a dependency.
 export interface YouTubePlayerHandle {
   getCurrentTime?: () => number;
+  getDuration?: () => number;
+  getPlayerState?: () => number;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
   seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
   destroy: () => void;
 }
+
+// YouTube's player state number for "playing".
+const PLAYING = 1;
 
 interface YouTubeNamespace {
   Player: new (
@@ -90,15 +97,7 @@ export function YouTubePlayer({
           playerVars: { playsinline: 1, rel: 0 },
         });
         player = created;
-        onClock({
-          timeMs: () =>
-            created.getCurrentTime === undefined
-              ? null
-              : created.getCurrentTime() * 1000,
-          seekMs: (milliseconds) => {
-            created.seekTo?.(milliseconds / 1000, true);
-          },
-        });
+        onClock(clockFor(created));
       },
       () => {
         if (active) {
@@ -114,4 +113,28 @@ export function YouTubePlayer({
   }, [videoId, onClock, onLoadError]);
 
   return <div className="video-frame" ref={container} />;
+}
+
+// The player's methods exist only once it is ready, so each one is checked before use.
+function clockFor(player: YouTubePlayerHandle): AudioClock {
+  return {
+    timeMs: () =>
+      player.getCurrentTime === undefined
+        ? null
+        : player.getCurrentTime() * 1000,
+    durationMs: () => {
+      const seconds = player.getDuration?.() ?? 0;
+      return seconds > 0 ? seconds * 1000 : null;
+    },
+    isPlaying: () => player.getPlayerState?.() === PLAYING,
+    play: () => {
+      player.playVideo?.();
+    },
+    pause: () => {
+      player.pauseVideo?.();
+    },
+    seekMs: (milliseconds) => {
+      player.seekTo?.(milliseconds / 1000, true);
+    },
+  };
 }

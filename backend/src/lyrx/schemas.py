@@ -66,10 +66,17 @@ class SongSearchResponse(BaseModel):
     results: list[SearchResult]
 
 
+class SavedSong(Song):
+    """A saved song in the library list: its linked video, if any, and when it was last opened."""
+
+    video_id: str | None = Field(serialization_alias="videoId")
+    last_opened_at: int = Field(serialization_alias="lastOpenedAt")
+
+
 class SavedSongsResponse(BaseModel):
     """The body of `GET /api/songs`: the saved songs, most recently opened first."""
 
-    songs: list[Song]
+    songs: list[SavedSong]
 
 
 class SongVersionsResponse(BaseModel):
