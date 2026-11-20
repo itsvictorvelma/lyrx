@@ -30,7 +30,10 @@ class OriginCheck:
 
 
 def origin_is_allowed(origin: str) -> bool:
-    """A missing, `null`, or unreadable Origin is refused (fails closed)."""
+    """A missing, `null`, or unreadable Origin is refused (fails closed).
+
+    ponytail: any port on an allowed host passes; spec 020 makes the allowed origin a setting.
+    """
     try:
         parts = urlsplit(origin)
         host = parts.hostname

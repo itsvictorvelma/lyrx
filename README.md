@@ -163,7 +163,8 @@ lyrx/
         ├── account/
         │   ├── AccountPage.tsx    Sign in or create an account; sign out or delete it
         │   ├── accountApi.ts      The account requests
-        │   └── useAccount.ts      Who is signed in, shared with every page
+        │   ├── useAccount.ts      Who is signed in, shared with every page
+        │   └── types.ts           Account data shapes
         ├── header/
         │   ├── Header.tsx         The bar on every page: wordmark, search, Your songs, Sign in, theme
         │   ├── SearchForm.tsx     The search box and Find button, in two sizes

@@ -3,7 +3,7 @@
 import pytest
 
 from lyrx import config, rate_limits
-from lyrx.rate_limits import Limit, count, count_if_allowed, is_reached
+from lyrx.rate_limits import Limit, count_if_allowed, uncount
 
 
 class FakeTime:
@@ -49,14 +49,22 @@ def test_a_new_utc_day_starts_a_new_count(monkeypatch: pytest.MonkeyPatch) -> No
     assert count_if_allowed(limit)
 
 
-def test_failed_sign_ins_wait_until_the_hour_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_full_hour_waits_until_the_next_hour(monkeypatch: pytest.MonkeyPatch) -> None:
     clock = FakeTime(5 * config.HOUR_SECONDS)
     monkeypatch.setattr(rate_limits, "time", clock)
     limit = Limit("failed_sign_in", "mika", 2, config.HOUR_SECONDS)
-    count(limit)
-    count(limit)
-    assert is_reached(limit)
+    assert count_if_allowed(limit) and count_if_allowed(limit)
+    assert not count_if_allowed(limit)
 
     clock.now += config.HOUR_SECONDS
 
-    assert not is_reached(limit)
+    assert count_if_allowed(limit)
+
+
+def test_uncount_gives_one_back() -> None:
+    limit = Limit("failed_sign_in", "mika", 1, config.HOUR_SECONDS)
+    assert count_if_allowed(limit)
+
+    uncount(limit)
+
+    assert count_if_allowed(limit)

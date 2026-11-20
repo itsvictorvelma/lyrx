@@ -1,6 +1,9 @@
 """Tests for the account routes: sign up, sign in, the abuse limits, and delete (spec 014)."""
 
 import logging
+import sqlite3
+from contextlib import closing
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,7 +14,8 @@ from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from lyrx import library
+from lyrx import config, library
+from lyrx.accounts import routes
 from lyrx.accounts.routes import ACCOUNT_PATH, SIGN_IN_PATH, SIGN_UP_PATH
 from lyrx.app import SAVED_SONGS_PATH, SONG_VERSIONS_PATH
 
@@ -66,6 +70,25 @@ def test_ac1_a_bad_username_or_password_is_invalid_request(
     assert_error_shape(response.json(), "invalid_request")
 
 
+def save_new_song(client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini) -> None:
+    fake_lrclib.script(json_reply(record()))
+    fake_gemini.answer = answer_with_placeholders
+    client.post(SONG_VERSIONS_PATH, json={"id": 101})
+    body = {"videoId": VIDEO_ID, "offsetMs": 0}
+    assert client.put(f"{SAVED_SONGS_PATH}/101/saved", json=body).status_code == 204
+
+
+def test_ac2_the_stored_password_is_a_salted_scrypt_hash(
+    client: TestClient, temporary_database: Path
+) -> None:
+    sign_up(client)
+
+    with closing(sqlite3.connect(temporary_database)) as connection:
+        (stored,) = connection.execute("SELECT password_hash FROM users").fetchone()
+    assert stored.startswith("scrypt$")
+    assert TEST_PASSWORD not in stored
+
+
 def test_ac2_the_right_password_signs_in(app: FastAPI, client: TestClient) -> None:
     sign_up(client)
 
@@ -115,19 +138,47 @@ def test_ac10_the_eleventh_failed_sign_in_in_an_hour_is_refused_even_with_the_ri
     assert_error_shape(response.json(), "too_many_attempts")
 
 
+def test_ac10_a_reached_limit_never_checks_the_password(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The attempt is counted before scrypt runs, so requests at once cannot pass the limit."""
+    monkeypatch.setattr(config, "FAILED_SIGN_INS_PER_USERNAME_PER_HOUR", 1)
+    sign_up(client)
+    post_account(client, SIGN_IN_PATH, "mika", "wrong password")
+    checked: list[str] = []
+    monkeypatch.setattr(routes, "user_with_password", lambda name, _: checked.append(name))
+
+    response = post_account(client, SIGN_IN_PATH, "mika", TEST_PASSWORD)
+
+    assert_error_shape(response.json(), "too_many_attempts")
+    assert checked == []
+
+
+def test_ac10_right_passwords_do_not_use_up_the_limit(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config, "FAILED_SIGN_INS_PER_USERNAME_PER_HOUR", 1)
+    sign_up(client)
+
+    for _ in range(3):
+        assert post_account(client, SIGN_IN_PATH, "mika", TEST_PASSWORD).status_code == 200
+
+
 @pytest.mark.usefixtures("gemini_key")
 def test_ac12_deleting_the_account_removes_its_sessions_and_saved_songs_but_not_the_cache(
-    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+    app: FastAPI, client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
 ) -> None:
     sign_up(client)
-    fake_lrclib.script(json_reply(record()))
-    fake_gemini.answer = answer_with_placeholders
-    client.post(SONG_VERSIONS_PATH, json={"id": 101})
-    client.put(f"{SAVED_SONGS_PATH}/101/saved", json={"videoId": VIDEO_ID, "offsetMs": 0})
+    save_new_song(client, fake_lrclib, fake_gemini)
+    token = client.cookies[config.SESSION_COOKIE_NAME]
+    with make_client(app) as other_browser:
+        assert post_account(other_browser, SIGN_IN_PATH, "mika", TEST_PASSWORD).status_code == 200
 
-    response = client.request("DELETE", ACCOUNT_PATH, json={"password": TEST_PASSWORD})
+        response = client.request("DELETE", ACCOUNT_PATH, json={"password": TEST_PASSWORD})
 
+        assert other_browser.get(ACCOUNT_PATH).json() == {"username": None}
     assert response.status_code == 204
+    client.cookies.set(config.SESSION_COOKIE_NAME, token)
     assert client.get(ACCOUNT_PATH).json() == {"username": None}
     assert library.find_song(101) is not None
     assert post_account(client, SIGN_IN_PATH, "mika", TEST_PASSWORD).status_code == 401
@@ -135,14 +186,20 @@ def test_ac12_deleting_the_account_removes_its_sessions_and_saved_songs_but_not_
     assert client.get(SAVED_SONGS_PATH).json()["songs"] == []
 
 
-def test_ac12_a_wrong_password_changes_nothing(client: TestClient) -> None:
+@pytest.mark.usefixtures("gemini_key")
+def test_ac12_a_wrong_password_changes_nothing(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
     sign_up(client)
+    save_new_song(client, fake_lrclib, fake_gemini)
 
     response = client.request("DELETE", ACCOUNT_PATH, json={"password": "wrong password"})
 
     assert response.status_code == 401
     assert_error_shape(response.json(), "sign_in_failed")
     assert client.get(ACCOUNT_PATH).json() == {"username": "mika"}
+    songs = client.get(SAVED_SONGS_PATH).json()["songs"]
+    assert [(song["id"], song["videoId"]) for song in songs] == [(101, VIDEO_ID)]
 
 
 def test_deleting_as_a_guest_is_sign_in_required(client: TestClient) -> None:

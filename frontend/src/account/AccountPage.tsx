@@ -6,8 +6,10 @@ import { deleteAccount, enterAccount, signOut } from "./accountApi";
 import type { AccountMode } from "./accountApi";
 import { useAccount } from "./useAccount";
 
-export const RULES_TEXT =
-  "Usernames are 3–30 letters, digits, _ or -. Passwords are 8–128 characters.";
+// These mirror the account rules in the server's config.py, which checks them again.
+const USERNAME_MAX_CHARACTERS = 30;
+const PASSWORD_MAX_CHARACTERS = 128;
+export const RULES_TEXT = `Usernames are 3–${String(USERNAME_MAX_CHARACTERS)} letters, digits, _ or -. Passwords are 8–${String(PASSWORD_MAX_CHARACTERS)} characters.`;
 const FALLBACK_TEXT = "Something went wrong. Try again.";
 const UNREACHABLE_TEXT = "Could not reach the Lyrx server. Is it running?";
 
@@ -94,7 +96,7 @@ function SignInForm({ onSignedIn }: { onSignedIn: (name: string) => void }) {
           autoCapitalize="none"
           spellCheck={false}
           required
-          maxLength={30}
+          maxLength={USERNAME_MAX_CHARACTERS}
           value={username}
           onChange={(event) => {
             setUsername(event.target.value);
@@ -108,7 +110,7 @@ function SignInForm({ onSignedIn }: { onSignedIn: (name: string) => void }) {
             mode === "sign-in" ? "current-password" : "new-password"
           }
           required
-          maxLength={128}
+          maxLength={PASSWORD_MAX_CHARACTERS}
           value={password}
           onChange={(event) => {
             setPassword(event.target.value);
@@ -197,7 +199,7 @@ function SignedIn({ username, onSignedOut }: SignedInProps) {
             type="password"
             autoComplete="current-password"
             required
-            maxLength={128}
+            maxLength={PASSWORD_MAX_CHARACTERS}
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);

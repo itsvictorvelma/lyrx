@@ -78,6 +78,10 @@ def upgrade_saved_songs(connection: sqlite3.Connection) -> None:
     Every old song goes to the cache; the saved ones become library rows with no owner, which
     the first account created claims.
     """
+    if not has_saved_songs(connection):
+        return
+    # Takes the write lock, then looks again: another request may have just upgraded the file.
+    connection.execute("BEGIN IMMEDIATE")
     present = {row[1] for row in connection.execute("PRAGMA table_info(saved_songs)")}
     if not present:
         return
@@ -96,3 +100,10 @@ def upgrade_saved_songs(connection: sqlite3.Connection) -> None:
         " FROM saved_songs WHERE saved = 1"
     )
     connection.execute("DROP TABLE saved_songs")
+
+
+def has_saved_songs(connection: sqlite3.Connection) -> bool:
+    row = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'saved_songs'"
+    ).fetchone()
+    return row is not None

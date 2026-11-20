@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccount } from "./account/accountApi";
 import { AccountPage } from "./account/AccountPage";
 import { AccountContext, UNKNOWN_ACCOUNT } from "./account/useAccount";
-import type { Account } from "./account/useAccount";
+import type { Account } from "./account/types";
 import { Header } from "./header/Header";
 import { focusSearchBox } from "./header/SearchForm";
 import { HomePage } from "./home/HomePage";

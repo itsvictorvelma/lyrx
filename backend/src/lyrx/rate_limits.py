@@ -68,21 +68,14 @@ def count_if_allowed(*limits: Limit) -> bool:
         return True
 
 
-def is_reached(limit: Limit) -> bool:
-    """Whether the current window already holds `most`."""
+def uncount(limit: Limit) -> None:
+    """Gives back one counted with `count_if_allowed`, such as a sign-in that turned out right."""
     with connect() as connection:
-        row = connection.execute(
-            "SELECT count FROM request_counts WHERE kind = ? AND who = ? AND window_start = ?",
+        connection.execute(
+            "UPDATE request_counts SET count = count - 1"
+            " WHERE kind = ? AND who = ? AND window_start = ? AND count > 0",
             (limit.kind, limit.who, window_start(limit.window_seconds)),
-        ).fetchone()
-    return row is not None and row[0] >= limit.most
-
-
-def count(limit: Limit) -> None:
-    """Counts one more in the current window, whatever the limit."""
-    with connect() as connection:
-        add_one(connection, limit)
-        remove_old_counts(connection)
+        )
 
 
 def add_one(connection: sqlite3.Connection, limit: Limit) -> int:

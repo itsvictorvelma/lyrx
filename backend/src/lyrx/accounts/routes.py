@@ -22,12 +22,11 @@ from lyrx.accounts.users import (
 )
 from lyrx.errors import ApiError
 from lyrx.rate_limits import (
-    count,
     count_if_allowed,
     failed_sign_in_limit,
-    is_reached,
     peer_address,
     sign_up_limit,
+    uncount,
 )
 from lyrx.schemas import AccountRequest, AccountResponse, PasswordRequest
 from lyrx.server.request_log import logged_request
@@ -48,10 +47,11 @@ def get_account(request: Request) -> AccountResponse:
 def sign_up(body: AccountRequest, request: Request, response: Response) -> AccountResponse:
     """Creates the account and signs it in."""
     with logged_request(SIGN_UP_PATH) as log:
-        if username_is_taken(body.username):
-            raise ApiError("username_taken")
+        # Every attempt counts, so the limit also caps checking which usernames exist.
         if not count_if_allowed(sign_up_limit(peer_address(request))):
             raise ApiError("too_many_attempts")
+        if username_is_taken(body.username):
+            raise ApiError("username_taken")
         user = create_user(body.username, body.password)
         if user is None:  # Taken between the check above and now.
             raise ApiError("username_taken")
@@ -96,14 +96,18 @@ def delete_account(body: PasswordRequest, request: Request) -> Response:
 
 
 def check_password(username: str, password: str) -> User:
-    """The account when the password is right; each failure counts toward the hourly limit."""
+    """The account when the password is right; each failure counts toward the hourly limit.
+
+    The attempt is counted before the check and given back when it is right, so requests sent
+    at the same moment cannot all slip under the limit.
+    """
     limit = failed_sign_in_limit(username)
-    if is_reached(limit):
+    if not count_if_allowed(limit):
         raise ApiError("too_many_attempts")
     user = user_with_password(username, password)
     if user is None:
-        count(limit)
         raise ApiError("sign_in_failed")
+    uncount(limit)
     return user
 
 
