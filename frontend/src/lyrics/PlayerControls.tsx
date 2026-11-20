@@ -1,6 +1,7 @@
-// The player bar's controls: previous / play / next, loop, the position slider, sync, the video toggle.
+// The player bar's controls: previous / play / next, loop, position, volume, sync, the video toggle.
 import { formatClock, formatOffset } from "./playback";
 import type { Progress } from "./types";
+import { VOLUME_STEP } from "./volume";
 
 interface PlayerControlsProps {
   progress: Progress;
@@ -18,6 +19,9 @@ interface PlayerControlsProps {
   onSeek: (milliseconds: number) => void;
   onPreviousLine: () => void;
   onNextLine: () => void;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
+  onToggleMute: () => void;
 }
 
 // Previous / play / next, loop, the position slider, the sync nudge, and the video toggle.
@@ -103,6 +107,31 @@ export function PlayerControls(props: PlayerControlsProps) {
         />
         <span>{formatClock(durationMs)}</span>
       </div>
+      <div className="volume">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={props.volume > 0 ? "Mute" : "Unmute"}
+          onClick={props.onToggleMute}
+        >
+          <VolumeIcon muted={props.volume === 0} />
+        </button>
+        <label htmlFor="volume" className="visually-hidden">
+          Volume
+        </label>
+        <input
+          id="volume"
+          type="range"
+          min={0}
+          max={100}
+          step={VOLUME_STEP}
+          value={props.volume}
+          aria-valuetext={`${String(props.volume)}%`}
+          onChange={(event) => {
+            props.onVolumeChange(Number(event.target.value));
+          }}
+        />
+      </div>
       {hasTimings && (
         <div className="sync" role="group" aria-label="Sync">
           <button
@@ -148,6 +177,20 @@ export function LoopIcon() {
       <path d="M3 11V9a3 3 0 0 1 3-3h15" />
       <path d="M7 22l-4-4 4-4" />
       <path d="M21 13v2a3 3 0 0 1-3 3H3" />
+    </svg>
+  );
+}
+
+// A speaker with sound waves, or crossed out when muted.
+function VolumeIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M11 5 6 9H3v6h3l5 4V5z" />
+      {muted ? (
+        <path d="m16 9 5 6M21 9l-5 6" />
+      ) : (
+        <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+      )}
     </svg>
   );
 }

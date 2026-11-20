@@ -1385,6 +1385,18 @@ button:disabled {
   accent-color: var(--accent);
 }
 
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.volume input {
+  width: 6rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .link-form {
   display: flex;
   flex-wrap: wrap;
@@ -1584,6 +1596,11 @@ button:disabled {
 
   .sync {
     order: 2;
+  }
+
+  /* Phones set loudness with their own buttons; only Mute stays. */
+  .volume input {
+    display: none;
   }
 
   .player-row .pill-button {

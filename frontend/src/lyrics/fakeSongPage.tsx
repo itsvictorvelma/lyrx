@@ -43,11 +43,18 @@ export const fakePlayer = {
   playing: false,
   seeks: [] as number[],
   createdFor: [] as string[],
+  // The last volume set, and YouTube's "ready" call for the newest player.
+  volume: null as number | null,
+  becomeReady: (() => undefined) as () => void,
 };
 
 export class FakePlayer implements YouTubePlayerHandle {
-  constructor(_element: HTMLElement, options: { videoId: string }) {
+  constructor(
+    _element: HTMLElement,
+    options: { videoId: string; events: { onReady: () => void } },
+  ) {
     fakePlayer.createdFor.push(options.videoId);
+    fakePlayer.becomeReady = options.events.onReady;
   }
   getCurrentTime = () => fakePlayer.seconds;
   getDuration = () => 60;
@@ -60,6 +67,9 @@ export class FakePlayer implements YouTubePlayerHandle {
   };
   seekTo = (seconds: number) => {
     fakePlayer.seeks.push(seconds);
+  };
+  setVolume = (percent: number) => {
+    fakePlayer.volume = percent;
   };
   destroy = () => undefined;
 }
@@ -143,6 +153,8 @@ export function installFakeSongPage() {
     fakePlayer.playing = false;
     fakePlayer.seeks.length = 0;
     fakePlayer.createdFor.length = 0;
+    fakePlayer.volume = null;
+    window.localStorage.removeItem("lyrx-volume");
     fakeFetch.mockReset();
     vi.stubGlobal("fetch", fakeFetch);
     window.YT = { Player: FakePlayer };

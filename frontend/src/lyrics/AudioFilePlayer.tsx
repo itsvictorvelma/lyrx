@@ -31,6 +31,9 @@ export function AudioFilePlayer({ file, onClock }: AudioFilePlayerProps) {
       seekMs: (milliseconds) => {
         element.currentTime = milliseconds / 1000;
       },
+      setVolume: (percent) => {
+        element.volume = percent / 100;
+      },
     });
     return () => {
       onClock(null);
