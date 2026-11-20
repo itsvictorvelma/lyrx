@@ -34,12 +34,13 @@ The song and lyrics shown are invented for these screenshots.
 
 ## What works today
 
-- **Your songs (home):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
+- **Home:** an example line sung part by part shows what Lyrx does, then a large search box. First-time visitors see how it works; returning ones get Continue. "Songs already in Lyrx" opens songs that are already translated, instantly.
+- **Your songs (`/library`):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
 - **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
 - **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line is highlighted and kept in view (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are kept once you save the song. Your file is never uploaded.
 - **Focus mode:** hides everything but the lyrics and the player, with bigger text.
-- **Study tools:** hide the Hiragana, Romaji, or English column and reveal one line at a time to test yourself; loop the line being sung; keyboard shortcuts for everything (press **?** on a song for the list).
+- **Study tools:** hide the Hiragana, Romaji, or English column and reveal one line at a time to test yourself; loop the line being sung; keyboard shortcuts for everything (press **?** on any page for the list, **/** to search).
 - **Dark and light:** follows your system; the sun/moon button switches and remembers it.
 
 ## Coming next
@@ -133,17 +134,22 @@ lyrx/
 └── frontend/              The page (React, Vite, TypeScript)
     └── src/
         ├── main.tsx           Mounts the page
-        ├── App.tsx            The app shell: header, library or song page, search, Focus mode, errors
-        ├── routing.ts         Page addresses: / is the library, /song/{id} a song; Back and Forward
+        ├── App.tsx            The app shell: header, pages, search, Focus, ? and / off the song page
+        ├── routing.ts         Page addresses: / home, /library your songs, /song/{id} a song
         ├── mediaQuery.ts      Whether a media query matches (reduced motion, light theme, phone)
         ├── styles.css         Night-player colours (dark and light), pages, motion, phone layout
         ├── header/
-        │   ├── Header.tsx         The bar on every page: wordmark, search box, theme button
-        │   ├── SearchForm.tsx     The search box and Find button
+        │   ├── Header.tsx         The bar on every page: wordmark, search box, Your songs, theme
+        │   ├── SearchForm.tsx     The search box and Find button, in two sizes
         │   └── ThemeButton.tsx    The sun/moon button: remembered choice, else the system setting
+        ├── home/
+        │   ├── HomePage.tsx       Home: hero, large search, how it works or Continue, recent songs
+        │   ├── HeroLine.tsx       The example line, sung part by part
+        │   └── heroTiming.ts      The example line's parts and which is sung at each tick
         ├── library/
-        │   ├── LibraryPage.tsx    Home: your songs as tiles, sorting, the empty welcome
-        │   ├── SongTile.tsx       One tile: thumbnail or first character, title, Remove
+        │   ├── LibraryPage.tsx    Your songs (/library): tiles, sorting, the empty welcome
+        │   ├── SongTile.tsx       One tile: art, title, last opened, Remove
+        │   ├── SongArt.tsx        A song's art: YouTube thumbnail or first character on its hue
         │   └── songTiles.ts       Thumbnail address, title colour, "Opened …", sort orders
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
@@ -154,7 +160,7 @@ lyrx/
             ├── ColumnButtons.tsx  The phone's column tabs and the Hide toggles
             ├── hiddenColumns.ts   Covered columns (remembered on this browser) and revealed cells
             ├── lineLoop.ts        Where a looped line starts and ends in the audio
-            ├── shortcuts.ts       The song page's keyboard shortcuts, and when keys are left alone
+            ├── shortcuts.ts       Keyboard shortcuts (song page and elsewhere), when keys are left alone
             ├── ShortcutList.tsx   The keyboard shortcut panel
             ├── SaveButton.tsx     The Save / Saved toggle on a song
             ├── OtherMatches.tsx   "Not this one?": the other results in a popover

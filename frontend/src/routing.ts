@@ -1,16 +1,25 @@
-// Page addresses: `/` is the library, `/song/{id}` a song; Back and Forward move between them.
+// Page addresses: `/` home, `/library` your songs, `/song/{id}` a song; Back and Forward work.
 import { useEffect, useState } from "react";
 
 // A whole number from 1 up, short enough to stay exact in JavaScript.
 const SONG_PATH = /^\/song\/([1-9][0-9]{0,14})\/?$/;
 
-export type Route = { page: "library" } | { page: "song"; id: number };
+const LIBRARY_PATH_PATTERN = /^\/library\/?$/;
 
-// The page for an address; anything unknown is the library.
+export const HOME_PATH = "/";
+export const LIBRARY_PATH = "/library";
+
+export type Route =
+  { page: "home" } | { page: "library" } | { page: "song"; id: number };
+
+// The page for an address; anything unknown is home.
 export function parseRoute(path: string): Route {
+  if (LIBRARY_PATH_PATTERN.test(path)) {
+    return { page: "library" };
+  }
   const match = SONG_PATH.exec(path);
   const id = match?.[1] === undefined ? NaN : Number(match[1]);
-  return Number.isSafeInteger(id) ? { page: "song", id } : { page: "library" };
+  return Number.isSafeInteger(id) ? { page: "song", id } : { page: "home" };
 }
 
 export function songPath(id: number): string {
