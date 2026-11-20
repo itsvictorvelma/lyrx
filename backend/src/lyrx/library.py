@@ -1,14 +1,13 @@
-"""The song cache and the library: one SQLite file of opened songs; `saved` marks the library."""
+"""The shared song cache and each person's library of saved songs, with their videos."""
 
 import logging
 import sqlite3
 import time
-from collections.abc import Iterable, Iterator
-from contextlib import closing, contextmanager
+from collections.abc import Iterable
 
 from pydantic import TypeAdapter, ValidationError
 
-from lyrx import config
+from lyrx.database import connect
 from lyrx.schemas import (
     Playback,
     RecentSong,
@@ -22,77 +21,29 @@ logger = logging.getLogger(__name__)
 
 LINES_ADAPTER = TypeAdapter(list[VersionLine])
 
-CREATE_TABLE = """
-CREATE TABLE IF NOT EXISTS saved_songs (
-    id INTEGER PRIMARY KEY,
-    track TEXT NOT NULL,
-    artist TEXT NOT NULL,
-    album TEXT NOT NULL,
-    duration_seconds INTEGER NOT NULL,
-    lines_json TEXT NOT NULL,
-    saved_at REAL NOT NULL,
-    last_opened_at REAL NOT NULL,
-    video_id TEXT,
-    offset_ms INTEGER NOT NULL DEFAULT 0,
-    saved INTEGER NOT NULL DEFAULT 1
-)
-"""
-# Columns added after the first release, with their definitions, for older library files.
-# `saved` defaults to 1 so every song in an older library stays in the library.
-ADDED_COLUMNS = {
-    "video_id": "TEXT",
-    "offset_ms": "INTEGER NOT NULL DEFAULT 0",
-    "saved": "INTEGER NOT NULL DEFAULT 1",
-}
-
-
-@contextmanager
-def connect() -> Iterator[sqlite3.Connection]:
-    """A connection to the file at `config.DATABASE_PATH`, created with its folder if missing.
-
-    The `with` block is one transaction: committed when it ends, rolled back on an error.
-    """
-    config.DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(config.DATABASE_PATH)) as connection, connection:
-        connection.execute(CREATE_TABLE)
-        add_missing_columns(connection)
-        yield connection
-
-
-def add_missing_columns(connection: sqlite3.Connection) -> None:
-    """Brings a library made by an older Lyrx up to date; existing rows get the defaults."""
-    present = {row[1] for row in connection.execute("PRAGMA table_info(saved_songs)")}
-    for name, definition in ADDED_COLUMNS.items():
-        if name not in present:
-            # Only names and definitions from ADDED_COLUMNS above are formatted in.
-            connection.execute(f"ALTER TABLE saved_songs ADD COLUMN {name} {definition}")
-
 
 def find_song(song_id: int) -> SongVersionsResponse | None:
     """The cached song, its last-opened time updated; None if not cached or its row is broken."""
     with connect() as connection:
         row = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds, lines_json, video_id, offset_ms,"
-            " saved FROM saved_songs WHERE id = ?",
+            "SELECT id, track, artist, album, duration_seconds, lines_json FROM songs WHERE id = ?",
             (song_id,),
         ).fetchone()
         if row is None:
             return None
-        saved = to_saved_song(row)
-        if saved is None:
-            connection.execute("DELETE FROM saved_songs WHERE id = ?", (song_id,))
+        cached = to_cached_song(row)
+        if cached is None:
+            connection.execute("DELETE FROM songs WHERE id = ?", (song_id,))
             return None
         connection.execute(
-            "UPDATE saved_songs SET last_opened_at = ? WHERE id = ?", (time.time(), song_id)
+            "UPDATE songs SET last_opened_at = ? WHERE id = ?", (time.time(), song_id)
         )
-        return saved
+        return cached
 
 
-def to_saved_song(
-    row: tuple[int, str, str, str, int, str, str | None, int, int],
-) -> SongVersionsResponse | None:
+def to_cached_song(row: tuple[int, str, str, str, int, str]) -> SongVersionsResponse | None:
     """The row as a reply, after the same checks as any untrusted data."""
-    song_id, track, artist, album, duration_seconds, lines_json, video_id, offset_ms, saved = row
+    song_id, track, artist, album, duration_seconds, lines_json = row
     try:
         lines = LINES_ADAPTER.validate_json(lines_json)
         song = Song(
@@ -106,9 +57,23 @@ def to_saved_song(
         return None
     if [line.index for line in lines] != list(range(len(lines))):
         return None
-    return SongVersionsResponse(
-        song=song, lines=lines, playback=to_playback(video_id, offset_ms), saved=saved == 1
-    )
+    return SongVersionsResponse(song=song, lines=lines)
+
+
+def with_library_entry(reply: SongVersionsResponse, user_id: int) -> SongVersionsResponse:
+    """The reply with this person's saved mark and video; their last-opened time updated."""
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT video_id, offset_ms FROM library_entries WHERE user_id = ? AND song_id = ?",
+            (user_id, reply.song.id),
+        ).fetchone()
+        if row is None:
+            return reply.model_copy(update={"saved": False, "playback": Playback()})
+        connection.execute(
+            "UPDATE library_entries SET last_opened_at = ? WHERE user_id = ? AND song_id = ?",
+            (time.time(), user_id, reply.song.id),
+        )
+    return reply.model_copy(update={"saved": True, "playback": to_playback(*row)})
 
 
 def to_playback(video_id: str | None, offset_ms: int) -> Playback:
@@ -119,33 +84,37 @@ def to_playback(video_id: str | None, offset_ms: int) -> Playback:
         return Playback()
 
 
-def save_playback(song_id: int, playback: Playback) -> bool:
-    """Keeps a saved song's video and nudge; False when the song is not in the library."""
+def save_playback(user_id: int, song_id: int, playback: Playback) -> bool:
+    """Keeps a saved song's video and nudge; False when it is not in this person's library."""
     with connect() as connection:
         cursor = connection.execute(
-            "UPDATE saved_songs SET video_id = ?, offset_ms = ? WHERE id = ? AND saved = 1",
-            (playback.video_id, playback.offset_ms, song_id),
+            "UPDATE library_entries SET video_id = ?, offset_ms = ?"
+            " WHERE user_id = ? AND song_id = ?",
+            (playback.video_id, playback.offset_ms, user_id, song_id),
         )
         return cursor.rowcount > 0
 
 
-def save_song_to_library(song_id: int, playback: Playback) -> bool:
-    """Puts a cached song in the library with its video and nudge; False when not cached."""
+def save_song_to_library(user_id: int, song_id: int, playback: Playback) -> bool:
+    """Puts a cached song in this person's library with its video and nudge; False when not
+    cached. Saving it again replaces the video and nudge."""
+    now = time.time()
     with connect() as connection:
         cursor = connection.execute(
-            "UPDATE saved_songs SET saved = 1, video_id = ?, offset_ms = ? WHERE id = ?",
-            (playback.video_id, playback.offset_ms, song_id),
+            "INSERT INTO library_entries (user_id, song_id, video_id, offset_ms, saved_at,"
+            " last_opened_at) SELECT ?, id, ?, ?, ?, ? FROM songs WHERE id = ?"
+            " ON CONFLICT (user_id, song_id) DO UPDATE SET video_id = excluded.video_id,"
+            " offset_ms = excluded.offset_ms",
+            (user_id, playback.video_id, playback.offset_ms, now, now, song_id),
         )
         return cursor.rowcount > 0
 
 
-def unsave_song(song_id: int) -> bool:
-    """Takes a song out of the library, dropping its video and nudge; it stays cached."""
+def unsave_song(user_id: int, song_id: int) -> bool:
+    """Takes a song out of this person's library with its video; it stays cached."""
     with connect() as connection:
         cursor = connection.execute(
-            "UPDATE saved_songs SET saved = 0, video_id = NULL, offset_ms = 0"
-            " WHERE id = ? AND saved = 1",
-            (song_id,),
+            "DELETE FROM library_entries WHERE user_id = ? AND song_id = ?", (user_id, song_id)
         )
         return cursor.rowcount > 0
 
@@ -154,7 +123,7 @@ def replace_lines(song_id: int, lines: list[VersionLine]) -> None:
     """Stores a cached song's lines again, after missing lines were filled in."""
     with connect() as connection:
         connection.execute(
-            "UPDATE saved_songs SET lines_json = ? WHERE id = ?",
+            "UPDATE songs SET lines_json = ? WHERE id = ?",
             (LINES_ADAPTER.dump_json(lines).decode(), song_id),
         )
 
@@ -162,17 +131,17 @@ def replace_lines(song_id: int, lines: list[VersionLine]) -> None:
 def cache_song(reply: SongVersionsResponse) -> None:
     """Caches the song and its lines, replacing an earlier copy; both times are now.
 
-    A new song is not in the library (`saved = 0`); a new copy keeps `saved`, video, and nudge.
+    Library rows are separate, so a new copy keeps everyone's saved mark and video.
     """
     song = reply.song
     now = time.time()
     with connect() as connection:
         connection.execute(
-            "INSERT INTO saved_songs (id, track, artist, album, duration_seconds, lines_json,"
-            " saved_at, last_opened_at, saved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)"
+            "INSERT INTO songs (id, track, artist, album, duration_seconds, lines_json,"
+            " cached_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             " ON CONFLICT(id) DO UPDATE SET track = excluded.track, artist = excluded.artist,"
             " album = excluded.album, duration_seconds = excluded.duration_seconds,"
-            " lines_json = excluded.lines_json, saved_at = excluded.saved_at,"
+            " lines_json = excluded.lines_json, cached_at = excluded.cached_at,"
             " last_opened_at = excluded.last_opened_at",
             (
                 song.id,
@@ -187,13 +156,15 @@ def cache_song(reply: SongVersionsResponse) -> None:
         )
 
 
-def list_songs() -> list[SavedSong]:
-    """Every song in the library without its lines, most recently opened first."""
+def list_songs(user_id: int) -> list[SavedSong]:
+    """This person's saved songs without their lines, most recently opened first."""
     with connect() as connection:
         rows = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds, video_id, offset_ms,"
-            " last_opened_at FROM saved_songs WHERE saved = 1"
-            " ORDER BY last_opened_at DESC, id DESC"
+            "SELECT s.id, s.track, s.artist, s.album, s.duration_seconds, e.video_id,"
+            " e.offset_ms, e.last_opened_at FROM library_entries e JOIN songs s"
+            " ON s.id = e.song_id WHERE e.user_id = ?"
+            " ORDER BY e.last_opened_at DESC, s.id DESC",
+            (user_id,),
         ).fetchall()
     songs = []
     for song_id, track, artist, album, duration, video_id, offset_ms, opened_at in rows:
@@ -213,13 +184,17 @@ def list_songs() -> list[SavedSong]:
     return songs
 
 
-def list_recent_songs(limit: int) -> list[RecentSong]:
-    """Cached songs, saved or not, most recently opened first, without their lines."""
+def list_recent_songs(limit: int, user_id: int | None) -> list[RecentSong]:
+    """Cached songs opened by anyone, most recent first, without their lines.
+
+    A video shows only when it is this person's own; a guest never sees one.
+    """
     with connect() as connection:
         rows = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds, video_id FROM saved_songs"
-            " ORDER BY last_opened_at DESC, id DESC LIMIT ?",
-            (limit,),
+            "SELECT s.id, s.track, s.artist, s.album, s.duration_seconds, e.video_id"
+            " FROM songs s LEFT JOIN library_entries e ON e.song_id = s.id AND e.user_id = ?"
+            " ORDER BY s.last_opened_at DESC, s.id DESC LIMIT ?",
+            (user_id, limit),
         ).fetchall()
     return [
         RecentSong(
@@ -243,17 +218,17 @@ def find_song_or_none(song_id: int) -> SongVersionsResponse | None:
         return None
 
 
-def saved_ids_or_none(song_ids: Iterable[int]) -> set[int]:
+def saved_ids_or_none(user_id: int, song_ids: Iterable[int]) -> set[int]:
     """Like `saved_ids`, but a database that cannot be read counts as "none saved"."""
     try:
-        return saved_ids(song_ids)
+        return saved_ids(user_id, song_ids)
     except sqlite3.Error:
         logger.warning("library_unavailable")
         return set()
 
 
-def saved_ids(song_ids: Iterable[int]) -> set[int]:
-    """Which of these song ids are in the library."""
+def saved_ids(user_id: int, song_ids: Iterable[int]) -> set[int]:
+    """Which of these song ids are in this person's library."""
     wanted = list(song_ids)
     if not wanted:
         return set()
@@ -261,7 +236,8 @@ def saved_ids(song_ids: Iterable[int]) -> set[int]:
     with connect() as connection:
         rows = connection.execute(
             # Only "?" placeholders are formatted in; the ids go in as parameters.
-            f"SELECT id FROM saved_songs WHERE saved = 1 AND id IN ({placeholders})",
-            wanted,
+            "SELECT song_id FROM library_entries WHERE user_id = ?"
+            f" AND song_id IN ({placeholders})",
+            [user_id, *wanted],
         ).fetchall()
     return {song_id for (song_id,) in rows}

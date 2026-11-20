@@ -7,6 +7,7 @@ import {
   installFakeSongPage,
   LINES,
   openSavedSong,
+  openSongAsGuest,
   songReply,
   VIDEO_ID,
 } from "./fakeSongPage";
@@ -45,6 +46,23 @@ test("spec 012 AC-7: a YouTube link plays that video and is saved with the song"
     expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
   });
   expect(putBodies()).toEqual([{ videoId: VIDEO_ID, offsetMs: 0 }]);
+});
+
+test("spec 014 AC-17: a guest's YouTube link plays with no error and no save request", async () => {
+  const user = await openSongAsGuest(songReply(LINES, null, 0, false));
+
+  await user.type(
+    screen.getByLabelText("YouTube link"),
+    `https://youtu.be/${VIDEO_ID}`,
+  );
+  await user.click(screen.getByRole("button", { name: "Play video" }));
+  await waitFor(() => {
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
+  });
+  await user.click(screen.getByRole("button", { name: /Later/ }));
+
+  expect(putBodies()).toEqual([]);
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 test("spec 012 AC-7: any other link shows the error and embeds nothing", async () => {

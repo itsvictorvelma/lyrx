@@ -1,4 +1,5 @@
-// Test helpers for the song page: a fake YouTube player, a fake server, and opening a saved song.
+// Test helpers for the song page: a fake YouTube player, a fake server (with accounts), and
+// opening a song.
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, vi } from "vitest";
@@ -79,6 +80,44 @@ export class FakePlayer implements YouTubePlayerHandle {
 }
 
 export const fakeFetch = vi.fn<typeof fetch>();
+// Who the fake server says is signed in; null makes the visitor a guest.
+export const fakeAccount = { username: "mika" as string | null };
+// The one password the fake server accepts.
+export const FAKE_PASSWORD = "correct horse battery";
+
+function json(body: unknown, status = 200): Promise<Response> {
+  return Promise.resolve(new Response(JSON.stringify(body), { status }));
+}
+
+// Sign in, create an account, sign out, and delete, as the server answers them.
+function answerAccount(
+  method: string,
+  url: string,
+  body: string,
+): Promise<Response> | null {
+  const sent = (body === "" ? {} : JSON.parse(body)) as Record<string, string>;
+  if (url === "/api/account/sign-in" || url === "/api/account/sign-up") {
+    if (sent.password !== FAKE_PASSWORD) {
+      return json(
+        {
+          code: "sign_in_failed",
+          message: "The username or password is not right.",
+        },
+        401,
+      );
+    }
+    fakeAccount.username = (sent.username ?? "").toLowerCase();
+    return json({ username: fakeAccount.username });
+  }
+  if (
+    url === "/api/account/sign-out" ||
+    (method === "DELETE" && url === "/api/account")
+  ) {
+    fakeAccount.username = null;
+    return Promise.resolve(new Response(null, { status: 204 }));
+  }
+  return null;
+}
 
 export function songReply(
   lines: Line[],
@@ -109,6 +148,18 @@ export function stubServer(reply: Response) {
   fakeFetch.mockImplementation((input, init) => {
     const method = init?.method ?? "GET";
     const url = typeof input === "string" ? input : "";
+    const body = typeof init?.body === "string" ? init.body : "";
+    const accountReply = answerAccount(method, url, body);
+    if (accountReply !== null) {
+      return accountReply;
+    }
+    if (method === "GET" && url === "/api/account") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ username: fakeAccount.username }), {
+          status: 200,
+        }),
+      );
+    }
     if (method === "GET" && url === "/api/songs") {
       const song = {
         id: 101,
@@ -139,6 +190,17 @@ export function stubServer(reply: Response) {
   });
 }
 
+// A guest opens the song at its address; nothing is saved for them.
+export async function openSongAsGuest(reply: Response) {
+  fakeAccount.username = null;
+  stubServer(reply);
+  window.history.replaceState(null, "", "/song/101");
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByRole("table");
+  return user;
+}
+
 export async function openSavedSong(reply: Response) {
   stubServer(reply);
   const user = userEvent.setup();
@@ -160,6 +222,7 @@ export function installFakeSongPage() {
     fakePlayer.createdFor.length = 0;
     fakePlayer.volume = null;
     fakePlayer.rate = null;
+    fakeAccount.username = "mika";
     window.localStorage.removeItem("lyrx-volume");
     fakeFetch.mockReset();
     vi.stubGlobal("fetch", fakeFetch);

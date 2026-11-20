@@ -10,11 +10,13 @@ from lyrx.app import SONG_SEARCH_PATH
 
 ALLOWED_HOST_HEADER = (b"host", b"127.0.0.1:8000")
 JSON_CONTENT_TYPE_HEADER = (b"content-type", b"application/json")
+ALLOWED_ORIGIN_HEADER = (b"origin", b"http://127.0.0.1:5173")
 # uvicorn logs an exception that escapes the app to this logger, with its traceback.
 UVICORN_ERROR_LOGGER = "uvicorn.error"
 
 
 def post_scope(headers: list[tuple[bytes, bytes]], path: str = SONG_SEARCH_PATH) -> Scope:
+    """A POST from the page itself: the allowed Origin is added to `headers`."""
     return {
         "type": "http",
         "asgi": {"version": "3.0"},
@@ -25,7 +27,7 @@ def post_scope(headers: list[tuple[bytes, bytes]], path: str = SONG_SEARCH_PATH)
         "raw_path": path.encode(),
         "query_string": b"",
         "root_path": "",
-        "headers": headers,
+        "headers": [*headers, ALLOWED_ORIGIN_HEADER],
         "client": ("127.0.0.1", 50000),
         "server": ("127.0.0.1", 8000),
     }

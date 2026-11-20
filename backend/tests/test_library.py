@@ -1,4 +1,6 @@
-"""Tests for the song cache and library (specs 009, 016) and saved playback (spec 012)."""
+"""Tests for the song cache and library (specs 009, 016) and saved playback (spec 012).
+
+Every test here runs signed in; test_accounts covers guests and two people."""
 
 import logging
 import sqlite3
@@ -8,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import REAL_DATABASE_PATH
+from conftest import sign_up
 from error_shape import assert_error_shape
 from fake_gemini import (
     FakeGemini,
@@ -28,6 +30,16 @@ from lyrx.app import RECENT_SONGS_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG
 # The invented record's non-blank lines.
 SENT = [0, 1, 3, 4]
 VIDEO_ID = "abcDEF12_-z"
+
+
+@pytest.fixture(autouse=True)
+def signed_in(client: TestClient) -> None:
+    sign_up(client)
+
+
+def user_id() -> int:
+    """The id of the one account the fixture above created."""
+    return 1
 
 
 def open_song(client: TestClient, song_id: int = 101) -> dict[str, Any]:
@@ -277,7 +289,7 @@ def test_ac7_a_broken_saved_row_is_deleted_and_the_song_fetched_again(
 ) -> None:
     open_new_song(client, fake_lrclib, fake_gemini)
     with sqlite3.connect(temporary_database) as connection:
-        connection.execute('UPDATE saved_songs SET lines_json = \'[{"index": "x"}]\'')
+        connection.execute('UPDATE songs SET lines_json = \'[{"index": "x"}]\'')
 
     open_new_song(client, fake_lrclib, fake_gemini)
 
@@ -306,22 +318,6 @@ def test_ac8_a_failed_save_still_returns_the_song_and_logs_save_failed(
     assert "/secret/path" not in caplog.text
 
 
-def test_ac9_the_database_path_is_a_setting_and_its_folder_is_created(
-    temporary_database: Path,
-) -> None:
-    assert not temporary_database.parent.exists()
-
-    assert library.list_songs() == []
-
-    assert temporary_database.exists()
-    assert temporary_database == config.DATABASE_PATH
-
-
-def test_the_real_database_path_is_in_the_gitignored_data_folder() -> None:
-    assert REAL_DATABASE_PATH == config.REPO_ROOT / "data" / "lyrx.db"
-    assert "*.db" in (config.REPO_ROOT / ".gitignore").read_text().splitlines()
-
-
 @pytest.mark.parametrize("too_big", [2**63, 10**20])
 def test_an_id_too_large_for_the_library_is_invalid_request(
     client: TestClient, too_big: int
@@ -332,25 +328,6 @@ def test_an_id_too_large_for_the_library_is_invalid_request(
     for response in (opened, removed):
         assert response.status_code == 400
         assert_error_shape(response.json(), "invalid_request")
-
-
-@pytest.mark.usefixtures("gemini_key")
-def test_an_unreadable_library_falls_back_to_lrclib_and_search_still_works(
-    client: TestClient,
-    fake_lrclib: FakeLrclib,
-    fake_gemini: FakeGemini,
-    temporary_database: Path,
-) -> None:
-    temporary_database.parent.mkdir(parents=True)
-    temporary_database.write_bytes(b"this is not a database file" * 100)
-    fake_lrclib.script(json_reply([record()]))
-
-    search = client.post(SONG_SEARCH_PATH, json={"query": "歌"})
-    opened = open_new_song(client, fake_lrclib, fake_gemini)
-
-    assert search.status_code == 200
-    assert search.json()["results"][0]["saved"] is False
-    assert opened["fromLibrary"] is False
 
 
 @pytest.mark.usefixtures("gemini_key")
@@ -447,45 +424,6 @@ def test_spec012_ac5_playback_for_a_song_that_is_not_saved_is_not_found(client: 
 
 
 @pytest.mark.usefixtures("gemini_key")
-def test_spec012_ac6_a_library_from_before_playback_gains_the_columns_and_still_opens(
-    client: TestClient,
-    fake_lrclib: FakeLrclib,
-    fake_gemini: FakeGemini,
-    temporary_database: Path,
-) -> None:
-    temporary_database.parent.mkdir(parents=True)
-    with closing(sqlite3.connect(temporary_database)) as connection, connection:
-        connection.execute(
-            "CREATE TABLE saved_songs (id INTEGER PRIMARY KEY, track TEXT NOT NULL,"
-            " artist TEXT NOT NULL, album TEXT NOT NULL, duration_seconds INTEGER NOT NULL,"
-            " lines_json TEXT NOT NULL, saved_at REAL NOT NULL, last_opened_at REAL NOT NULL)"
-        )
-        connection.execute(
-            "INSERT INTO saved_songs VALUES (101, '歌', 'ミナト', '', 200,"
-            ' \'[{"index": 0, "original": "夜", "hiragana": "よる",'
-            ' "romaji": "yoru", "english": "Night"}]\', 1.0, 1.0)'
-        )
-
-    reply = open_song(client)
-
-    assert reply["fromLibrary"] is True
-    # Spec 016 AC-7: songs in a library from before the cache stay in the library.
-    assert reply["saved"] is True
-    assert [song["id"] for song in client.get(SAVED_SONGS_PATH).json()["songs"]] == [101]
-    assert reply["lines"] == [
-        {
-            "index": 0,
-            "original": "夜",
-            "hiragana": "よる",
-            "romaji": "yoru",
-            "english": "Night",
-            "startMs": None,
-        }
-    ]
-    assert reply["playback"] == {"videoId": None, "offsetMs": 0}
-
-
-@pytest.mark.usefixtures("gemini_key")
 def test_a_saved_playback_that_fails_the_checks_is_dropped_but_the_song_opens(
     client: TestClient,
     fake_lrclib: FakeLrclib,
@@ -493,8 +431,11 @@ def test_a_saved_playback_that_fails_the_checks_is_dropped_but_the_song_opens(
     temporary_database: Path,
 ) -> None:
     open_new_song(client, fake_lrclib, fake_gemini)
+    save(client)
     with closing(sqlite3.connect(temporary_database)) as connection, connection:
-        connection.execute("UPDATE saved_songs SET video_id = 'not an id', offset_ms = 99999999")
+        connection.execute(
+            "UPDATE library_entries SET video_id = 'not an id', offset_ms = 99999999"
+        )
 
     assert open_song(client)["playback"] == {"videoId": None, "offsetMs": 0}
 

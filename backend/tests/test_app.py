@@ -1,14 +1,30 @@
-"""Tests for the app shell: the one error shape, routing errors, the sync route, and the client."""
+"""Tests for the app shell: the error shape, routing errors, sync routes, and who sees what
+(spec 014: guests, two people, and the daily caps)."""
 
 import inspect
+from typing import Any
 
 import pytest
+from conftest import make_client, sign_up
 from error_shape import ERROR_SHAPE_KEYS, assert_error_shape
+from fake_gemini import FakeGemini, answer_with_placeholders
+from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from lyrx.app import SAVED_SONG_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
+from lyrx import config, library
+from lyrx.app import (
+    PLAYBACK_PATH,
+    RECENT_SONGS_PATH,
+    SAVED_SONG_PATH,
+    SAVED_SONGS_PATH,
+    SONG_SEARCH_PATH,
+    SONG_VERSIONS_PATH,
+)
+
+VIDEO_A = "aaaaaaaaaaa"
+VIDEO_B = "bbbbbbbbbbb"
 
 
 def test_ac9_body_that_is_not_json_is_invalid_request(client: TestClient) -> None:
@@ -124,3 +140,167 @@ def test_routes_are_sync_functions_so_blocking_calls_run_off_the_event_loop(
 
     assert routes
     assert not any(inspect.iscoroutinefunction(route.endpoint) for route in routes)
+
+
+# Accounts (spec 014)
+
+
+def open_new_song(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini, song_id: int
+) -> Any:
+    fake_lrclib.script(json_reply(record(record_id=song_id, track=f"歌{song_id}")))
+    fake_gemini.answer = answer_with_placeholders
+    return client.post(SONG_VERSIONS_PATH, json={"id": song_id})
+
+
+def save(client: TestClient, song_id: int, video_id: str | None) -> int:
+    path = SAVED_SONG_PATH.format(song_id=song_id)
+    return client.put(path, json={"videoId": video_id, "offsetMs": 0}).status_code
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", SAVED_SONGS_PATH),
+        ("PUT", SAVED_SONG_PATH.format(song_id=101)),
+        ("DELETE", SAVED_SONG_PATH.format(song_id=101)),
+        ("PUT", PLAYBACK_PATH.format(song_id=101)),
+    ],
+)
+def test_ac5_a_guest_gets_sign_in_required_on_the_saved_songs_routes(
+    client: TestClient, method: str, path: str
+) -> None:
+    response = client.request(method, path, json={"videoId": None, "offsetMs": 0})
+
+    assert response.status_code == 401
+    assert_error_shape(response.json(), "sign_in_required")
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac5_a_guest_opens_songs_and_never_sees_another_persons_video(
+    app: FastAPI, client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    with make_client(app) as owner:
+        sign_up(owner)
+        assert open_new_song(owner, fake_lrclib, fake_gemini, 101).status_code == 200
+        assert save(owner, 101, VIDEO_A) == 204
+
+    opened = client.post(SONG_VERSIONS_PATH, json={"id": 101}).json()
+    recent = client.get(RECENT_SONGS_PATH)
+
+    assert (opened["saved"], opened["playback"]["videoId"]) == (False, None)
+    assert recent.status_code == 200
+    assert [(song["id"], song["videoId"]) for song in recent.json()["songs"]] == [(101, None)]
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac6_two_people_each_see_only_their_own_songs_and_videos(
+    app: FastAPI, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    with make_client(app) as first, make_client(app) as second:
+        sign_up(first, "first")
+        sign_up(second, "second")
+        open_new_song(first, fake_lrclib, fake_gemini, 101)
+        open_new_song(first, fake_lrclib, fake_gemini, 102)
+        save(first, 101, VIDEO_A)
+        save(second, 101, VIDEO_B)
+        save(second, 102, None)
+
+        assert save(first, 101, VIDEO_A) == 204
+        assert first.delete(SAVED_SONG_PATH.format(song_id=101)).status_code == 204
+
+        first_songs = first.get(SAVED_SONGS_PATH).json()["songs"]
+        second_songs = second.get(SAVED_SONGS_PATH).json()["songs"]
+        assert first_songs == []
+        assert {song["id"]: song["videoId"] for song in second_songs} == {101: VIDEO_B, 102: None}
+        assert second.post(SONG_VERSIONS_PATH, json={"id": 101}).json()["playback"] == {
+            "videoId": VIDEO_B,
+            "offsetMs": 0,
+        }
+        assert first.post(SONG_VERSIONS_PATH, json={"id": 101}).json()["saved"] is False
+        recent = {s["id"]: s["videoId"] for s in second.get(RECENT_SONGS_PATH).json()["songs"]}
+        assert recent == {101: VIDEO_B, 102: None}
+        fake_lrclib.script(json_reply([record(record_id=101), record(record_id=103, track="別")]))
+        fake_lrclib.script(json_reply([record(record_id=101), record(record_id=103, track="別")]))
+        first_search = first.post(SONG_SEARCH_PATH, json={"query": "歌"}).json()["results"]
+        second_search = second.post(SONG_SEARCH_PATH, json={"query": "歌"}).json()["results"]
+        assert {r["id"]: r["saved"] for r in first_search} == {101: False, 103: False}
+        assert {r["id"]: r["saved"] for r in second_search} == {101: True, 103: False}
+    assert library.find_song(101) is not None
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac7_cached_songs_are_free_and_the_account_cap_stops_new_songs_before_lrclib(
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "NEW_SONGS_PER_ACCOUNT_PER_DAY", 2)
+    sign_up(client)
+    assert open_new_song(client, fake_lrclib, fake_gemini, 101).status_code == 200
+    for _ in range(3):
+        assert client.post(SONG_VERSIONS_PATH, json={"id": 101}).status_code == 200
+    assert open_new_song(client, fake_lrclib, fake_gemini, 102).status_code == 200
+    lrclib_calls = len(fake_lrclib.requests)
+
+    response = client.post(SONG_VERSIONS_PATH, json={"id": 103})
+
+    assert response.status_code == 429
+    assert_error_shape(response.json(), "daily_limit")
+    assert response.json()["message"] == "Daily limit reached. Songs already in Lyrx still open."
+    assert len(fake_lrclib.requests) == lrclib_calls
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac7_a_failed_new_song_still_counts(
+    client: TestClient, fake_lrclib: FakeLrclib, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config, "NEW_SONGS_PER_ACCOUNT_PER_DAY", 1)
+    sign_up(client)
+    fake_lrclib.script(json_reply({"message": "no"}, status=404))
+    assert client.post(SONG_VERSIONS_PATH, json={"id": 101}).status_code == 404
+
+    response = client.post(SONG_VERSIONS_PATH, json={"id": 102})
+
+    assert_error_shape(response.json(), "daily_limit")
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac8_guests_are_capped_per_ip_separately_from_accounts(
+    app: FastAPI,
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "NEW_SONGS_PER_GUEST_IP_PER_DAY", 1)
+    assert open_new_song(client, fake_lrclib, fake_gemini, 101).status_code == 200
+
+    guest_again = client.post(SONG_VERSIONS_PATH, json={"id": 102})
+    with make_client(app) as person:
+        sign_up(person)
+        person_reply = open_new_song(person, fake_lrclib, fake_gemini, 102)
+
+    assert_error_shape(guest_again.json(), "daily_limit")
+    assert person_reply.status_code == 200
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_ac9_the_site_cap_stops_new_songs_for_everyone_but_cached_songs_open(
+    app: FastAPI,
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "NEW_SONGS_PER_SITE_PER_DAY", 1)
+    assert open_new_song(client, fake_lrclib, fake_gemini, 101).status_code == 200
+
+    with make_client(app) as person:
+        sign_up(person)
+        refused = person.post(SONG_VERSIONS_PATH, json={"id": 102})
+        cached = person.post(SONG_VERSIONS_PATH, json={"id": 101})
+
+    assert_error_shape(refused.json(), "daily_limit")
+    assert cached.status_code == 200

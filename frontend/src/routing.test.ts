@@ -1,6 +1,6 @@
 // Checks how addresses map to pages, and where Back on a song goes.
 import { expect, test, vi } from "vitest";
-import { goBack, navigate, parseRoute, songPath } from "./routing";
+import { accountPath, goBack, navigate, parseRoute, songPath } from "./routing";
 
 test("spec 021 AC-1: / is home, /library the library, /song/{id} that song", () => {
   expect(parseRoute("/")).toEqual({ page: "home" });
@@ -40,4 +40,23 @@ test("spec 025 AC-3: Back goes back after a Lyrx move, and home when the song wa
   goBack();
   expect(back).toHaveBeenCalledTimes(1);
   back.mockRestore();
+});
+
+test("spec 014: /account carries a song to go back to, and nothing else", () => {
+  expect(parseRoute("/account")).toEqual({ page: "account", returnTo: null });
+  expect(accountPath("/song/101")).toBe("/account?next=%2Fsong%2F101");
+  expect(parseRoute("/account", "?next=%2Fsong%2F101")).toEqual({
+    page: "account",
+    returnTo: "/song/101",
+  });
+  for (const query of [
+    "?next=https%3A%2F%2Fevil.example",
+    "?next=%2F%2Fevil.example",
+    "?next=%2Flibrary",
+  ]) {
+    expect(parseRoute("/account", query)).toEqual({
+      page: "account",
+      returnTo: null,
+    });
+  }
 });

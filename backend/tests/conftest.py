@@ -23,6 +23,9 @@ REAL_DATABASE_PATH = config.DATABASE_PATH
 SHIPPED_TRANSLATORS = config.TRANSLATORS
 
 ALLOWED_TEST_BASE_URL = "http://127.0.0.1:8000"
+# The page's own Origin, which every POST, PUT, and DELETE must carry (spec 014).
+ALLOWED_TEST_ORIGIN = "http://127.0.0.1:5173"
+TEST_PASSWORD = "correct horse battery"
 TEST_GEMINI_KEY = "fake-gemini-key-not-real-0123"
 TEST_GROQ_KEY = "fake-groq-key-not-real-4567"
 
@@ -57,6 +60,12 @@ def no_retry_waits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Retries happen at once in tests; the number of retries stays the configured one."""
     waits = tuple(0.0 for _ in config.RETRY_WAIT_SECONDS)
     monkeypatch.setattr(config, "RETRY_WAIT_SECONDS", waits)
+
+
+@pytest.fixture(autouse=True)
+def cheap_scrypt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A tiny scrypt cost, so tests that sign up stay fast; the stored hash records the cost."""
+    monkeypatch.setattr(config, "SCRYPT_COST", (2**4, 1, 1))
 
 
 @pytest.fixture
@@ -99,8 +108,32 @@ def app(fake_gemini: FakeGemini, fake_groq: FakeGroq, fake_lrclib: FakeLrclib) -
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
-    """A client whose default Host is allowed, and which returns 500s instead of raising them."""
-    with TestClient(
-        app, base_url=ALLOWED_TEST_BASE_URL, raise_server_exceptions=False
-    ) as test_client:
+    """A guest client whose Host and Origin are allowed, and which returns 500s instead of
+    raising them."""
+    with make_client(app) as test_client:
         yield test_client
+
+
+def make_client(app: FastAPI) -> TestClient:
+    """A new client with its own cookies, like a second browser."""
+    return TestClient(
+        app,
+        base_url=ALLOWED_TEST_BASE_URL,
+        headers={"Origin": ALLOWED_TEST_ORIGIN},
+        raise_server_exceptions=False,
+    )
+
+
+def sign_up(client: TestClient, username: str = "mika") -> None:
+    """Creates an account in this client, which then stays signed in."""
+    response = client.post(
+        "/api/account/sign-up", json={"username": username, "password": TEST_PASSWORD}
+    )
+    assert response.status_code == 200, response.text
+
+
+@pytest.fixture
+def signed_in_client(client: TestClient) -> TestClient:
+    """The client, signed in to a new account."""
+    sign_up(client)
+    return client

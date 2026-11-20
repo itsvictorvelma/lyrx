@@ -13,8 +13,11 @@ from lyrx.lyrics.lrclib import LrclibRecord
 from lyrx.schemas import SearchResult
 
 
-def search_songs(query: str, client: httpx2.Client) -> list[SearchResult]:
-    """Japanese-looking songs first, then LRCLIB's order, duplicates removed, at most 10."""
+def search_songs(query: str, client: httpx2.Client, user_id: int | None) -> list[SearchResult]:
+    """Japanese-looking songs first, then LRCLIB's order, duplicates removed, at most 10.
+
+    `saved` marks this person's saved songs; it is always false for a guest.
+    """
     query = query.strip()
     if not query:
         raise ApiError("empty_search")
@@ -26,7 +29,9 @@ def search_songs(query: str, client: httpx2.Client) -> list[SearchResult]:
     kept = remove_duplicates(ranked)[: config.SEARCH_RESULTS_SHOWN]
     if not kept:
         raise ApiError("song_not_found")
-    saved = library.saved_ids_or_none(result.id for result in kept)
+    if user_id is None:
+        return kept
+    saved = library.saved_ids_or_none(user_id, (result.id for result in kept))
     return [result.model_copy(update={"saved": result.id in saved}) for result in kept]
 
 

@@ -1,6 +1,8 @@
-// The bar on every page: the lyrx wordmark, the search box, Home and Your songs, the theme button.
+// The bar on every page: the wordmark, the search box, Home, Your songs, Sign in or the username,
+// and the theme button.
 import type { MouseEvent } from "react";
-import { HOME_PATH, LIBRARY_PATH, navigate } from "../routing";
+import { useAccount } from "../account/useAccount";
+import { ACCOUNT_PATH, HOME_PATH, LIBRARY_PATH, navigate } from "../routing";
 import type { Route } from "../routing";
 import { SearchForm } from "./SearchForm";
 import { ThemeButton } from "./ThemeButton";
@@ -28,6 +30,7 @@ export function Header({
   showSearch,
   currentPage,
 }: HeaderProps) {
+  const { username, checked } = useAccount();
   return (
     <header className="site-header">
       <a href={HOME_PATH} className="wordmark" onClick={moveTo(HOME_PATH)}>
@@ -54,6 +57,16 @@ export function Header({
         >
           Your songs
         </a>
+        {checked && (
+          <a
+            href={ACCOUNT_PATH}
+            className="nav-link"
+            aria-current={currentPage === "account" ? "page" : undefined}
+            onClick={moveTo(ACCOUNT_PATH)}
+          >
+            {username ?? "Sign in"}
+          </a>
+        )}
         <ThemeButton />
       </nav>
     </header>

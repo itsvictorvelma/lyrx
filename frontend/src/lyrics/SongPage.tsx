@@ -25,6 +25,7 @@ import type {
 import { VersionsTable } from "./VersionsTable";
 
 const SYNCED_TEXT = "Synced lyrics";
+const LRCLIB_URL = "https://lrclib.net";
 export const NO_TIMINGS_TEXT = "No line timings for this song.";
 const POLL_MS = 200;
 export const BACK_TO_LINE_TEXT = "Back to the current line";
@@ -312,6 +313,12 @@ export function SongPage(props: SongPageProps) {
             onReveal={revealCell}
             loopLine={loopLine}
           />
+          <p className="dim song-credit">
+            Lyrics from{" "}
+            <a href={LRCLIB_URL} target="_blank" rel="noopener noreferrer">
+              LRCLIB
+            </a>
+          </p>
         </div>
         {!following && currentLine !== null && (
           <button

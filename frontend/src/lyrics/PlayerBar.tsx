@@ -1,5 +1,6 @@
 // The player bar at the bottom of a song: audio controls, sync, the video window, and choosing audio.
 import { useCallback, useRef, useState } from "react";
+import { isGuest, useAccount } from "../account/useAccount";
 import { matchesMedia } from "../mediaQuery";
 import { AudioFilePlayer } from "./AudioFilePlayer";
 import { savePlayback } from "./api";
@@ -58,6 +59,7 @@ export function PlayerBar(props: PlayerBarProps) {
   const [link, setLink] = useState(
     savedVideoId === null ? "" : `https://youtu.be/${savedVideoId}`,
   );
+  const guest = isGuest(useAccount());
   const [videoId, setVideoId] = useState(savedVideoId);
   const [source, setSource] = useState<Source>(
     savedVideoId === null ? null : { kind: "youtube", videoId: savedVideoId },
@@ -101,11 +103,16 @@ export function PlayerBar(props: PlayerBarProps) {
     clockRef.current?.setVolume(next);
   }
 
-  // A 404 means the song is not in the library, so nothing is kept; any other failure is said.
+  // A guest's video and sync are not kept, so nothing is sent. A 404 means the song is not in the
+  // library, so nothing is kept; any other failure is said.
   async function save(playback: Playback) {
+    if (guest) {
+      return;
+    }
     const result = await savePlayback(songId, playback);
     const notSaved =
-      result.kind === "error" && result.code === "song_not_found";
+      result.kind === "error" &&
+      (result.code === "song_not_found" || result.code === "sign_in_required");
     if (result.kind !== "ok" && !notSaved) {
       setError(SAVE_FAILED_MESSAGE);
     }

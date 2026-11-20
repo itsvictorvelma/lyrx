@@ -7,8 +7,10 @@ import type { Line, SavedSong, SearchResult, Song } from "./lyrics/types";
 import { REMOVED_MESSAGE_MS } from "./library/RemovedMessage";
 import { navigate } from "./routing";
 
-// A fake server: each address answers from its own queue; the saved list is empty by default.
+// A fake server: each address answers from its own queue; the saved list is empty by default,
+// and "mika" is signed in unless a test sets `signedInAs` to null.
 const queues = new Map<string, Response[]>();
+let signedInAs: string | null = "mika";
 const fakeFetch = vi.fn<typeof fetch>();
 
 function urlOf(input: RequestInfo | URL): string {
@@ -26,6 +28,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/");
   vi.spyOn(window, "confirm").mockReturnValue(true);
   queues.clear();
+  signedInAs = "mika";
   fakeFetch.mockReset();
   fakeFetch.mockImplementation((input, init) => {
     const key = `${init?.method ?? "GET"} ${urlOf(input)}`;
@@ -35,6 +38,9 @@ beforeEach(() => {
     }
     if (key === "GET /api/songs" || key === "GET /api/recent-songs") {
       return Promise.resolve(jsonResponse(200, { songs: [] }));
+    }
+    if (key === "GET /api/account") {
+      return Promise.resolve(jsonResponse(200, { username: signedInAs }));
     }
     return Promise.reject(new TypeError(`no fake reply for ${key}`));
   });
@@ -222,7 +228,7 @@ test("AC-1: clicking a library tile opens the song from your songs", async () =>
 
 // Spec 016 AC-9: Remove calls DELETE …/saved; the song stays cached. Spec 025 AC-4: no confirm
 // box; Undo saves it again with its video and sync.
-test("spec 025 AC-4: Remove takes the song off at once, and Undo puts it back with its sync", async () => {
+test("spec 025 AC-4, spec 014 AC-18: Remove takes the song off at once, and Undo puts it back in this person's songs with its sync", async () => {
   window.history.replaceState(null, "", "/library");
   const withVideo = {
     ...asSaved(bestMatch, Date.now(), "abcDEF12_-z"),
