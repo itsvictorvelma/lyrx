@@ -30,14 +30,11 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 017 | Kana rain while a song loads | done |
 | 018 | Reading comfort: calm following, lead-in, tighter rows, roomier Focus mode | done |
 | 019 | Translator request limits: one overall deadline, a byte cap on Gemini replies | done |
-| 015 | Study tools: hide a column, loop a line, keyboard shortcuts | approved |
+| 015 | Study tools: hide a column, loop a line, keyboard shortcuts | done |
 | 014 | Personal accounts, ready for hosting | not started |
 | — | Next language | decided after 008 is in use |
 
 ## Ideas carried from the shelved specs
 
-- Study mode: hide a column (for example English) to test yourself.
-- Show seconds elapsed during a long wait, and allow cancelling.
-- Make the Japanese columns visually primary; English muted.
-- Something to look at or do while a song is processing (a visualizer, or a small kana game).
+- Allow cancelling a long wait (the seconds already show, since 013).
 - Show lines as they arrive instead of all at the end.
