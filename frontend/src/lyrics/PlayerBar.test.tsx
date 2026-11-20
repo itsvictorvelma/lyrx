@@ -10,7 +10,7 @@ import {
   songReply,
   VIDEO_ID,
 } from "./fakeSongPage";
-import { BAD_LINK_MESSAGE, PLAY_ALONG_HINT } from "./PlayerBar";
+import { BAD_LINK_MESSAGE, PLAY_ALONG_TITLE } from "./PlayerBar";
 import { NO_TIMINGS_TEXT } from "./SongPage";
 
 installFakeSongPage();
@@ -34,7 +34,6 @@ function putBodies(): unknown[] {
 
 test("spec 012 AC-7: a YouTube link plays that video and is saved with the song", async () => {
   const user = await openSavedSong(songReply(LINES));
-  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
 
   await user.type(
     screen.getByLabelText("YouTube link"),
@@ -50,7 +49,6 @@ test("spec 012 AC-7: a YouTube link plays that video and is saved with the song"
 
 test("spec 012 AC-7: any other link shows the error and embeds nothing", async () => {
   const user = await openSavedSong(songReply(LINES));
-  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
 
   await user.type(
     screen.getByLabelText("YouTube link"),
@@ -286,7 +284,7 @@ test("spec 022 AC-1, AC-3: an audio file starts at the current level and follows
   const user = await openSavedSong(songReply(LINES));
 
   await user.upload(
-    screen.getByLabelText("Play a file"),
+    screen.getByLabelText(/play a file/),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
   const audio = document.querySelector("audio");
@@ -331,13 +329,13 @@ test("spec 024 AC-2, AC-4: an audio file follows the speed button; the hint goes
     },
   );
   const user = await openSavedSong(songReply(LINES));
-  expect(screen.getByText(PLAY_ALONG_HINT)).toBeTruthy();
+  expect(screen.getByText(PLAY_ALONG_TITLE)).toBeTruthy();
 
   await user.upload(
-    screen.getByLabelText("Play a file"),
+    screen.getByLabelText(/play a file/),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
-  expect(screen.queryByText(PLAY_ALONG_HINT)).toBeNull();
+  expect(screen.queryByText(PLAY_ALONG_TITLE)).toBeNull();
 
   await user.click(screen.getByRole("button", { name: "Playback speed: 1×" }));
   expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
@@ -356,7 +354,7 @@ test("spec 024: a new player for the same song keeps the chosen speed", async ()
 
   await user.click(screen.getByRole("button", { name: "Change audio" }));
   await user.upload(
-    screen.getByLabelText("Play a file"),
+    screen.getByLabelText(/play a file/),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
   expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
@@ -377,8 +375,10 @@ test("spec 024 AC-3: Find on YouTube opens a search for the song in a new tab", 
 test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", async () => {
   await openSavedSong(songReply(LINES));
 
-  expect(screen.getByRole("button", { name: "Add YouTube link" })).toBeTruthy();
-  expect(screen.getByLabelText("Play a file")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Find on YouTube" })).toBeTruthy();
+  expect(screen.getByLabelText("YouTube link")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Play video" })).toBeTruthy();
+  expect(screen.getByLabelText(/play a file/)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
 });
 
@@ -407,7 +407,6 @@ test("spec 012: saving the video of a song that is not saved is quiet, not an er
         )
       : (answerByAddress?.(input, init) ?? Promise.reject(new TypeError())),
   );
-  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
 
   await user.type(
     screen.getByLabelText("YouTube link"),
@@ -423,7 +422,6 @@ test("spec 012: saving the video of a song that is not saved is quiet, not an er
 
 test("spec 016 AC-8: Save keeps the song with the video and sync now playing; Saved again unsaves it", async () => {
   const user = await openSavedSong(songReply(LINES, null, 0, false));
-  await user.click(screen.getByRole("button", { name: "Add YouTube link" }));
   await user.type(
     screen.getByLabelText("YouTube link"),
     `https://youtu.be/${VIDEO_ID}`,

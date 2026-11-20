@@ -18,8 +18,7 @@ import { YouTubePlayer } from "./YouTubePlayer";
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
 const PLAYER_FAILED_MESSAGE = "Couldn't load the YouTube player. Try again.";
 const SAVE_FAILED_MESSAGE = "Couldn't save the video and sync for this song.";
-export const PLAY_ALONG_HINT =
-  "Play along: find the song on YouTube and add its link, or play a file from your computer.";
+export const PLAY_ALONG_TITLE = "Play along with the song";
 
 // The width below which styles.css uses the phone layout.
 const PHONE_QUERY = "(max-width: 719px)";
@@ -64,7 +63,6 @@ export function PlayerBar(props: PlayerBarProps) {
     savedVideoId === null ? null : { kind: "youtube", videoId: savedVideoId },
   );
   const [choosing, setChoosing] = useState(false);
-  const [linkFormOpen, setLinkFormOpen] = useState(false);
   const [videoShown, setVideoShown] = useState(startsWithVideoShown);
   const [error, setError] = useState<string | null>(null);
   const showPlayerFailed = useCallback(() => {
@@ -124,7 +122,6 @@ export function PlayerBar(props: PlayerBarProps) {
     props.onVideoChange(id);
     setSource({ kind: "youtube", videoId: id });
     setVideoShown(startsWithVideoShown());
-    setLinkFormOpen(false);
     setChoosing(false);
     void save({ videoId: id, offsetMs });
   }
@@ -133,7 +130,6 @@ export function PlayerBar(props: PlayerBarProps) {
     if (file !== undefined) {
       setError(null);
       setSource({ kind: "file", file });
-      setLinkFormOpen(false);
       setChoosing(false);
     }
   }
@@ -170,43 +166,18 @@ export function PlayerBar(props: PlayerBarProps) {
       {source?.kind === "file" && (
         <AudioFilePlayer file={source.file} onClock={handleClock} />
       )}
-      {linkFormOpen && (
-        <form
-          className="link-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            playVideo();
-          }}
-        >
-          <label htmlFor="youtube-link">YouTube link</label>
-          <input
-            id="youtube-link"
-            type="url"
-            placeholder="https://youtu.be/…"
-            value={link}
-            onChange={(event) => {
-              setLink(event.target.value);
-            }}
-          />
-          <button type="submit" className="pill-button">
-            Play video
-          </button>
-        </form>
-      )}
       {error !== null && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {source === null && <p className="player-hint">{PLAY_ALONG_HINT}</p>}
       <div className="player-row">
         {showChooser ? (
           <AudioChooser
             searchUrl={youTubeSearchUrl(props.track, props.artist)}
-            linkFormOpen={linkFormOpen}
-            onToggleLink={() => {
-              setLinkFormOpen((open) => !open);
-            }}
+            link={link}
+            onLinkChange={setLink}
+            onPlayLink={playVideo}
             onFile={playFile}
           />
         ) : (
@@ -247,7 +218,6 @@ export function PlayerBar(props: PlayerBarProps) {
             aria-expanded={choosing}
             onClick={() => {
               setChoosing((open) => !open);
-              setLinkFormOpen(false);
             }}
           >
             {choosing ? "Back to player" : "Change audio"}
@@ -255,7 +225,7 @@ export function PlayerBar(props: PlayerBarProps) {
         )}
         <button
           type="button"
-          className="icon-button"
+          className="icon-button shortcuts-button"
           aria-label="Keyboard shortcuts"
           aria-haspopup="dialog"
           aria-expanded={props.shortcutListOpen}
@@ -271,44 +241,59 @@ export function PlayerBar(props: PlayerBarProps) {
 interface AudioChooserProps {
   // A YouTube search for this song, opened in a new tab.
   searchUrl: string;
-  linkFormOpen: boolean;
-  onToggleLink: () => void;
+  link: string;
+  onLinkChange: (link: string) => void;
+  onPlayLink: () => void;
   onFile: (file: File | undefined) => void;
 }
 
-// With no audio yet: find the song on YouTube, add its link, or pick a file from this computer.
-function AudioChooser({
-  searchUrl,
-  linkFormOpen,
-  onToggleLink,
-  onFile,
-}: AudioChooserProps) {
+// With no audio yet, or when changing it: find the song on YouTube and paste its link (the box is
+// always open, so it is find, copy, paste, play), or play a file from this computer.
+function AudioChooser(props: AudioChooserProps) {
   return (
     <div className="audio-chooser">
-      <a
-        className="pill-button"
-        href={searchUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Find on YouTube
-      </a>
-      <button
-        type="button"
-        className="pill-button"
-        aria-expanded={linkFormOpen}
-        onClick={onToggleLink}
-      >
-        <VideoIcon /> Add YouTube link
-      </button>
-      <label className="pill-button">
-        Play a file
+      <p className="chooser-title">{PLAY_ALONG_TITLE}</p>
+      <div className="chooser-row">
+        <a
+          className="pill-button primary-button"
+          href={props.searchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <VideoIcon /> Find on YouTube
+        </a>
+        <form
+          className="link-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            props.onPlayLink();
+          }}
+        >
+          <label htmlFor="youtube-link" className="visually-hidden">
+            YouTube link
+          </label>
+          <input
+            id="youtube-link"
+            type="url"
+            placeholder="Paste a YouTube link…"
+            value={props.link}
+            onChange={(event) => {
+              props.onLinkChange(event.target.value);
+            }}
+          />
+          <button type="submit" className="pill-button">
+            Play video
+          </button>
+        </form>
+      </div>
+      <label className="file-button">
+        or play a file from your computer
         <input
           type="file"
           accept="audio/*"
           className="visually-hidden"
           onChange={(event) => {
-            onFile(event.target.files?.[0]);
+            props.onFile(event.target.files?.[0]);
           }}
         />
       </label>

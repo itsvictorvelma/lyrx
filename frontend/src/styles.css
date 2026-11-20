@@ -149,6 +149,8 @@ button:disabled {
   padding: 0 1rem;
   font-size: 0.875rem;
   background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
   border: 1px solid var(--line);
   border-radius: 999px;
   cursor: pointer;
@@ -157,6 +159,18 @@ button:disabled {
 
 .pill-button:hover {
   border-color: var(--accent);
+}
+
+/* The one main action in a group: the accent fill, like Find in the search box. */
+.primary-button {
+  font-weight: 600;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.primary-button:hover {
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 /* Saved: the accent outline and a filled bookmark, with aria-pressed for screen readers. */
@@ -1347,15 +1361,56 @@ button:disabled {
 }
 
 .transport,
-.audio-chooser,
 .sync {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
+/* No audio yet: a title, Find on YouTube with the link box beside it, then the file option. */
 .audio-chooser {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.chooser-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.chooser-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-button {
+  align-self: flex-start;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.file-button:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* The file input is hidden, so its label shows the keyboard focus. */
+.file-button:focus-within {
+  border-radius: 6px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shortcuts-button {
+  align-self: flex-start;
+  margin-left: auto;
 }
 
 .sync {
@@ -1403,29 +1458,29 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-.player-hint {
-  margin-bottom: 0.5rem;
-  font-size: 0.8125rem;
-  color: var(--dim);
-}
-
 .link-form {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 18rem;
   align-items: center;
   gap: 0.5rem;
-  max-width: 78rem;
-  margin: 0 auto 0.75rem;
+  max-width: 34rem;
   font-size: 0.875rem;
 }
 
 .link-form input {
-  flex: 1 1 16rem;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 2.5rem;
   padding: 0 1rem;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 999px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.link-form input:focus-visible {
+  border-color: var(--accent);
 }
 
 .player-bar > .error {
@@ -1608,6 +1663,11 @@ button:disabled {
 
   .sync {
     order: 2;
+  }
+
+  .link-form {
+    flex-basis: 100%;
+    max-width: none;
   }
 
   /* Phones set loudness with their own buttons; only Mute stays. */
