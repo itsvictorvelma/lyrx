@@ -692,7 +692,8 @@ button:disabled {
 .home-steps li {
   display: grid;
   grid-template-columns: 2.25rem 1fr;
-  gap: 1rem;
+  align-content: start;
+  column-gap: 1rem;
   counter-increment: step;
 }
 
@@ -707,6 +708,13 @@ button:disabled {
   border: 1.5px solid var(--accent);
   border-radius: 999px;
   content: counter(step);
+  grid-row: span 2;
+}
+
+/* The title and its text both sit in the second column, beside the number. */
+.home-steps h3,
+.home-steps p {
+  grid-column: 2;
 }
 
 .home-steps h3 {
