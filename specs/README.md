@@ -32,7 +32,10 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 019 | Translator request limits: one overall deadline, a byte cap on Gemini replies | done |
 | 015 | Study tools: hide a column, loop a line, keyboard shortcuts | done |
 | 021 | Home page: hero line, large search, recent songs; library moves to /library | done |
-| 022 | Volume: slider and Mute in the player bar, remembered | approved |
+| 022 | Volume: slider and Mute in the player bar, remembered | done |
+| 023 | Home link in the header | done |
+| 024 | Play-along helpers: playback speed, Find on YouTube | approved |
+| 025 | Polish: tab titles, link previews, favicon, Back, Undo, library filter | approved |
 | 014 | Personal accounts: sign up, own saved songs, daily cap on new songs | approved |
 | 020 | Deployment: Docker and Caddy on a server, settings from the environment | draft (after 014 and a few more features) |
 | — | Next language | decided after 008 is in use |

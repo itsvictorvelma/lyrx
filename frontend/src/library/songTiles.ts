@@ -1,4 +1,4 @@
-// What a library tile shows (thumbnail, title colour, "Opened …"), and the three sort orders.
+// What a library tile shows (thumbnail, title colour, "Opened …"), the sort orders, the filter.
 import { VIDEO_ID } from "../lyrics/playback";
 import type { SavedSong } from "../lyrics/types";
 
@@ -55,4 +55,17 @@ export function sortSongs(songs: SavedSong[], order: SortOrder): SavedSong[] {
     );
   }
   return sorted;
+}
+
+// Songs whose title or artist holds the text, ignoring letter case; all songs for blank text.
+export function filterSongs(songs: SavedSong[], text: string): SavedSong[] {
+  const wanted = text.trim().toLocaleLowerCase();
+  if (wanted === "") {
+    return songs;
+  }
+  return songs.filter(
+    (song) =>
+      song.track.toLocaleLowerCase().includes(wanted) ||
+      song.artist.toLocaleLowerCase().includes(wanted),
+  );
 }

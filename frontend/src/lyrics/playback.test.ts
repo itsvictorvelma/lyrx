@@ -4,8 +4,10 @@ import {
   currentLineIndex,
   formatOffset,
   hasTimings,
+  nextSpeed,
   nudgeOffset,
   parseVideoId,
+  youTubeSearchUrl,
 } from "./playback";
 import type { Line } from "./types";
 
@@ -80,4 +82,17 @@ test("the sync text always shows its sign and two decimals", () => {
 test("a song has timings when any line has a start", () => {
   expect(hasTimings(LINES)).toBe(true);
   expect(hasTimings([line(0, null)])).toBe(false);
+});
+
+test("spec 024 AC-1: the speed steps 1 → 0.75 → 0.5 → 1", () => {
+  expect(nextSpeed(1)).toBe(0.75);
+  expect(nextSpeed(0.75)).toBe(0.5);
+  expect(nextSpeed(0.5)).toBe(1);
+});
+
+test("spec 024 AC-3: the YouTube search is for the title and artist, URL-encoded", () => {
+  expect(youTubeSearchUrl("星の歌 & more", "ミナト")).toBe(
+    "https://www.youtube.com/results?search_query=" +
+      encodeURIComponent("星の歌 & more ミナト"),
+  );
 });

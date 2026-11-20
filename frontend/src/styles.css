@@ -149,6 +149,8 @@ button:disabled {
   padding: 0 1rem;
   font-size: 0.875rem;
   background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
   border: 1px solid var(--line);
   border-radius: 999px;
   cursor: pointer;
@@ -824,6 +826,54 @@ button:disabled {
   color: var(--text);
 }
 
+.library-filter {
+  margin-bottom: 1.5rem;
+}
+
+.library-filter input {
+  box-sizing: border-box;
+  width: min(100%, 22rem);
+  height: 2.75rem;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.library-filter input:focus-visible {
+  border-color: var(--accent);
+}
+
+/* "Removed … · Undo", above everything at the bottom centre. */
+.removed-message {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 1.5rem;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0 auto;
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  animation: fade-up 0.25s ease both;
+}
+
+.removed-title {
+  font-weight: 600;
+}
+
 /* Waiting */
 
 .progress-head p {
@@ -1332,7 +1382,8 @@ button:disabled {
 
 .player-bar {
   position: relative;
-  padding: 0.75rem 2rem;
+  /* Equal room on both sides for the pinned shortcuts button, so the row stays centered. */
+  padding: 0.75rem 4rem;
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
@@ -1341,21 +1392,42 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 1rem 1.25rem;
   max-width: 78rem;
   margin: 0 auto;
 }
 
 .transport,
-.audio-chooser,
 .sync {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
+/* No audio yet: one row of Find on YouTube, the link box, and Play a file, as tall as the player. */
 .audio-chooser {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+/* The file input is hidden, so its pill shows the keyboard focus. */
+.file-button:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pinned to the bar's right edge, out of the centered row, so it never wraps under the controls. */
+.shortcuts-button {
+  position: absolute;
+  top: 50%;
+  right: 1.25rem;
+  transform: translateY(-50%);
 }
 
 .sync {
@@ -1397,23 +1469,19 @@ button:disabled {
   accent-color: var(--accent);
 }
 
-.link-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 78rem;
-  margin: 0 auto 0.75rem;
-  font-size: 0.875rem;
+.speed-button {
+  min-width: 3.5rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
-.link-form input {
-  flex: 1 1 16rem;
-  min-height: 2.5rem;
-  padding: 0 1rem;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 999px;
+.link-form {
+  flex: 0 1 26rem;
+  height: 2.5rem;
+}
+
+.link-form .find-button {
+  height: 2rem;
 }
 
 .player-bar > .error {
@@ -1598,6 +1666,11 @@ button:disabled {
     order: 2;
   }
 
+  .link-form {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
   /* Phones set loudness with their own buttons; only Mute stays. */
   .volume input {
     display: none;
@@ -1616,6 +1689,13 @@ button:disabled {
   .change-audio {
     order: 3;
     margin-left: auto;
+  }
+
+  /* On a phone the shortcuts button joins the row again, after Change audio. */
+  .shortcuts-button {
+    position: static;
+    order: 4;
+    transform: none;
   }
 
   /* On a phone the video sits in the bar, above the controls, so it never covers the lyrics. */

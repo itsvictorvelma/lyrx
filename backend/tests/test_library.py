@@ -201,6 +201,7 @@ def test_ac4_the_list_is_most_recently_opened_first_without_lines(
         "album",
         "durationSeconds",
         "videoId",
+        "offsetMs",
         "lastOpenedAt",
     }
 
@@ -559,3 +560,18 @@ def test_spec021_ac7_recent_songs_hold_saved_and_unsaved_songs(
     songs = client.get(RECENT_SONGS_PATH).json()["songs"]
 
     assert {song["id"]: song["videoId"] for song in songs} == {102: None, 101: VIDEO_ID}
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec025_ac5_saved_songs_list_their_sync(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    open_new_song(client, fake_lrclib, fake_gemini, 101)
+    body = {"videoId": VIDEO_ID, "offsetMs": -750}
+    assert client.put(f"{SAVED_SONGS_PATH}/101/saved", json=body).status_code == 204
+
+    songs = client.get(SAVED_SONGS_PATH).json()["songs"]
+
+    assert [(song["id"], song["videoId"], song["offsetMs"]) for song in songs] == [
+        (101, VIDEO_ID, -750)
+    ]

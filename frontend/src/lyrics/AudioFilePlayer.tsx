@@ -34,6 +34,9 @@ export function AudioFilePlayer({ file, onClock }: AudioFilePlayerProps) {
       setVolume: (percent) => {
         element.volume = percent / 100;
       },
+      setPlaybackRate: (rate) => {
+        element.playbackRate = rate;
+      },
     });
     return () => {
       onClock(null);

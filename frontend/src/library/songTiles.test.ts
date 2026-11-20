@@ -1,7 +1,8 @@
-// Checks what a library tile shows and the sort orders.
+// Checks what a library tile shows, the sort orders, and the filter.
 import { expect, test } from "vitest";
 import type { SavedSong } from "../lyrics/types";
 import {
+  filterSongs,
   firstCharacter,
   openedLabel,
   sortSongs,
@@ -23,6 +24,7 @@ function song(
     album: "",
     durationSeconds: 200,
     videoId: null,
+    offsetMs: 0,
     lastOpenedAt,
   };
 }
@@ -73,4 +75,15 @@ test("AC-1: songs sort by recent, title, and artist", () => {
     "ミナト",
     "ミナト",
   ]);
+});
+
+test("spec 025 AC-6: the filter matches title or artist, ignoring letter case", () => {
+  const songs = [
+    song(1, "Star Road", "ミナト", 1),
+    song(2, "雨の夜", "Aoi", 2),
+  ];
+  expect(filterSongs(songs, "star").map((s) => s.id)).toEqual([1]);
+  expect(filterSongs(songs, " AOI ").map((s) => s.id)).toEqual([2]);
+  expect(filterSongs(songs, "雨").map((s) => s.id)).toEqual([2]);
+  expect(filterSongs(songs, "  ")).toHaveLength(2);
 });

@@ -202,6 +202,8 @@ function isSavedSong(value: unknown): value is SavedSong {
     isSong(value) &&
     isRecord(value) &&
     isVideoIdOrNull(value.videoId) &&
+    Number.isInteger(value.offsetMs) &&
+    Math.abs(Number(value.offsetMs)) <= MAX_OFFSET_MS &&
     Number.isInteger(value.lastOpenedAt)
   );
 }

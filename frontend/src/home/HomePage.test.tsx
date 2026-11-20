@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 function saved(song: RecentSong, lastOpenedAt: number): SavedSong {
-  return { ...song, lastOpenedAt };
+  return { ...song, offsetMs: 0, lastOpenedAt };
 }
 
 test("AC-1: Your songs goes to the library and the wordmark back home", async () => {
@@ -187,3 +187,27 @@ test.each(["/", "/library"])(
     expect((search as HTMLInputElement).value).toBe("?/");
   },
 );
+
+test("spec 023 AC-1: Home and Your songs are in the header, the current page marked", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  const current = (name: string) =>
+    screen.getByRole("link", { name }).getAttribute("aria-current");
+
+  expect(current("Home")).toBe("page");
+  expect(current("Your songs")).toBeNull();
+
+  await user.click(screen.getByRole("link", { name: "Your songs" }));
+  expect(current("Home")).toBeNull();
+  expect(current("Your songs")).toBe("page");
+
+  await user.click(screen.getByRole("link", { name: "Home" }));
+  expect(window.location.pathname).toBe("/");
+  expect(current("Home")).toBe("page");
+
+  window.history.replaceState(null, "", "/song/101");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  expect(await screen.findByRole("table")).toBeTruthy();
+  expect(current("Home")).toBeNull();
+  expect(current("Your songs")).toBeNull();
+});

@@ -4,10 +4,12 @@ import { Header } from "./header/Header";
 import { focusSearchBox } from "./header/SearchForm";
 import { HomePage } from "./home/HomePage";
 import { LibraryPage } from "./library/LibraryPage";
+import { RemovedMessage } from "./library/RemovedMessage";
 import {
   getSongVersions,
   listRecentSongs,
   listSavedSongs,
+  saveSong,
   unsaveSong,
   searchSongs,
 } from "./lyrics/api";
@@ -29,6 +31,7 @@ import { HOME_PATH, navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
+const SITE_NAME = "Lyrx";
 const SERVER_UNREACHABLE_MESSAGE =
   "Could not reach the Lyrx server. Is it running?";
 
@@ -91,6 +94,19 @@ function SiteShortcuts() {
   ) : null;
 }
 
+// The browser tab's title for the page shown.
+export function pageTitle(route: Route, song: Song | null): string {
+  if (route.page === "home") {
+    return `${SITE_NAME} · Read Japanese songs line by line`;
+  }
+  if (route.page === "library") {
+    return `Your songs · ${SITE_NAME}`;
+  }
+  return song === null
+    ? `Opening… · ${SITE_NAME}`
+    : `${song.track} · ${song.artist} · ${SITE_NAME}`;
+}
+
 function messageFor(result: Exclude<ApiResult<unknown>, { kind: "ok" }>) {
   switch (result.kind) {
     case "error":
@@ -109,6 +125,11 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [savedSongs, setSavedSongs] = useState<SavedSong[]>([]);
   const [recentSongs, setRecentSongs] = useState<RecentSong[]>([]);
+  // The song just removed, while its Undo message shows.
+  const [removed, setRemoved] = useState<SavedSong | null>(null);
+  const clearRemoved = useCallback(() => {
+    setRemoved(null);
+  }, []);
   const [focus, setFocus] = useState(false);
   // The song shown or being opened, so a route change opens a song only once.
   const openedId = useRef<number | null>(null);
@@ -233,15 +254,28 @@ export function App() {
     navigate(songPath(best.id));
   }
 
+  // No confirm box: the Undo message puts the song back, with its video and sync.
   async function removeSong(song: SavedSong) {
-    if (!window.confirm(`Remove ${song.track} from your songs?`)) {
-      return;
-    }
     setError(null);
     const result = await unsaveSong(song.id);
     if (result.kind === "ok") {
       setSavedSongs((songs) => songs.filter((saved) => saved.id !== song.id));
       markSaved(song.id, false);
+      setRemoved(song);
+    } else {
+      setError(messageFor(result));
+    }
+  }
+
+  async function undoRemove(song: SavedSong) {
+    setRemoved(null);
+    const result = await saveSong(song.id, {
+      videoId: song.videoId,
+      offsetMs: song.offsetMs,
+    });
+    if (result.kind === "ok") {
+      markSaved(song.id, true);
+      void refreshSavedSongs();
     } else {
       setError(messageFor(result));
     }
@@ -257,13 +291,17 @@ export function App() {
   const songShown =
     route.page === "song" && shown?.song.id === route.id ? shown : null;
 
+  useEffect(() => {
+    document.title = pageTitle(route, songShown?.song ?? null);
+  }, [route, songShown]);
+
   return (
     <div className={songShown !== null && !busy ? "app is-song" : "app"}>
       {!focus && (
         <Header
           busy={busy}
           showSearch={route.page !== "home"}
-          isLibraryPage={route.page === "library"}
+          currentPage={route.page}
           onSearch={(query) => {
             void find(query);
           }}
@@ -323,6 +361,13 @@ export function App() {
           )
         )}
       </main>
+      <RemovedMessage
+        song={removed}
+        onUndo={(song) => {
+          void undoRemove(song);
+        }}
+        onDone={clearRemoved}
+      />
     </div>
   );
 }

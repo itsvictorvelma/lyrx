@@ -204,7 +204,6 @@ test("AC-8: typing in the search box or the YouTube link field, or holding Ctrl,
     "false",
   ]);
 
-  await user.click(screen.getByRole("button", { name: /Add YouTube link/ }));
   await user.type(screen.getByLabelText("YouTube link"), "r");
   expect(pressed("Romaji")).toBe("false");
 
