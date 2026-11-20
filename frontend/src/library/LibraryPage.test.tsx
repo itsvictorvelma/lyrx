@@ -2,7 +2,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
-import type { SavedSong } from "../lyrics/types";
+import type { SavedSong } from "../types";
 import {
   EMPTY_LIBRARY_HINT,
   EMPTY_LIBRARY_TEXT,

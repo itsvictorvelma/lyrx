@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import httpx2
 import pytest
 
-from lyrx.translation import reply_limits
+from lyrx.translation import streamed_post
 
 
 @dataclass
@@ -20,7 +20,7 @@ class FakeClock:
 
 def use_clock(monkeypatch: pytest.MonkeyPatch, *times: float) -> None:
     """Makes the deadline code read `times` instead of the real clock."""
-    monkeypatch.setattr(reply_limits, "time", FakeClock(list(times)))
+    monkeypatch.setattr(streamed_post, "time", FakeClock(list(times)))
 
 
 def trickled(reply: httpx2.Response) -> httpx2.Response:

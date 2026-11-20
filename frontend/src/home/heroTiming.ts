@@ -18,7 +18,7 @@ const LOOPS = 3;
 // After the last loop the line rests, fully shown, so it never moves forever.
 export const HERO_LAST_TICK = TICKS_PER_LOOP * LOOPS;
 
-export type PartState = "waiting" | "current" | "sung";
+type PartState = "waiting" | "current" | "sung";
 
 // How far the line is at a tick: 0 before the first part, then 1 per part, then the whole line.
 function progressAt(tick: number): number {

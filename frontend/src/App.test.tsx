@@ -2,8 +2,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { App, FALLBACK_MESSAGE, pageTitle, timingText } from "./App";
-import type { Line, SavedSong, SearchResult, Song } from "./lyrics/types";
+import { App, pageTitle, timingText } from "./App";
+import { FALLBACK_MESSAGE } from "./api";
+import type { Line, SavedSong, SearchResult, Song } from "./types";
 import { REMOVED_MESSAGE_MS } from "./library/RemovedMessage";
 import { navigate } from "./routing";
 

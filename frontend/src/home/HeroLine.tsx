@@ -1,6 +1,6 @@
 // The home page's hero: one invented line, sung part by part, its readings appearing as it goes.
 import { useEffect, useState } from "react";
-import { prefersReducedMotion } from "../mediaQuery";
+import { prefersReducedMotion } from "../browser";
 import {
   englishShownAt,
   HERO_ENGLISH,

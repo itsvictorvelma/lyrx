@@ -1,9 +1,9 @@
 // The home page: the hero line, the large search, how it works or Continue, recent songs, footer.
-import { isGuest, useAccount } from "../account/useAccount";
-import { SearchForm } from "../header/SearchForm";
+import { isGuest, useAccount } from "../account/account";
+import { SearchForm } from "../search/SearchForm";
 import { SongArt } from "../library/SongArt";
-import type { RecentSong, SavedSong } from "../lyrics/types";
-import { ACCOUNT_PATH, LIBRARY_PATH, navigate } from "../routing";
+import type { RecentSong, SavedSong } from "../types";
+import { ACCOUNT_PATH, followLink, LIBRARY_PATH } from "../routing";
 import { HeroLine } from "./HeroLine";
 
 export const SOURCE_CODE_URL = "https://github.com/itsvictorvelma/lyrx";
@@ -53,10 +53,7 @@ export function HomePage(props: HomePageProps) {
             <a
               href={ACCOUNT_PATH}
               className="home-sign-in"
-              onClick={(event) => {
-                event.preventDefault();
-                navigate(ACCOUNT_PATH);
-              }}
+              onClick={followLink(ACCOUNT_PATH)}
             >
               Sign in
             </a>{" "}
@@ -138,10 +135,7 @@ function ContinueCard({ song, savedCount, onOpen }: ContinueCardProps) {
         <a
           href={LIBRARY_PATH}
           className="text-link"
-          onClick={(event) => {
-            event.preventDefault();
-            navigate(LIBRARY_PATH);
-          }}
+          onClick={followLink(LIBRARY_PATH)}
         >
           All your songs ({savedCount})
         </a>

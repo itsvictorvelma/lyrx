@@ -1,8 +1,8 @@
 // Your songs (/library): saved songs as tiles, sorted and filtered; a welcome when empty, and a
 // sign-in prompt for a guest.
 import { useState } from "react";
-import { isGuest, useAccount } from "../account/useAccount";
-import type { SavedSong } from "../lyrics/types";
+import { isGuest, useAccount } from "../account/account";
+import type { SavedSong } from "../types";
 import { ACCOUNT_PATH, navigate } from "../routing";
 import { SongTile } from "./SongTile";
 import { filterSongs, sortSongs } from "./songTiles";
@@ -11,7 +11,7 @@ import type { SortOrder } from "./songTiles";
 export const EMPTY_LIBRARY_TEXT = "Your songs will show up here.";
 export const EMPTY_LIBRARY_HINT =
   "Type a song you love in the search box: title, artist, or both.";
-export const GUEST_LIBRARY_TEXT = "Sign in to keep your songs here.";
+const GUEST_LIBRARY_TEXT = "Sign in to keep your songs here.";
 
 // The filter box shows once there are more songs than fit in a glance.
 export const FILTER_SHOWN_ABOVE = 8;

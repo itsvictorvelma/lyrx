@@ -1,6 +1,6 @@
 # 026 — Smooth following: steady scroll, one line rhythm, a lit sung line
 
-Status: approved (2026-11-20, after the user compared options in the mockup)
+Status: done
 
 ## Goal
 

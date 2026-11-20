@@ -1,6 +1,7 @@
 // Page addresses: `/` home, `/library` your songs, `/song/{id}` a song, `/account` signing in;
 // Back and Forward work.
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 
 // A whole number from 1 up, short enough to stay exact in JavaScript.
 const SONG_PATH = /^\/song\/([1-9][0-9]{0,14})\/?$/;
@@ -64,6 +65,14 @@ export function navigate(path: string, { replace = false } = {}): void {
     window.history.pushState(IN_APP_ENTRY, "", path);
   }
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+// The click handler for a same-site link: it moves without reloading the page.
+export function followLink(path: string) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    navigate(path);
+  };
 }
 
 // Back to the Lyrx page before this one; home when this page was opened from outside.

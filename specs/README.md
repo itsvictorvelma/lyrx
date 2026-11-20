@@ -36,9 +36,10 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 023 | Home link in the header | done |
 | 024 | Play-along helpers: playback speed, Find on YouTube | done |
 | 025 | Polish: tab titles, link previews, favicon, Back, Undo, library filter | done |
-| 014 | Personal accounts: sign up, own saved songs, daily cap on new songs | approved |
-| 026 | Smooth following: steady scroll, one line rhythm, a lit sung line | approved |
-| 020 | Deployment: Docker and Caddy on a server, settings from the environment | draft (after 014 and a few more features) |
+| 014 | Personal accounts: sign up, own saved songs, daily cap on new songs | done |
+| 026 | Smooth following: steady scroll, one line rhythm, a lit sung line | done |
+| 027 | Tidy the codebase: feature folders, one source per shared thing; README rewrite | approved |
+| 020 | Deployment: Docker and Caddy on a server, settings from the environment | draft (after a few more features) |
 | — | Next language | decided after 008 is in use |
 
 ## Ideas carried from the shelved specs

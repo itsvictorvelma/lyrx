@@ -1,6 +1,6 @@
 # 014 — Personal accounts
 
-Status: approved (updated 2026-11-20 for specs 021–025 and re-approved)
+Status: done
 
 ## Goal
 

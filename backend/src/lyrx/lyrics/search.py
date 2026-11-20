@@ -31,7 +31,7 @@ def search_songs(query: str, client: httpx2.Client, user_id: int | None) -> list
         raise ApiError("song_not_found")
     if user_id is None:
         return kept
-    saved = library.saved_ids_or_none(user_id, (result.id for result in kept))
+    saved = library.saved_ids(user_id, (result.id for result in kept))
     return [result.model_copy(update={"saved": result.id in saved}) for result in kept]
 
 

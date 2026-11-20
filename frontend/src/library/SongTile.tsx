@@ -1,7 +1,8 @@
 // One library tile: the art (thumbnail or first character), title, artist, last opened, Remove.
-import type { SavedSong } from "../lyrics/types";
+import type { SavedSong } from "../types";
 import { SongArt } from "./SongArt";
 import { openedLabel } from "./songTiles";
+import { CloseIcon, PlayIcon } from "../icons";
 
 interface SongTileProps {
   song: SavedSong;
@@ -23,9 +24,7 @@ export function SongTile({ song, nowMs, onOpen, onRemove }: SongTileProps) {
       >
         <SongArt track={song.track} videoId={song.videoId}>
           <span className="tile-play" aria-hidden="true">
-            <svg viewBox="0 0 24 24" className="icon icon-filled">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <PlayIcon />
           </span>
         </SongArt>
         <span lang="ja" className="tile-title">
@@ -44,9 +43,7 @@ export function SongTile({ song, nowMs, onOpen, onRemove }: SongTileProps) {
           onRemove(song);
         }}
       >
-        <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <CloseIcon />
       </button>
     </li>
   );

@@ -1,10 +1,9 @@
 // The bar on every page: the wordmark, the search box, Home, Your songs, Sign in or the username,
 // and the theme button.
-import type { MouseEvent } from "react";
-import { useAccount } from "../account/useAccount";
-import { ACCOUNT_PATH, HOME_PATH, LIBRARY_PATH, navigate } from "../routing";
+import { useAccount } from "../account/account";
+import { ACCOUNT_PATH, followLink, HOME_PATH, LIBRARY_PATH } from "../routing";
 import type { Route } from "../routing";
-import { SearchForm } from "./SearchForm";
+import { SearchForm } from "../search/SearchForm";
 import { ThemeButton } from "./ThemeButton";
 
 interface HeaderProps {
@@ -16,14 +15,6 @@ interface HeaderProps {
   currentPage: Route["page"];
 }
 
-// A same-site link that moves without reloading the page.
-function moveTo(path: string) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    navigate(path);
-  };
-}
-
 export function Header({
   busy,
   onSearch,
@@ -33,7 +24,7 @@ export function Header({
   const { username, checked } = useAccount();
   return (
     <header className="site-header">
-      <a href={HOME_PATH} className="wordmark" onClick={moveTo(HOME_PATH)}>
+      <a href={HOME_PATH} className="wordmark" onClick={followLink(HOME_PATH)}>
         lyrx{" "}
         <span lang="ja" className="wordmark-kana">
           歌詞
@@ -45,7 +36,7 @@ export function Header({
           href={HOME_PATH}
           className="nav-link"
           aria-current={currentPage === "home" ? "page" : undefined}
-          onClick={moveTo(HOME_PATH)}
+          onClick={followLink(HOME_PATH)}
         >
           Home
         </a>
@@ -53,7 +44,7 @@ export function Header({
           href={LIBRARY_PATH}
           className="nav-link"
           aria-current={currentPage === "library" ? "page" : undefined}
-          onClick={moveTo(LIBRARY_PATH)}
+          onClick={followLink(LIBRARY_PATH)}
         >
           Your songs
         </a>
@@ -62,7 +53,7 @@ export function Header({
             href={ACCOUNT_PATH}
             className="nav-link"
             aria-current={currentPage === "account" ? "page" : undefined}
-            onClick={moveTo(ACCOUNT_PATH)}
+            onClick={followLink(ACCOUNT_PATH)}
           >
             {username ?? "Sign in"}
           </a>

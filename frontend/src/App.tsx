@@ -1,44 +1,39 @@
 // The Lyrx app: the header, then home at `/`, your songs at `/library`, a song at `/song/{id}`,
 // or signing in at `/account`.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getAccount } from "./account/accountApi";
 import { AccountPage } from "./account/AccountPage";
-import { AccountContext, UNKNOWN_ACCOUNT } from "./account/useAccount";
-import type { Account } from "./account/types";
+import { AccountContext, UNKNOWN_ACCOUNT } from "./account/account";
 import { Header } from "./header/Header";
-import { focusSearchBox } from "./header/SearchForm";
 import { HomePage } from "./home/HomePage";
 import { LibraryPage } from "./library/LibraryPage";
 import { RemovedMessage } from "./library/RemovedMessage";
 import {
+  errorMessage,
+  getAccount,
   getSongVersions,
   listRecentSongs,
   listSavedSongs,
   saveSong,
   unsaveSong,
   searchSongs,
-} from "./lyrics/api";
-import { SearchProgress } from "./lyrics/SearchProgress";
-import { ShortcutList } from "./lyrics/ShortcutList";
-import { SITE_SHORTCUT_LIST, useShortcuts } from "./lyrics/shortcuts";
-import type { Stage } from "./lyrics/SearchProgress";
-import { SongPage } from "./lyrics/SongPage";
+} from "./api";
+import { SearchProgress } from "./search/SearchProgress";
+import { SiteShortcuts } from "./shortcuts/SiteShortcuts";
+import type { Stage } from "./search/SearchProgress";
+import { SongPage } from "./song/SongPage";
 import type {
-  ApiResult,
+  Account,
   Line,
   Playback,
   RecentSong,
   SavedSong,
   SearchResult,
   Song,
-} from "./lyrics/types";
+} from "./types";
 import { HOME_PATH, navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 
-export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
 const SITE_NAME = "Lyrx";
-const SERVER_UNREACHABLE_MESSAGE =
-  "Could not reach the Lyrx server. Is it running?";
 
 type Status = "idle" | Stage;
 
@@ -72,33 +67,6 @@ function formatSeconds(milliseconds: number): string {
   return `${(milliseconds / 1000).toFixed(1)} s`;
 }
 
-// Off the song page only these keys are shortcuts; the rest stay with the browser.
-const SITE_SHORTCUTS = ["toggleShortcutList", "escape", "focusSearch"] as const;
-
-// Home and the library: ? shows or hides the shortcut list, / jumps to the search box.
-function SiteShortcuts() {
-  const [open, setOpen] = useState(false);
-
-  useShortcuts((shortcut) => {
-    if (shortcut.kind === "toggleShortcutList") {
-      setOpen((current) => !current);
-    } else if (shortcut.kind === "escape") {
-      setOpen(false);
-    } else if (shortcut.kind === "focusSearch") {
-      focusSearchBox();
-    }
-  }, SITE_SHORTCUTS);
-
-  return open ? (
-    <ShortcutList
-      shortcuts={SITE_SHORTCUT_LIST}
-      onClose={() => {
-        setOpen(false);
-      }}
-    />
-  ) : null;
-}
-
 // The browser tab's title for the page shown.
 export function pageTitle(
   route: Route,
@@ -117,17 +85,6 @@ export function pageTitle(
   return song === null
     ? `Opening… · ${SITE_NAME}`
     : `${song.track} · ${song.artist} · ${SITE_NAME}`;
-}
-
-function messageFor(result: Exclude<ApiResult<unknown>, { kind: "ok" }>) {
-  switch (result.kind) {
-    case "error":
-      return result.message;
-    case "unreadable":
-      return FALLBACK_MESSAGE;
-    case "unreachable":
-      return SERVER_UNREACHABLE_MESSAGE;
-  }
 }
 
 export function App() {
@@ -220,7 +177,7 @@ export function App() {
       if (result.kind === "error" && result.code === "song_not_found") {
         navigate(HOME_PATH, { replace: true });
       }
-      setError(messageFor(result));
+      setError(errorMessage(result));
     },
     [refreshSavedSongs],
   );
@@ -268,7 +225,7 @@ export function App() {
     const findMs = performance.now() - started;
     if (result.kind !== "ok") {
       setStatus("idle");
-      setError(messageFor(result));
+      setError(errorMessage(result));
       return;
     }
     setResults(result.value);
@@ -290,7 +247,7 @@ export function App() {
       markSaved(song.id, false);
       setRemoved(song);
     } else {
-      setError(messageFor(result));
+      setError(errorMessage(result));
     }
   }
 
@@ -304,7 +261,7 @@ export function App() {
       markSaved(song.id, true);
       void refreshSavedSongs();
     } else {
-      setError(messageFor(result));
+      setError(errorMessage(result));
     }
   }
 

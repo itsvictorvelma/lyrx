@@ -23,7 +23,19 @@ LINES_ADAPTER = TypeAdapter(list[VersionLine])
 
 
 def find_song(song_id: int) -> SongVersionsResponse | None:
-    """The cached song, its last-opened time updated; None if not cached or its row is broken."""
+    """The cached song, its last-opened time updated; None if not cached or its row is broken.
+
+    A database that cannot be read counts as "not cached".
+    """
+    try:
+        return read_cached_song(song_id)
+    except sqlite3.Error:
+        logger.warning("library_unavailable")
+        return None
+
+
+def read_cached_song(song_id: int) -> SongVersionsResponse | None:
+    """The cached row as a reply; a broken row is deleted. Raises `sqlite3.Error`."""
     with connect() as connection:
         row = connection.execute(
             "SELECT id, track, artist, album, duration_seconds, lines_json FROM songs WHERE id = ?",
@@ -209,35 +221,21 @@ def list_recent_songs(limit: int, user_id: int | None) -> list[RecentSong]:
     ]
 
 
-def find_song_or_none(song_id: int) -> SongVersionsResponse | None:
-    """Like `find_song`, but a database that cannot be read counts as "not cached"."""
-    try:
-        return find_song(song_id)
-    except sqlite3.Error:
-        logger.warning("library_unavailable")
-        return None
-
-
-def saved_ids_or_none(user_id: int, song_ids: Iterable[int]) -> set[int]:
-    """Like `saved_ids`, but a database that cannot be read counts as "none saved"."""
-    try:
-        return saved_ids(user_id, song_ids)
-    except sqlite3.Error:
-        logger.warning("library_unavailable")
-        return set()
-
-
 def saved_ids(user_id: int, song_ids: Iterable[int]) -> set[int]:
-    """Which of these song ids are in this person's library."""
+    """Which of these song ids are in this person's library; none if the database can't be read."""
     wanted = list(song_ids)
     if not wanted:
         return set()
     placeholders = ", ".join("?" for _ in wanted)
-    with connect() as connection:
-        rows = connection.execute(
-            # Only "?" placeholders are formatted in; the ids go in as parameters.
-            "SELECT song_id FROM library_entries WHERE user_id = ?"
-            f" AND song_id IN ({placeholders})",
-            [user_id, *wanted],
-        ).fetchall()
+    try:
+        with connect() as connection:
+            rows = connection.execute(
+                # Only "?" placeholders are formatted in; the ids go in as parameters.
+                "SELECT song_id FROM library_entries WHERE user_id = ?"
+                f" AND song_id IN ({placeholders})",
+                [user_id, *wanted],
+            ).fetchall()
+    except sqlite3.Error:
+        logger.warning("library_unavailable")
+        return set()
     return {song_id for (song_id,) in rows}
