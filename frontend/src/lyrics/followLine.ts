@@ -1,35 +1,37 @@
-// Calm following: the lyrics stay still until the sung line passes 60% of the view, then glide once.
-import { useEffect } from "react";
+// Steady following: the sung line stays about 35% down the lyrics, and each new line glides there.
+import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import { prefersReducedMotion } from "../mediaQuery";
 
-// Scroll only when the sung row passes this share of the view's height...
-export const SCROLL_AT = 0.6;
-// ...and then stop with the row this far from the top.
-export const LAND_AT = 0.2;
+// Where the sung row sits, as a share of the view's height from the top.
+export const STEADY_AT = 0.35;
+// How long one glide takes.
+export const GLIDE_MS = 450;
 
-// Positions in the view's own coordinates: how far each edge is from the view's top.
-interface RowSpan {
-  top: number;
-  bottom: number;
-}
-
-// Where to scroll the view, or null to leave it still.
+// The scroll position that puts a row starting at `rowTop` 35% down the view, within what scrolls.
 export function scrollTarget(
-  row: RowSpan,
-  viewScrollTop: number,
+  rowTop: number,
   viewHeight: number,
-): number | null {
-  const tooLow = row.bottom > viewScrollTop + viewHeight * SCROLL_AT;
-  const above = row.top < viewScrollTop;
-  if (!tooLow && !above) {
-    return null;
-  }
-  return Math.max(0, row.top - viewHeight * LAND_AT);
+  maxScroll: number,
+): number {
+  const target = rowTop - viewHeight * STEADY_AT;
+  return Math.round(Math.min(Math.max(target, 0), Math.max(maxScroll, 0)));
 }
 
-// Keeps the sung row in view while `following`; `rowSelector` finds it inside the view.
-// `layout` changes when row heights do (Focus mode), so the row is checked again then.
+// Where a glide from `from` to `to` is after `elapsedMs`: fast at first, then settling (ease-out).
+export function glidePosition(
+  from: number,
+  to: number,
+  elapsedMs: number,
+): number {
+  const progress = Math.min(Math.max(elapsedMs / GLIDE_MS, 0), 1);
+  const eased = 1 - (1 - progress) ** 3;
+  return from + (to - from) * eased;
+}
+
+// Keeps the sung row 35% down the view while `following`; `rowSelector` finds it inside the view.
+// `layout` changes when row heights do (Focus mode, the phone tabs), so the row is placed again then.
+// A new glide replaces one still running, so quick lines never stack up.
 export function useFollowLine(
   viewRef: RefObject<HTMLElement | null>,
   currentLine: number | null,
@@ -37,6 +39,8 @@ export function useFollowLine(
   rowSelector: string,
   layout: string,
 ): void {
+  const frame = useRef<number | null>(null);
+
   useEffect(() => {
     const view = viewRef.current;
     const row = view?.querySelector<HTMLElement>(rowSelector) ?? null;
@@ -45,18 +49,32 @@ export function useFollowLine(
       return;
     }
     const viewBox = view.getBoundingClientRect();
-    const rowBox = row.getBoundingClientRect();
-    const top = rowBox.top - viewBox.top + view.scrollTop;
+    const rowTop =
+      row.getBoundingClientRect().top - viewBox.top + view.scrollTop;
     const target = scrollTarget(
-      { top, bottom: top + rowBox.height },
-      view.scrollTop,
+      rowTop,
       view.clientHeight,
+      view.scrollHeight - view.clientHeight,
     );
-    if (target !== null) {
-      view.scrollTo({
-        top: target,
-        behavior: prefersReducedMotion() ? "auto" : "smooth",
-      });
+    if (prefersReducedMotion()) {
+      view.scrollTo({ top: target, behavior: "instant" });
+      return;
     }
+    const from = view.scrollTop;
+    // Timed from the first frame's own clock, which is not always `performance.now()`'s.
+    let started: number | null = null;
+    function step(now: number) {
+      started ??= now;
+      const top = glidePosition(from, target, now - started);
+      view?.scrollTo({ top, behavior: "instant" });
+      frame.current = top === target ? null : requestAnimationFrame(step);
+    }
+    frame.current = requestAnimationFrame(step);
+    return () => {
+      if (frame.current !== null) {
+        cancelAnimationFrame(frame.current);
+        frame.current = null;
+      }
+    };
   }, [viewRef, currentLine, following, rowSelector, layout]);
 }

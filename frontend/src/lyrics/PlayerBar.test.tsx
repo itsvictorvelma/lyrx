@@ -154,10 +154,11 @@ test("spec 018 AC-3: the line after the sung one is marked next, across a verse 
   expect(next[0]?.textContent).toContain("夜の月");
 });
 
-test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current line resumes it", async () => {
-  // A laid-out view: 400px tall, with the sung row near its bottom, so following scrolls.
+test("spec 018 AC-5, spec 026 AC-2 and AC-4: following glides the sung row 35% down; scrolling yourself pauses it; Back resumes", async () => {
+  // A laid-out view: 400px tall and 2000px of lyrics, with the sung row at 360px.
   const scrollTo = vi.fn();
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(400);
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(2000);
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
     function (this: Element) {
       const top = this.matches("tr.current") ? 360 : 0;
@@ -168,8 +169,12 @@ test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current 
   fakePlayer.seconds = 5;
   fakePlayer.playing = true;
   const user = await openSavedSong(songReply(LINES, VIDEO_ID));
+  // The glide ends with the row 35% down: 360 - 0.35 × 400 = 220.
   await waitFor(() => {
-    expect(scrollTo).toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenLastCalledWith({
+      top: 220,
+      behavior: "instant",
+    });
   });
   const lyrics = document.querySelector(".lyrics-scroll");
   if (lyrics === null) {
@@ -192,7 +197,12 @@ test("spec 018 AC-5: scrolling the lyrics pauses following; Back to the current 
   expect(
     screen.queryByRole("button", { name: "Back to the current line" }),
   ).toBeNull();
-  expect(scrollTo).toHaveBeenCalledWith({ top: 280, behavior: "smooth" });
+  await waitFor(() => {
+    expect(scrollTo).toHaveBeenLastCalledWith({
+      top: 220,
+      behavior: "instant",
+    });
+  });
   expect(document.activeElement).toBe(lyrics);
 });
 
@@ -468,4 +478,23 @@ test("spec 016: a failed Save says so and keeps the button as it was", async () 
   expect(
     screen.getByRole("button", { name: "Save" }).getAttribute("aria-pressed"),
   ).toBe("false");
+});
+
+test("spec 026 AC-6: one marker shows while a line is sung, and none before", async () => {
+  fakePlayer.seconds = 0;
+  await openSavedSong(songReply(LINES, VIDEO_ID));
+  expect(document.querySelectorAll(".sung-marker")).toHaveLength(0);
+
+  fakePlayer.seconds = 5;
+  fakePlayer.playing = true;
+
+  await waitFor(() => {
+    expect(document.querySelectorAll(".sung-marker")).toHaveLength(1);
+  });
+  expect(
+    document.querySelector(".sung-marker")?.getAttribute("aria-hidden"),
+  ).toBe("true");
+  expect(
+    document.querySelector("tr.current")?.getAttribute("aria-current"),
+  ).toBe("true");
 });
