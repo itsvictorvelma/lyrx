@@ -104,7 +104,7 @@ export function SongPage(props: SongPageProps) {
     currentLine,
     following,
     "tr.current",
-    focus ? "focus" : "normal",
+    `${focus ? "focus" : "normal"}-${phoneColumn}`,
   );
 
   // Only the learner's own scrolling pauses following, never the page's.

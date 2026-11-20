@@ -1176,17 +1176,18 @@ button:disabled {
   color: var(--dim);
 }
 
-/* Cells align to the top (a button lines up by its last line, so baseline drifts when a line
-   wraps); --shift nudges the smaller columns down so first lines share a baseline. */
+/* One line rhythm (spec 026): every column shares one line box, and cells align on their first
+   baseline, so wrapped lines sit side by side across the columns. */
 .versions-table td {
   --row-pad: 0.5rem;
+  --line-box: 1.625rem;
 
-  padding: calc(var(--row-pad) + var(--shift, 0px)) 1.25rem var(--row-pad);
-  vertical-align: top;
+  padding: var(--row-pad) 1.25rem;
+  line-height: var(--line-box);
+  vertical-align: baseline;
   transition:
-    background-color 0.4s,
-    color 0.4s,
-    box-shadow 0.4s;
+    color 0.35s,
+    text-shadow 0.35s;
 }
 
 .versions-table .col-original {
@@ -1194,7 +1195,6 @@ button:disabled {
   width: 27%;
   font-size: 1.25rem;
   font-weight: 700;
-  line-height: 1.35;
 }
 
 .versions-table .col-hiragana {
@@ -1213,19 +1213,9 @@ button:disabled {
   color: var(--dim);
 }
 
-.versions-table td.col-hiragana {
-  --shift: 2px;
-}
-
 /* Romaji is the pronunciation, so it keeps the main text colour; only English is quieter. */
 .versions-table td.col-romaji {
-  --shift: 3px;
-
   color: var(--text);
-}
-
-.versions-table td.col-english {
-  --shift: 4px;
 }
 
 .versions-table th.col-original,
@@ -1239,7 +1229,7 @@ button:disabled {
 
 /* A verse gap: a thin divider with a little space, instead of an empty band. */
 .versions-table tbody + tbody tr:first-child td {
-  padding-top: calc(var(--row-pad) + 0.75rem + var(--shift, 0px));
+  padding-top: calc(var(--row-pad) + 0.75rem);
   border-top: 1px solid var(--line);
 }
 
@@ -1256,21 +1246,43 @@ button:disabled {
   content: "";
 }
 
-/* The line being sung: a tinted row and a bar on the left; never colour alone, and no glow. */
+/* The line being sung is lit like the home page's hero line (spec 026): every column turns pink
+   with a soft glow, strongest on the original. The marker bar gives it a shape, so it is never
+   shown by colour alone. */
 .versions-table tr.current td {
-  background: var(--accent-soft);
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--accent-glow);
 }
 
-.versions-table tr.current td:first-child {
-  border-radius: 12px 0 0 12px;
-  box-shadow: inset 3px 0 0 var(--accent);
+.versions-table tr.current td.col-original {
+  text-shadow: 0 0 18px var(--accent-glow);
 }
 
-.versions-table tr.current td:last-child {
-  border-radius: 0 12px 12px 0;
+/* The table and the sung line's marker, which is placed over it. */
+.versions-wrap {
+  position: relative;
 }
 
+.sung-marker {
+  position: absolute;
+  top: 0;
+  left: 0.25rem;
+  width: 3px;
+  height: 0;
+  background: var(--accent);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.sung-marker[data-placed] {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* inline-flex, so the cell's baseline is the button's first line, not its last. */
 .seek-button {
+  display: inline-flex;
   padding: 0;
   font: inherit;
   text-align: left;
@@ -1295,6 +1307,7 @@ button:disabled {
   padding: 0 0.625rem;
   font: inherit;
   font-size: 0.8125rem;
+  line-height: 1.4;
   color: var(--dim);
   background: var(--surface-2);
   border: 1px dashed var(--line);
@@ -1374,6 +1387,7 @@ button:disabled {
 
 .is-focus .versions-table td {
   --row-pad: 0.75rem;
+  --line-box: 2.125rem;
 
   padding-right: 1.5rem;
   padding-left: 1.5rem;
@@ -1384,20 +1398,14 @@ button:disabled {
 }
 
 .is-focus .versions-table td.col-hiragana {
-  --shift: 4px;
-
   font-size: 1.3125rem;
 }
 
 .is-focus .versions-table td.col-romaji {
-  --shift: 6px;
-
   font-size: 1.1875rem;
 }
 
 .is-focus .versions-table td.col-english {
-  --shift: 8px;
-
   font-size: 1.0625rem;
 }
 
@@ -1640,17 +1648,7 @@ button:disabled {
   }
 
   .versions-table td.col-hiragana {
-    --shift: 0px;
-
     font-size: 1.0625rem;
-  }
-
-  .versions-table td.col-romaji {
-    --shift: 1px;
-  }
-
-  .versions-table td.col-english {
-    --shift: 2px;
   }
 
   .versions-table[data-phone-column="hiragana"] :is(.col-romaji, .col-english),

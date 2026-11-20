@@ -1,4 +1,6 @@
 // The four versions as a table: one row per lyric line, a gap between verses, the sung, next, and looped lines marked.
+import { useEffect, useRef } from "react";
+import type { RefObject } from "react";
 import { cellKey } from "./hiddenColumns";
 import { LoopIcon } from "./PlayerControls";
 import type { Line, VersionColumn } from "./types";
@@ -41,6 +43,7 @@ export function VersionsTable({
   loopLine = null,
 }: VersionsTableProps) {
   const nextLine = nextLineAfter(lines, currentLine);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   // A version's cell: its text, or a Show button while its column is covered.
   function versionCell(line: Line, column: VersionColumn) {
@@ -64,59 +67,126 @@ export function VersionsTable({
   }
 
   return (
-    <table className="versions-table" data-phone-column={phoneColumn}>
-      <thead>
-        <tr>
-          <th scope="col" className="col-original">
-            Original
-          </th>
-          <th scope="col" className="col-hiragana">
-            Hiragana
-          </th>
-          <th scope="col" className="col-romaji">
-            Romaji
-          </th>
-          <th scope="col" className="col-english">
-            English
-          </th>
-        </tr>
-      </thead>
-      {splitIntoVerses(lines).map((verse) => (
-        <tbody key={verse[0]?.index}>
-          {verse.map((line) => (
-            <tr
-              key={line.index}
-              className={rowClass(line.index, currentLine, nextLine, loopLine)}
-              aria-current={line.index === currentLine ? "true" : undefined}
-            >
-              <td lang="ja" className="col-original">
-                {onSeek !== undefined && line.startMs !== null ? (
-                  <button
-                    type="button"
-                    className="seek-button"
-                    aria-label={`Play from: ${line.original}`}
-                    onClick={() => {
-                      onSeek(line);
-                    }}
-                  >
-                    {line.original}
-                  </button>
-                ) : (
-                  line.original
+    <div className="versions-wrap" ref={wrapRef}>
+      <SungLineMarker wrapRef={wrapRef} currentLine={currentLine} />
+      <table className="versions-table" data-phone-column={phoneColumn}>
+        <thead>
+          <tr>
+            <th scope="col" className="col-original">
+              Original
+            </th>
+            <th scope="col" className="col-hiragana">
+              Hiragana
+            </th>
+            <th scope="col" className="col-romaji">
+              Romaji
+            </th>
+            <th scope="col" className="col-english">
+              English
+            </th>
+          </tr>
+        </thead>
+        {splitIntoVerses(lines).map((verse) => (
+          <tbody key={verse[0]?.index}>
+            {verse.map((line) => (
+              <tr
+                key={line.index}
+                className={rowClass(
+                  line.index,
+                  currentLine,
+                  nextLine,
+                  loopLine,
                 )}
-                {line.index === loopLine && <LoopMark />}
-              </td>
-              <td lang="ja" className="col-hiragana">
-                {versionCell(line, "hiragana")}
-              </td>
-              <td className="col-romaji">{versionCell(line, "romaji")}</td>
-              <td className="col-english">{versionCell(line, "english")}</td>
-            </tr>
-          ))}
-        </tbody>
-      ))}
-    </table>
+                aria-current={line.index === currentLine ? "true" : undefined}
+              >
+                <td lang="ja" className="col-original">
+                  {onSeek !== undefined && line.startMs !== null ? (
+                    <button
+                      type="button"
+                      className="seek-button"
+                      aria-label={`Play from: ${line.original}`}
+                      onClick={() => {
+                        onSeek(line);
+                      }}
+                    >
+                      {line.original}
+                    </button>
+                  ) : (
+                    line.original
+                  )}
+                  {line.index === loopLine && <LoopMark />}
+                </td>
+                <td lang="ja" className="col-hiragana">
+                  {versionCell(line, "hiragana")}
+                </td>
+                <td className="col-romaji">{versionCell(line, "romaji")}</td>
+                <td className="col-english">{versionCell(line, "english")}</td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
+    </div>
   );
+}
+
+// The marker's bar covers this share of the sung row's height, centred on it.
+const MARKER_SHARE = 0.56;
+
+// The slim bar at the sung row's left edge; it glides to each new row (the CSS animates the move).
+// It is measured again when the table changes size: Focus mode, the phone tabs, a revealed cell.
+function SungLineMarker({
+  wrapRef,
+  currentLine,
+}: {
+  wrapRef: RefObject<HTMLDivElement | null>;
+  currentLine: number | null;
+}) {
+  const markerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const marker = markerRef.current;
+    if (wrap === null || marker === null || currentLine === null) {
+      return;
+    }
+    placeMarker(wrap, marker);
+    // jsdom (the test browser) has no ResizeObserver.
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      placeMarker(wrap, marker);
+    });
+    observer.observe(wrap);
+    return () => {
+      observer.disconnect();
+    };
+  }, [wrapRef, currentLine]);
+
+  return currentLine === null ? null : (
+    <div ref={markerRef} className="sung-marker" aria-hidden="true" />
+  );
+}
+
+// Puts the marker over the sung row's left edge. Its first placement skips the glide
+// (`data-placed` turns the CSS transition on), so it appears on the row instead of sliding in.
+function placeMarker(wrap: HTMLElement, marker: HTMLElement): void {
+  const row = wrap.querySelector("tr.current");
+  if (row === null) {
+    return;
+  }
+  const wrapBox = wrap.getBoundingClientRect();
+  const rowBox = row.getBoundingClientRect();
+  const height = rowBox.height * MARKER_SHARE;
+  const top = rowBox.top - wrapBox.top + (rowBox.height - height) / 2;
+  marker.style.height = `${String(height)}px`;
+  marker.style.transform = `translate(${String(rowBox.left - wrapBox.left)}px, ${String(top)}px)`;
+  if (marker.dataset.placed === undefined) {
+    requestAnimationFrame(() => {
+      marker.dataset.placed = "true";
+    });
+  }
 }
 
 // "current" for the sung line, "next" for the one after it, "looped" for the looped one; the CSS draws the marks.

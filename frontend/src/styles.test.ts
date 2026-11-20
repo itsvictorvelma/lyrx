@@ -93,9 +93,8 @@ function ruleBody(selector: string): string {
   return new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`).exec(css)?.[1] ?? "";
 }
 
-test("spec 018 AC-4: no glow on the sung line, no dimmed rows, romaji bright and English quiet", () => {
+test("spec 018 AC-4: no dimmed rows, romaji bright and English quiet", () => {
   expect(css).not.toContain("is-playing");
-  expect(css).not.toMatch(/tr\.current[^{]*\{[^}]*text-shadow/);
   expect(ruleBody(".versions-table td.col-romaji")).toContain(
     "color: var(--text)",
   );
@@ -108,6 +107,7 @@ test("spec 018 AC-6: tighter rows, narrower width, new sizes, and a verse divide
   const expected: [selector: string, declaration: string][] = [
     [".versions-table", "max-width: 72rem"],
     [".versions-table td", "--row-pad: 0.5rem"],
+    [".versions-table td", "--line-box: 1.625rem"],
     [".versions-table .col-original", "width: 27%"],
     [".versions-table .col-hiragana", "width: 26%"],
     [".versions-table .col-romaji", "width: 25%"],
@@ -122,6 +122,7 @@ test("spec 018 AC-6: tighter rows, narrower width, new sizes, and a verse divide
     ],
     [".is-focus .versions-table", "max-width: 81rem"],
     [".is-focus .versions-table td", "--row-pad: 0.75rem"],
+    [".is-focus .versions-table td", "--line-box: 2.125rem"],
     [".is-focus .versions-table td.col-original", "font-size: 1.625rem"],
     [".is-focus .versions-table td.col-hiragana", "font-size: 1.3125rem"],
     [".is-focus .versions-table td.col-romaji", "font-size: 1.1875rem"],
@@ -130,6 +131,39 @@ test("spec 018 AC-6: tighter rows, narrower width, new sizes, and a verse divide
   for (const [selector, declaration] of expected) {
     expect(ruleBody(selector), selector).toContain(declaration);
   }
+});
+
+test("spec 026 AC-5: one line box for every column, baseline-aligned, with no --shift nudges", () => {
+  const cell = ruleBody(".versions-table td");
+  expect(cell).toContain("line-height: var(--line-box)");
+  expect(cell).toContain("vertical-align: baseline");
+  expect(css).not.toContain("--shift");
+  expect(ruleBody(".versions-table .col-original")).not.toContain(
+    "line-height",
+  );
+  expect(ruleBody(".seek-button")).toContain("display: inline-flex");
+  // Phones keep the same line box: their block sets no line height of its own on cells.
+  const phone = css.slice(css.indexOf("@media (max-width: 719px)"));
+  const phoneBlock = phone.slice(0, phone.indexOf("\n}\n"));
+  expect(phoneBlock).not.toMatch(/versions-table[^{]*\{[^}]*line-height/);
+});
+
+test("spec 026 AC-6: the marker glides only after its first placement, so it never slides in", () => {
+  expect(ruleBody(".sung-marker")).not.toContain("transition");
+  expect(ruleBody(".sung-marker[data-placed]")).toContain("transform 0.45s");
+});
+
+test("spec 026 AC-7: the sung row is lit pink with a glow, strongest on the original, and has no box", () => {
+  const row = ruleBody(".versions-table tr.current td");
+  expect(row).toContain("color: var(--accent)");
+  expect(row).toContain("text-shadow: 0 0 10px var(--accent-glow)");
+  expect(row).not.toContain("background");
+  expect(ruleBody(".versions-table tr.current td.col-original")).toContain(
+    "text-shadow: 0 0 18px var(--accent-glow)",
+  );
+  expect(css).not.toMatch(
+    /tr\.current[^{]*\{[^}]*(background|box-shadow|border-radius)/,
+  );
 });
 
 test("AC-11: below 720px only the chosen column shows next to the original", () => {
