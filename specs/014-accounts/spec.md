@@ -1,6 +1,6 @@
 # 014 — Personal accounts
 
-Status: draft (updated 2026-11-20 for specs 021–025; approve again)
+Status: approved (updated 2026-11-20 for specs 021–025 and re-approved)
 
 ## Goal
 
@@ -16,6 +16,7 @@ Anyone with the link can search and read songs without an account, so an employe
 - An `Origin` check on requests that change data.
 - A small command to reset a friend's password.
 - Songs saved before this spec go to the first account created.
+- A "Lyrics from LRCLIB" credit on the song page (the home footer already has one). No takedown contact (the user's choice).
 
 ## Out of scope
 
@@ -68,6 +69,7 @@ Page
 - `/account` for a guest: username, password, and a switch between "Sign in" and "Create account". Errors show as text.
 - `/account` signed in: "Signed in as …", "Sign out", and "Delete account" (asks for the password).
 - Guest home: the search box and a short line, "Sign in to save songs." The Save button takes a guest to `/account`, then back to the song.
+- Song page: under the table, a small dim line "Lyrics from LRCLIB" with LRCLIB linked to `https://lrclib.net` (`rel="noopener noreferrer"`), for guests and signed-in people alike.
 - Reuses the colour tokens and patterns in `styles.css`. No new look without approval.
 
 ## Security
@@ -98,6 +100,7 @@ Page
 - AC-16 (page): Sign out and Delete account on `/account` work, and the page returns to the guest home.
 - AC-17 (page): A guest's home has no Continue card or "Your songs" row, and Your songs shows the sign-in prompt. A guest who pastes a YouTube link gets the video playing with no error and no save request.
 - AC-18 (page): Remove then Undo works per person: the song comes back to that person's library with their video and sync.
+- AC-19 (page): The song page shows "Lyrics from LRCLIB" with a link to `https://lrclib.net`.
 
 ## Plan
 
@@ -122,7 +125,7 @@ Frontend:
 - New `frontend/src/account/`: `accountApi.ts`, `useAccount.ts` (who is signed in, shared through context), `AccountPage.tsx` (+ test).
 - `routing.ts`: `/account` route, with a return path for Save.
 - `header/Header.tsx`: Sign in / username link. `library/LibraryPage.tsx`: guest state. `lyrics/SaveButton.tsx`: guest goes to `/account`.
-- `home/HomePage.tsx`: guest version. `lyrics/PlayerBar.tsx`: skip the playback save for a guest. `App.tsx`: `/account` tab title.
+- `home/HomePage.tsx`: guest version. `lyrics/SongPage.tsx`: the LRCLIB credit line. `lyrics/PlayerBar.tsx`: skip the playback save for a guest. `App.tsx`: `/account` tab title.
 - `lyrics/fakeSongPage.tsx`: fake server learns the account routes.
 
 Docs: README folder map, `AGENTS.md` roadmap, `specs/README.md`.
