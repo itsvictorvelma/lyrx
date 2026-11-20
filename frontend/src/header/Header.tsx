@@ -1,6 +1,7 @@
-// The bar on every page: the lyrx wordmark (home), the search box, Your songs, the theme button.
+// The bar on every page: the lyrx wordmark, the search box, Home and Your songs, the theme button.
 import type { MouseEvent } from "react";
 import { HOME_PATH, LIBRARY_PATH, navigate } from "../routing";
+import type { Route } from "../routing";
 import { SearchForm } from "./SearchForm";
 import { ThemeButton } from "./ThemeButton";
 
@@ -9,8 +10,8 @@ interface HeaderProps {
   onSearch: (query: string) => void;
   // False on the home page, which has its own large search box.
   showSearch: boolean;
-  // True on the library, so its link is marked as the current page.
-  isLibraryPage: boolean;
+  // Which page is shown, so its link is marked as the current page.
+  currentPage: Route["page"];
 }
 
 // A same-site link that moves without reloading the page.
@@ -25,7 +26,7 @@ export function Header({
   busy,
   onSearch,
   showSearch,
-  isLibraryPage,
+  currentPage,
 }: HeaderProps) {
   return (
     <header className="site-header">
@@ -38,9 +39,17 @@ export function Header({
       {showSearch && <SearchForm busy={busy} onSearch={onSearch} />}
       <nav className="site-nav" aria-label="Main">
         <a
+          href={HOME_PATH}
+          className="nav-link"
+          aria-current={currentPage === "home" ? "page" : undefined}
+          onClick={moveTo(HOME_PATH)}
+        >
+          Home
+        </a>
+        <a
           href={LIBRARY_PATH}
           className="nav-link"
-          aria-current={isLibraryPage ? "page" : undefined}
+          aria-current={currentPage === "library" ? "page" : undefined}
           onClick={moveTo(LIBRARY_PATH)}
         >
           Your songs
