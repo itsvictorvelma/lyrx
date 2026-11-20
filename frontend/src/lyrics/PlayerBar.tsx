@@ -3,7 +3,12 @@ import { useCallback, useRef, useState } from "react";
 import { matchesMedia } from "../mediaQuery";
 import { AudioFilePlayer } from "./AudioFilePlayer";
 import { savePlayback } from "./api";
-import { nudgeOffset, parseVideoId } from "./playback";
+import {
+  nextSpeed,
+  nudgeOffset,
+  parseVideoId,
+  youTubeSearchUrl,
+} from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerControls, VideoIcon } from "./PlayerControls";
 import type { Playback, Progress } from "./types";
@@ -13,6 +18,7 @@ import { YouTubePlayer } from "./YouTubePlayer";
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
 const PLAYER_FAILED_MESSAGE = "Couldn't load the YouTube player. Try again.";
 const SAVE_FAILED_MESSAGE = "Couldn't save the video and sync for this song.";
+export const PLAY_ALONG_TITLE = "Play along with the song";
 
 // The width below which styles.css uses the phone layout.
 const PHONE_QUERY = "(max-width: 719px)";
@@ -27,6 +33,8 @@ type Source =
 
 interface PlayerBarProps {
   songId: number;
+  track: string;
+  artist: string;
   savedVideoId: string | null;
   offsetMs: number;
   hasTimings: boolean;
@@ -55,7 +63,6 @@ export function PlayerBar(props: PlayerBarProps) {
     savedVideoId === null ? null : { kind: "youtube", videoId: savedVideoId },
   );
   const [choosing, setChoosing] = useState(false);
-  const [linkFormOpen, setLinkFormOpen] = useState(false);
   const [videoShown, setVideoShown] = useState(startsWithVideoShown);
   const [error, setError] = useState<string | null>(null);
   const showPlayerFailed = useCallback(() => {
@@ -65,17 +72,27 @@ export function PlayerBar(props: PlayerBarProps) {
   const volumeRef = useRef(volume);
   const beforeMute = useRef(volume);
   const clockRef = useRef<AudioClock | null>(null);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(speed);
 
-  // Every new player starts at the current volume.
+  // Every new player starts at the current volume and speed.
   const { onClock } = props;
   const handleClock = useCallback(
     (clock: AudioClock | null) => {
       clockRef.current = clock;
       clock?.setVolume(volumeRef.current);
+      clock?.setPlaybackRate(speedRef.current);
       onClock(clock);
     },
     [onClock],
   );
+
+  function changeSpeed() {
+    const next = nextSpeed(speed);
+    speedRef.current = next;
+    setSpeed(next);
+    clockRef.current?.setPlaybackRate(next);
+  }
 
   function changeVolume(next: number) {
     volumeRef.current = next;
@@ -105,7 +122,6 @@ export function PlayerBar(props: PlayerBarProps) {
     props.onVideoChange(id);
     setSource({ kind: "youtube", videoId: id });
     setVideoShown(startsWithVideoShown());
-    setLinkFormOpen(false);
     setChoosing(false);
     void save({ videoId: id, offsetMs });
   }
@@ -114,7 +130,6 @@ export function PlayerBar(props: PlayerBarProps) {
     if (file !== undefined) {
       setError(null);
       setSource({ kind: "file", file });
-      setLinkFormOpen(false);
       setChoosing(false);
     }
   }
@@ -151,29 +166,6 @@ export function PlayerBar(props: PlayerBarProps) {
       {source?.kind === "file" && (
         <AudioFilePlayer file={source.file} onClock={handleClock} />
       )}
-      {linkFormOpen && (
-        <form
-          className="link-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            playVideo();
-          }}
-        >
-          <label htmlFor="youtube-link">YouTube link</label>
-          <input
-            id="youtube-link"
-            type="url"
-            placeholder="https://youtu.be/…"
-            value={link}
-            onChange={(event) => {
-              setLink(event.target.value);
-            }}
-          />
-          <button type="submit" className="pill-button">
-            Play video
-          </button>
-        </form>
-      )}
       {error !== null && (
         <p role="alert" className="error">
           {error}
@@ -182,10 +174,10 @@ export function PlayerBar(props: PlayerBarProps) {
       <div className="player-row">
         {showChooser ? (
           <AudioChooser
-            linkFormOpen={linkFormOpen}
-            onToggleLink={() => {
-              setLinkFormOpen((open) => !open);
-            }}
+            searchUrl={youTubeSearchUrl(props.track, props.artist)}
+            link={link}
+            onLinkChange={setLink}
+            onPlayLink={playVideo}
             onFile={playFile}
           />
         ) : (
@@ -203,6 +195,8 @@ export function PlayerBar(props: PlayerBarProps) {
             hasVideo={source.kind === "youtube"}
             videoShown={videoShown}
             onNudge={nudge}
+            speed={speed}
+            onChangeSpeed={changeSpeed}
             volume={volume}
             onVolumeChange={changeVolume}
             onToggleMute={() => {
@@ -224,7 +218,6 @@ export function PlayerBar(props: PlayerBarProps) {
             aria-expanded={choosing}
             onClick={() => {
               setChoosing((open) => !open);
-              setLinkFormOpen(false);
             }}
           >
             {choosing ? "Back to player" : "Change audio"}
@@ -232,7 +225,7 @@ export function PlayerBar(props: PlayerBarProps) {
         )}
         <button
           type="button"
-          className="icon-button"
+          className="icon-button shortcuts-button"
           aria-label="Keyboard shortcuts"
           aria-haspopup="dialog"
           aria-expanded={props.shortcutListOpen}
@@ -246,39 +239,86 @@ export function PlayerBar(props: PlayerBarProps) {
 }
 
 interface AudioChooserProps {
-  linkFormOpen: boolean;
-  onToggleLink: () => void;
+  // A YouTube search for this song, opened in a new tab.
+  searchUrl: string;
+  link: string;
+  onLinkChange: (link: string) => void;
+  onPlayLink: () => void;
   onFile: (file: File | undefined) => void;
 }
 
-// With no audio yet: add a YouTube link, or pick a file from this computer.
-function AudioChooser({
-  linkFormOpen,
-  onToggleLink,
-  onFile,
-}: AudioChooserProps) {
+// With no audio yet, or when changing it, one row: find the song on YouTube, paste its link into
+// the always-open box (same pill as the header search), or play a file from this computer.
+function AudioChooser(props: AudioChooserProps) {
   return (
-    <div className="audio-chooser">
-      <button
-        type="button"
+    <div className="audio-chooser" role="group" aria-label={PLAY_ALONG_TITLE}>
+      <a
         className="pill-button"
-        aria-expanded={linkFormOpen}
-        onClick={onToggleLink}
+        href={props.searchUrl}
+        target="_blank"
+        rel="noopener noreferrer"
       >
-        <VideoIcon /> Add YouTube link
-      </button>
-      <label className="pill-button">
-        Play a file
+        <VideoIcon /> Find on YouTube
+      </a>
+      <form
+        className="search-box link-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onPlayLink();
+        }}
+      >
+        <LinkIcon />
+        <label htmlFor="youtube-link" className="visually-hidden">
+          YouTube link
+        </label>
+        <input
+          id="youtube-link"
+          type="url"
+          placeholder="Paste the YouTube link here"
+          value={props.link}
+          onChange={(event) => {
+            props.onLinkChange(event.target.value);
+          }}
+        />
+        <button
+          type="submit"
+          className="find-button"
+          disabled={props.link.trim() === ""}
+        >
+          Play video
+        </button>
+      </form>
+      <label className="pill-button file-button">
+        <MusicIcon /> Play a file
         <input
           type="file"
           accept="audio/*"
           className="visually-hidden"
           onChange={(event) => {
-            onFile(event.target.files?.[0]);
+            props.onFile(event.target.files?.[0]);
           }}
         />
       </label>
     </div>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </svg>
+  );
+}
+
+function MusicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
   );
 }
 

@@ -301,7 +301,7 @@ export function App() {
         <Header
           busy={busy}
           showSearch={route.page !== "home"}
-          isLibraryPage={route.page === "library"}
+          currentPage={route.page}
           onSearch={(query) => {
             void find(query);
           }}
