@@ -1,6 +1,6 @@
 # 021 — Home page
 
-Status: approved (mockup approved 2026-11-20: https://claude.ai/artifact/A2vhoxzKkwNHUCEwURYpkd)
+Status: done (merged in PR #45, 2026-11-20; mockup: https://claude.ai/artifact/A2vhoxzKkwNHUCEwURYpkd)
 
 ## Goal
 
