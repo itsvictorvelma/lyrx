@@ -31,6 +31,7 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 018 | Reading comfort: calm following, lead-in, tighter rows, roomier Focus mode | done |
 | 019 | Translator request limits: one overall deadline, a byte cap on Gemini replies | done |
 | 015 | Study tools: hide a column, loop a line, keyboard shortcuts | done |
+| 021 | Home page: hero line, large search, recent songs; library moves to /library | approved |
 | 014 | Personal accounts: sign up, own saved songs, daily cap on new songs | approved |
 | 020 | Deployment: Docker and Caddy on a server, settings from the environment | draft (after 014 and a few more features) |
 | — | Next language | decided after 008 is in use |

@@ -1,9 +1,10 @@
-// Calls the Lyrx server (search, open a song, saved songs, playback) and checks every reply.
+// Calls the Lyrx server (search, open a song, saved and recent songs, playback) and checks replies.
 import { MAX_OFFSET_MS, VIDEO_ID } from "./playback";
 import type {
   ApiResult,
   Line,
   Playback,
+  RecentSong,
   SavedSong,
   SearchResult,
   Song,
@@ -34,6 +35,19 @@ export async function listSavedSongs(): Promise<ApiResult<SavedSong[]>> {
     "/api/songs",
     undefined,
     isSavedSongsReply,
+  );
+  return result.kind === "ok"
+    ? { kind: "ok", value: result.value.songs }
+    : result;
+}
+
+// Songs anyone opened lately, newest first, for the home page row.
+export async function listRecentSongs(): Promise<ApiResult<RecentSong[]>> {
+  const result = await requestJson(
+    "GET",
+    "/api/recent-songs",
+    undefined,
+    isRecentSongsReply,
   );
   return result.kind === "ok"
     ? { kind: "ok", value: result.value.songs }
@@ -189,6 +203,18 @@ function isSavedSong(value: unknown): value is SavedSong {
     isRecord(value) &&
     isVideoIdOrNull(value.videoId) &&
     Number.isInteger(value.lastOpenedAt)
+  );
+}
+
+function isRecentSong(value: unknown): value is RecentSong {
+  return isSong(value) && isRecord(value) && isVideoIdOrNull(value.videoId);
+}
+
+function isRecentSongsReply(value: unknown): value is { songs: RecentSong[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.songs) &&
+    value.songs.every(isRecentSong)
   );
 }
 

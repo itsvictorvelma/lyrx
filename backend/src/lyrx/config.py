@@ -42,6 +42,8 @@ SEARCH_QUERY_MAX_CHARACTERS = 300
 # How many LRCLIB search items are read, and how many results are shown.
 SEARCH_ITEMS_READ = 50
 SEARCH_RESULTS_SHOWN = 10
+# How many recently opened songs the home page row shows (spec 021).
+RECENT_SONGS_SHOWN = 12
 # Two results with the same names whose durations differ by this much or less are one song.
 DUPLICATE_DURATION_SECONDS = 2
 # Lyrics look Japanese when at least this fraction of their non-blank lines hold a kana.

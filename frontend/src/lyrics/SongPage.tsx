@@ -1,6 +1,6 @@
 // A song: its header row (or the Focus strip), the lyrics rows, the player bar fixed below, and the study tools.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { navigate } from "../routing";
+import { LIBRARY_PATH, navigate } from "../routing";
 import { HideColumnToggles, PhoneTabs } from "./ColumnButtons";
 import { OtherMatches } from "./OtherMatches";
 import { useFollowLine } from "./followLine";
@@ -11,7 +11,8 @@ import type { AudioClock } from "./playback";
 import { PlayerBar } from "./PlayerBar";
 import { SaveButton } from "./SaveButton";
 import { ShortcutList } from "./ShortcutList";
-import { useShortcuts } from "./shortcuts";
+import { focusSearchBox } from "../header/SearchForm";
+import { SHORTCUT_LIST, useShortcuts } from "./shortcuts";
 import type { Shortcut } from "./shortcuts";
 import type {
   Line,
@@ -205,6 +206,9 @@ export function SongPage(props: SongPageProps) {
       case "toggleShortcutList":
         setShortcutListOpen((open) => !open);
         break;
+      case "focusSearch":
+        focusSearchBox();
+        break;
     }
   }
   useShortcuts(runShortcut);
@@ -237,7 +241,7 @@ export function SongPage(props: SongPageProps) {
             className="icon-button"
             aria-label="Back to your songs"
             onClick={() => {
-              navigate("/");
+              navigate(LIBRARY_PATH);
             }}
           >
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
@@ -353,6 +357,7 @@ export function SongPage(props: SongPageProps) {
       />
       {shortcutListOpen && (
         <ShortcutList
+          shortcuts={SHORTCUT_LIST}
           onClose={() => {
             setShortcutListOpen(false);
           }}

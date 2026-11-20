@@ -1,10 +1,15 @@
-// The keyboard shortcut list: a small panel over the song page, closed by Esc, ?, or its button.
+// The keyboard shortcut list: a small panel over the page, closed by Esc, ?, or its button.
 import { useEffect, useRef } from "react";
-import { SHORTCUT_LIST } from "./shortcuts";
+import type { ShortcutListItem } from "./shortcuts";
 
 export const SHORTCUT_LIST_TITLE = "Keyboard shortcuts";
 
-export function ShortcutList({ onClose }: { onClose: () => void }) {
+interface ShortcutListProps {
+  shortcuts: ShortcutListItem[];
+  onClose: () => void;
+}
+
+export function ShortcutList({ shortcuts, onClose }: ShortcutListProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   // Focus moves into the panel, and back to what had it (usually the opening button) on close.
@@ -41,7 +46,7 @@ export function ShortcutList({ onClose }: { onClose: () => void }) {
       </div>
       <table>
         <tbody>
-          {SHORTCUT_LIST.map(({ keys, does }) => (
+          {shortcuts.map(({ keys, does }) => (
             <tr key={keys}>
               <th scope="row">
                 <kbd>{keys}</kbd>

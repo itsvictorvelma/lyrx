@@ -83,7 +83,7 @@ test("AC-3: hidden columns are still hidden when the song is opened again", asyn
   const user = await openSavedSong(songReply(LINES));
   await user.click(hideToggle("EN"));
   cleanup();
-  window.history.replaceState(null, "", "/");
+  window.history.replaceState(null, "", "/library");
 
   await openSavedSong(songReply(LINES));
 
@@ -182,6 +182,12 @@ test("AC-7: each shortcut does what the list says", async () => {
   ).toBeTruthy();
   await user.keyboard("?");
   expect(screen.queryByRole("dialog")).toBeNull();
+
+  // Spec 021 AC-8: / jumps to the header's search box.
+  await user.keyboard("/");
+  expect(document.activeElement).toBe(
+    screen.getByLabelText("Song name or artist"),
+  );
 });
 
 test("AC-8: typing in the search box or the YouTube link field, or holding Ctrl, triggers nothing", async () => {
