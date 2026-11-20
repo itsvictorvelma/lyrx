@@ -1,6 +1,6 @@
 # 015 — Study tools: hide a column, loop a line, keyboard shortcuts
 
-Status: approved (by the user, 2026-11-19)
+Status: done (merged in PR #42, 2026-11-20)
 
 ## Goal
 
