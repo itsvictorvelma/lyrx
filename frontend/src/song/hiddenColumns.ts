@@ -1,5 +1,6 @@
 // Which versions are covered for self-testing (remembered on this browser), and which covered cells are revealed.
 import { useState } from "react";
+import { readSetting, storeSetting } from "../browser";
 import type { VersionColumn } from "../types";
 
 const STORAGE_KEY = "lyrx-hidden-columns";
@@ -8,21 +9,11 @@ const COLUMNS: VersionColumn[] = ["hiragana", "romaji", "english"];
 // The remembered hidden columns; none when nothing is stored, the value is odd, or storage is blocked.
 export function storedHiddenColumns(): Set<VersionColumn> {
   try {
-    const parsed: unknown = JSON.parse(
-      window.localStorage.getItem(STORAGE_KEY) ?? "[]",
-    );
+    const parsed: unknown = JSON.parse(readSetting(STORAGE_KEY) ?? "[]");
     const list: unknown[] = Array.isArray(parsed) ? parsed : [];
     return new Set(COLUMNS.filter((column) => list.includes(column)));
   } catch {
     return new Set();
-  }
-}
-
-function storeHiddenColumns(hidden: Set<VersionColumn>): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...hidden]));
-  } catch {
-    // Storage blocked (private window): the choice lasts until the page closes.
   }
 }
 
@@ -44,7 +35,7 @@ export function useHiddenColumns() {
       next.add(column);
     }
     setHidden(next);
-    storeHiddenColumns(next);
+    storeSetting(STORAGE_KEY, JSON.stringify([...next]));
     setRevealed(
       (previous) =>
         new Set([...previous].filter((key) => !key.startsWith(`${column}:`))),

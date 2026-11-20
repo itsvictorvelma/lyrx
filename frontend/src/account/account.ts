@@ -1,6 +1,6 @@
 // Who is signed in, shared with every page through React context.
 import { createContext, useContext } from "react";
-import type { Account } from "./types";
+import type { Account } from "../types";
 
 // Before the server answers, nobody is known to be signed in or a guest.
 export const UNKNOWN_ACCOUNT: Account = { username: null, checked: false };

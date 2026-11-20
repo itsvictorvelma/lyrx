@@ -1,17 +1,15 @@
 // The account page (/account): sign in or create an account; when signed in, sign out or delete.
 import { useState } from "react";
 import type { SubmitEvent } from "react";
+import { deleteAccount, enterAccount, errorMessage, signOut } from "../api";
+import type { AccountMode } from "../api";
 import type { ApiResult } from "../types";
-import { deleteAccount, enterAccount, signOut } from "./accountApi";
-import type { AccountMode } from "./accountApi";
 import { useAccount } from "./account";
 
 // These mirror the account rules in the server's config.py, which checks them again.
 const USERNAME_MAX_CHARACTERS = 30;
 const PASSWORD_MAX_CHARACTERS = 128;
-export const RULES_TEXT = `Usernames are 3–${String(USERNAME_MAX_CHARACTERS)} letters, digits, _ or -. Passwords are 8–${String(PASSWORD_MAX_CHARACTERS)} characters.`;
-const FALLBACK_TEXT = "Something went wrong. Try again.";
-const UNREACHABLE_TEXT = "Could not reach the Lyrx server. Is it running?";
+const RULES_TEXT = `Usernames are 3–${String(USERNAME_MAX_CHARACTERS)} letters, digits, _ or -. Passwords are 8–${String(PASSWORD_MAX_CHARACTERS)} characters.`;
 
 const MODES: { mode: AccountMode; label: string }[] = [
   { mode: "sign-in", label: "Sign in" },
@@ -36,10 +34,9 @@ export function AccountPage({ onSignedIn, onSignedOut }: AccountPageProps) {
 }
 
 function errorText(result: Exclude<ApiResult<unknown>, { kind: "ok" }>) {
-  if (result.kind === "error") {
-    return result.code === "invalid_request" ? RULES_TEXT : result.message;
-  }
-  return result.kind === "unreachable" ? UNREACHABLE_TEXT : FALLBACK_TEXT;
+  return result.kind === "error" && result.code === "invalid_request"
+    ? RULES_TEXT
+    : errorMessage(result);
 }
 
 function SignInForm({ onSignedIn }: { onSignedIn: (name: string) => void }) {

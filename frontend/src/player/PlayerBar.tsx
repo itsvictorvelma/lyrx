@@ -8,13 +8,22 @@ import {
   nextSpeed,
   nudgeOffset,
   parseVideoId,
+  storedVolume,
+  storeVolume,
+  toggledVolume,
   youTubeSearchUrl,
 } from "./playback";
 import type { AudioClock } from "./playback";
-import { PlayerControls, VideoIcon } from "./PlayerControls";
+import { PlayerControls } from "./PlayerControls";
 import type { Playback, Progress } from "../types";
-import { storedVolume, storeVolume, toggledVolume } from "./volume";
 import { YouTubePlayer } from "./YouTubePlayer";
+import {
+  CloseIcon,
+  KeyboardIcon,
+  LinkIcon,
+  MusicIcon,
+  VideoIcon,
+} from "../icons";
 
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
 const PLAYER_FAILED_MESSAGE = "Couldn't load the YouTube player. Try again.";
@@ -307,41 +316,5 @@ function AudioChooser(props: AudioChooserProps) {
         />
       </label>
     </div>
-  );
-}
-
-function LinkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
-    </svg>
-  );
-}
-
-function MusicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  );
-}
-
-function KeyboardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
   );
 }

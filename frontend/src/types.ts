@@ -1,4 +1,4 @@
-// Data shapes the page shares with the server: a line, a song, playback, a request result.
+// Data shapes the page shares with the server: a line, a song, playback, the account, a request result.
 
 export interface Line {
   index: number;
@@ -67,3 +67,11 @@ export type ApiResult<Value> =
   // A reply arrived but was not a shape the page can trust.
   | { kind: "unreadable" }
   | { kind: "unreachable" };
+
+// Who is signed in, as the page knows it.
+export interface Account {
+  // The signed-in username; null for a guest, and while the first check is still running.
+  username: string | null;
+  // False until the server has said who is signed in.
+  checked: boolean;
+}

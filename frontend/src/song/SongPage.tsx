@@ -5,8 +5,12 @@ import { HideColumnToggles, PhoneTabs } from "./ColumnButtons";
 import { OtherMatches } from "./OtherMatches";
 import { useFollowLine } from "./followLine";
 import { useHiddenColumns } from "./hiddenColumns";
-import { loopRange } from "../player/lineLoop";
-import { currentLineIndex, hasTimings, LEAD_IN_MS } from "../player/playback";
+import {
+  currentLineIndex,
+  hasTimings,
+  LEAD_IN_MS,
+  loopRange,
+} from "../player/playback";
 import type { AudioClock } from "../player/playback";
 import { PlayerBar } from "../player/PlayerBar";
 import { SaveButton } from "./SaveButton";
@@ -23,12 +27,13 @@ import type {
   VersionColumn,
 } from "../types";
 import { VersionsTable } from "./VersionsTable";
+import { BackIcon, FocusIcon } from "../icons";
 
 const SYNCED_TEXT = "Synced lyrics";
 const LRCLIB_URL = "https://lrclib.net";
 export const NO_TIMINGS_TEXT = "No line timings for this song.";
 const POLL_MS = 200;
-export const BACK_TO_LINE_TEXT = "Back to the current line";
+const BACK_TO_LINE_TEXT = "Back to the current line";
 // Keys that scroll the lyrics when a line in them has focus; pressing one pauses following.
 const SCROLL_KEYS = new Set([
   "ArrowUp",
@@ -243,10 +248,7 @@ export function SongPage(props: SongPageProps) {
             aria-label="Back"
             onClick={goBack}
           >
-            <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-              <path d="M19 12H5" />
-              <path d="m12 19-7-7 7-7" />
-            </svg>
+            <BackIcon />
           </button>
           <div className="song-title-block">
             <h1 lang="ja">{song.track}</h1>
@@ -390,19 +392,5 @@ function sameProgress(a: Progress, b: Progress): boolean {
     a.timeMs === b.timeMs &&
     a.durationMs === b.durationMs &&
     a.playing === b.playing
-  );
-}
-
-function FocusIcon({ exit = false }: { exit?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path
-        d={
-          exit
-            ? "M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"
-            : "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
-        }
-      />
-    </svg>
   );
 }

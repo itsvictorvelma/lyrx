@@ -30,7 +30,7 @@ const FASTEST_ROWS_PER_FRAME = 1;
 const STILL_ALPHA = 0.25;
 const STILL_DENSITY = 0.5;
 
-export interface RainColors {
+interface RainColors {
   accent: string;
   background: string;
 }

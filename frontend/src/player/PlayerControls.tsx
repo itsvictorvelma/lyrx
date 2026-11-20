@@ -1,7 +1,15 @@
 // The player bar's controls: previous / play / next, loop, position, volume, speed, sync, video.
-import { formatClock, formatOffset } from "./playback";
+import { formatClock, formatOffset, VOLUME_STEP } from "./playback";
 import type { Progress } from "../types";
-import { VOLUME_STEP } from "./volume";
+import {
+  LoopIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PreviousIcon,
+  VideoIcon,
+  VolumeIcon,
+} from "../icons";
 
 interface PlayerControlsProps {
   progress: Progress;
@@ -42,10 +50,7 @@ export function PlayerControls(props: PlayerControlsProps) {
           disabled={!hasTimings}
           onClick={props.onPreviousLine}
         >
-          <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-            <path d="M19 20 9 12l10-8v16z" />
-            <path d="M5 19V5" />
-          </svg>
+          <PreviousIcon />
         </button>
         <button
           type="button"
@@ -53,19 +58,7 @@ export function PlayerControls(props: PlayerControlsProps) {
           aria-label={progress.playing ? "Pause" : "Play"}
           onClick={props.onTogglePlay}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="icon icon-filled"
-            aria-hidden="true"
-          >
-            <path
-              d={
-                progress.playing
-                  ? "M7 5h4v14H7zM13 5h4v14h-4z"
-                  : "M8 5v14l11-7z"
-              }
-            />
-          </svg>
+          {progress.playing ? <PauseIcon /> : <PlayIcon />}
         </button>
         <button
           type="button"
@@ -74,10 +67,7 @@ export function PlayerControls(props: PlayerControlsProps) {
           disabled={!hasTimings}
           onClick={props.onNextLine}
         >
-          <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-            <path d="M5 4l10 8-10 8V4z" />
-            <path d="M19 5v14" />
-          </svg>
+          <NextIcon />
         </button>
         <button
           type="button"
@@ -177,39 +167,5 @@ export function PlayerControls(props: PlayerControlsProps) {
         </button>
       )}
     </>
-  );
-}
-
-export function LoopIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path d="M17 2l4 4-4 4" />
-      <path d="M3 11V9a3 3 0 0 1 3-3h15" />
-      <path d="M7 22l-4-4 4-4" />
-      <path d="M21 13v2a3 3 0 0 1-3 3H3" />
-    </svg>
-  );
-}
-
-// A speaker with sound waves, or crossed out when muted.
-function VolumeIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <path d="M11 5 6 9H3v6h3l5 4V5z" />
-      {muted ? (
-        <path d="m16 9 5 6M21 9l-5 6" />
-      ) : (
-        <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
-      )}
-    </svg>
-  );
-}
-
-export function VideoIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-      <rect x="2" y="5" width="15" height="14" rx="2" />
-      <path d="m17 10 5-3v10l-5-3" />
-    </svg>
   );
 }

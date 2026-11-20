@@ -1,6 +1,7 @@
 // The keyboard shortcut list: a small panel over the page, closed by Esc, ?, or its button.
 import { useEffect, useRef } from "react";
 import type { ShortcutListItem } from "./shortcuts";
+import { CloseIcon } from "../icons";
 
 export const SHORTCUT_LIST_TITLE = "Keyboard shortcuts";
 
@@ -39,9 +40,7 @@ export function ShortcutList({ shortcuts, onClose }: ShortcutListProps) {
           aria-label="Close keyboard shortcuts"
           onClick={onClose}
         >
-          <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
+          <CloseIcon />
         </button>
       </div>
       <table>

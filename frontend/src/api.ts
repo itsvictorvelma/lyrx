@@ -93,8 +93,64 @@ export function savePlayback(
   );
 }
 
+// The reply of `GET /api/account`, sign-up, and sign-in.
+interface AccountReply {
+  username: string | null;
+}
+
+function isAccountReply(value: unknown): value is AccountReply {
+  return (
+    isRecord(value) &&
+    (value.username === null || typeof value.username === "string")
+  );
+}
+
+// The signed-in username, or null for a guest.
+export async function getAccount(): Promise<ApiResult<string | null>> {
+  const result = await requestJson(
+    "GET",
+    "/api/account",
+    undefined,
+    isAccountReply,
+  );
+  return result.kind === "ok"
+    ? { kind: "ok", value: result.value.username }
+    : result;
+}
+
+export type AccountMode = "sign-in" | "sign-up";
+
+// Signs in, or creates the account and signs it in; the reply is the stored username.
+export async function enterAccount(
+  mode: AccountMode,
+  username: string,
+  password: string,
+): Promise<ApiResult<string>> {
+  const result = await requestJson(
+    "POST",
+    `/api/account/${mode}`,
+    { username, password },
+    isAccountReply,
+  );
+  if (result.kind !== "ok") {
+    return result;
+  }
+  return result.value.username === null
+    ? { kind: "unreadable" }
+    : { kind: "ok", value: result.value.username };
+}
+
+export function signOut(): Promise<ApiResult<null>> {
+  return requestJson("POST", "/api/account/sign-out", undefined, isNull, 204);
+}
+
+// Deletes the account and its saved songs; the password is asked again.
+export function deleteAccount(password: string): Promise<ApiResult<null>> {
+  return requestJson("DELETE", "/api/account", { password }, isNull, 204);
+}
+
 // One request; a reply with `okStatus` must pass `isValid`, any other must be the error shape.
-export async function requestJson<Reply>(
+async function requestJson<Reply>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
   body: unknown,
@@ -137,7 +193,7 @@ function parseJson(text: string): unknown {
   }
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -199,17 +255,15 @@ function isSearchResult(value: unknown): value is SearchResult {
 
 function isSavedSong(value: unknown): value is SavedSong {
   return (
-    isSong(value) &&
     isRecord(value) &&
-    isVideoIdOrNull(value.videoId) &&
-    Number.isInteger(value.offsetMs) &&
-    Math.abs(Number(value.offsetMs)) <= MAX_OFFSET_MS &&
+    isSong(value) &&
+    isPlayback(value) &&
     Number.isInteger(value.lastOpenedAt)
   );
 }
 
 function isRecentSong(value: unknown): value is RecentSong {
-  return isSong(value) && isRecord(value) && isVideoIdOrNull(value.videoId);
+  return isRecord(value) && isSong(value) && isVideoIdOrNull(value.videoId);
 }
 
 function isRecentSongsReply(value: unknown): value is { songs: RecentSong[] } {
@@ -228,7 +282,7 @@ function isSavedSongsReply(value: unknown): value is { songs: SavedSong[] } {
   );
 }
 
-export function isNull(value: unknown): value is null {
+function isNull(value: unknown): value is null {
   return value === null;
 }
 
@@ -259,4 +313,22 @@ function isErrorReply(
     typeof value.code === "string" &&
     typeof value.message === "string"
   );
+}
+
+export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
+const SERVER_UNREACHABLE_MESSAGE =
+  "Could not reach the Lyrx server. Is it running?";
+
+// What the page says about a failed request: the server's own message when it sent one.
+export function errorMessage(
+  result: Exclude<ApiResult<unknown>, { kind: "ok" }>,
+): string {
+  switch (result.kind) {
+    case "error":
+      return result.message;
+    case "unreadable":
+      return FALLBACK_MESSAGE;
+    case "unreachable":
+      return SERVER_UNREACHABLE_MESSAGE;
+  }
 }

@@ -1,12 +1,17 @@
-// Checks the playback rules: YouTube links, the line being sung with the sync, and the sync text.
-import { expect, test } from "vitest";
+// Checks the playback rules: YouTube links, the line being sung with the sync, the sync text,
+// looping a line, and the remembered volume.
+import { afterEach, describe, expect, test } from "vitest";
 import {
   currentLineIndex,
   formatOffset,
   hasTimings,
+  loopRange,
   nextSpeed,
   nudgeOffset,
   parseVideoId,
+  storedVolume,
+  storeVolume,
+  toggledVolume,
   youTubeSearchUrl,
 } from "./playback";
 import type { Line } from "../types";
@@ -95,4 +100,52 @@ test("spec 024 AC-3: the YouTube search is for the title and artist, URL-encoded
     "https://www.youtube.com/results?search_query=" +
       encodeURIComponent("星の歌 & more ミナト"),
   );
+});
+
+test("a loop runs from its line's start to the next timed line's start, past a verse gap", () => {
+  expect(loopRange(LINES, 1, 0, 60_000)).toEqual({
+    startMs: 4000,
+    endMs: 9000,
+  });
+});
+
+test("the sync offset moves both ends", () => {
+  expect(loopRange(LINES, 0, 500, 60_000)).toEqual({
+    startMs: 1500,
+    endMs: 4500,
+  });
+});
+
+test("the last line loops to the song's end, or never ends when the length is unknown", () => {
+  expect(loopRange(LINES, 3, 0, 60_000)).toEqual({
+    startMs: 9000,
+    endMs: 60_000,
+  });
+  expect(loopRange(LINES, 3, 0, null)?.endMs).toBe(Number.POSITIVE_INFINITY);
+});
+
+test("a line with no timing has no loop", () => {
+  expect(loopRange(LINES, 2, 0, 60_000)).toBeNull();
+});
+
+describe("volume", () => {
+  afterEach(() => {
+    window.localStorage.removeItem("lyrx-volume");
+  });
+
+  test("AC-3: a stored level is read back; a missing or broken one means 100", () => {
+    expect(storedVolume()).toBe(100);
+    storeVolume(35);
+    expect(storedVolume()).toBe(35);
+    for (const broken of ["", "loud", "-5", "101", "12.5"]) {
+      window.localStorage.setItem("lyrx-volume", broken);
+      expect(storedVolume()).toBe(100);
+    }
+  });
+
+  test("AC-2: Mute goes to 0; Unmute brings back the level before, or 100", () => {
+    expect(toggledVolume(60, 60)).toBe(0);
+    expect(toggledVolume(0, 60)).toBe(60);
+    expect(toggledVolume(0, 0)).toBe(100);
+  });
 });

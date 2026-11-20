@@ -2,12 +2,12 @@
 import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import { cellKey } from "./hiddenColumns";
-import { LoopIcon } from "../player/PlayerControls";
+import { LoopIcon } from "../icons";
 import type { Line, VersionColumn } from "../types";
 
-export const NOT_AVAILABLE_TEXT = "Not available";
-export const SHOW_TEXT = "Show";
-export const LOOPING_TEXT = "Looping";
+const NOT_AVAILABLE_TEXT = "Not available";
+const SHOW_TEXT = "Show";
+const LOOPING_TEXT = "Looping";
 
 // How a covered cell's button names its column to a screen reader.
 const COLUMN_NAMES: Record<VersionColumn, string> = {

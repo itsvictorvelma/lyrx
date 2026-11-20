@@ -5,6 +5,7 @@ import { isGuest, useAccount } from "../account/account";
 import { accountPath, navigate, songPath } from "../routing";
 import { saveSong, unsaveSong } from "../api";
 import type { Playback } from "../types";
+import { BookmarkIcon } from "../icons";
 
 const SAVE_SONG_FAILED_MESSAGE = "Couldn't update your songs. Try again.";
 
@@ -61,17 +62,5 @@ export function SaveButton(props: SaveButtonProps) {
         </span>
       )}
     </>
-  );
-}
-
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={filled ? "icon icon-filled" : "icon"}
-      aria-hidden="true"
-    >
-      <path d="M6 3h12v18l-6-4-6 4z" />
-    </svg>
   );
 }

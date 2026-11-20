@@ -4,7 +4,7 @@ import type { RefObject } from "react";
 import { prefersReducedMotion } from "../browser";
 
 // Where the sung row sits, as a share of the view's height from the top.
-export const STEADY_AT = 0.35;
+const STEADY_AT = 0.35;
 // How long one glide takes.
 export const GLIDE_MS = 450;
 

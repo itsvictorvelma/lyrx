@@ -1,8 +1,9 @@
 // The search box: a labeled input with a search icon and the Find button, in two sizes.
 import { useState, type SubmitEvent } from "react";
+import { SearchIcon } from "../icons";
 
 // The search box shown on the page: the large one on home, the header one elsewhere.
-export const SEARCH_INPUT_ID = "song-query";
+const SEARCH_INPUT_ID = "song-query";
 
 // For the / shortcut.
 export function focusSearchBox(): void {
@@ -41,10 +42,7 @@ export function SearchForm({
         Song name or artist
       </label>
       <div className="search-box">
-        <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
+        <SearchIcon />
         <input
           id={SEARCH_INPUT_ID}
           type="search"

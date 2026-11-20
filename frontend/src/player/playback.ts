@@ -1,4 +1,6 @@
-// Playback rules without any player: a YouTube link to its video id, the line being sung, the sync.
+// Playback rules without any player: a YouTube link to its video id, the line being sung, the sync,
+// looping a line, and the remembered volume.
+import { readSetting, storeSetting } from "../browser";
 import type { Line } from "../types";
 
 const OFFSET_STEP_MS = 250;
@@ -96,4 +98,62 @@ export function youTubeSearchUrl(track: string, artist: string): string {
 export function formatClock(milliseconds: number): string {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
   return `${String(Math.floor(seconds / 60))}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+// Looping one line: where the loop starts and ends in the audio.
+
+// Audio times in milliseconds, with the sync offset already applied.
+interface LoopRange {
+  startMs: number;
+  endMs: number;
+}
+
+// From the line's start to the next timed line's start, or to the song's end for the last line.
+// Null when the line has no timing.
+export function loopRange(
+  lines: Line[],
+  lineIndex: number,
+  offsetMs: number,
+  durationMs: number | null,
+): LoopRange | null {
+  const line = lines.find((candidate) => candidate.index === lineIndex);
+  if (line?.startMs === null || line?.startMs === undefined) {
+    return null;
+  }
+  const next = lines.find(
+    (candidate) => candidate.index > lineIndex && candidate.startMs !== null,
+  );
+  const endMs =
+    next?.startMs !== null && next?.startMs !== undefined
+      ? next.startMs + offsetMs
+      : (durationMs ?? Number.POSITIVE_INFINITY);
+  return { startMs: line.startMs + offsetMs, endMs };
+}
+
+// The player volume: 0 to 100, remembered on this browser, and what Mute and Unmute change it to.
+export const VOLUME_STEP = 5;
+const FULL_VOLUME = 100;
+const VOLUME_STORAGE_KEY = "lyrx-volume";
+
+function isVolume(value: number): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= FULL_VOLUME;
+}
+
+// The remembered level; full volume when none is stored, it is broken, or storage is blocked.
+export function storedVolume(): number {
+  const stored = readSetting(VOLUME_STORAGE_KEY);
+  const value = stored === null || stored === "" ? NaN : Number(stored);
+  return isVolume(value) ? value : FULL_VOLUME;
+}
+
+export function storeVolume(volume: number): void {
+  storeSetting(VOLUME_STORAGE_KEY, String(volume));
+}
+
+// Mute goes to 0; Unmute goes back to the level before, or full volume if there was none.
+export function toggledVolume(volume: number, beforeMute: number): number {
+  if (volume > 0) {
+    return 0;
+  }
+  return beforeMute > 0 ? beforeMute : FULL_VOLUME;
 }

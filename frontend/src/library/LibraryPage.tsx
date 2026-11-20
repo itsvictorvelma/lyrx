@@ -11,7 +11,7 @@ import type { SortOrder } from "./songTiles";
 export const EMPTY_LIBRARY_TEXT = "Your songs will show up here.";
 export const EMPTY_LIBRARY_HINT =
   "Type a song you love in the search box: title, artist, or both.";
-export const GUEST_LIBRARY_TEXT = "Sign in to keep your songs here.";
+const GUEST_LIBRARY_TEXT = "Sign in to keep your songs here.";
 
 // The filter box shows once there are more songs than fit in a glance.
 export const FILTER_SHOWN_ABOVE = 8;
