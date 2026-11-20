@@ -1,4 +1,4 @@
-"""Tests for the overall deadline on one translator request (reply_limits.py, spec 019)."""
+"""Tests for the overall deadline on one translator request (streamed_post.py, spec 019)."""
 
 import httpx2
 import pytest

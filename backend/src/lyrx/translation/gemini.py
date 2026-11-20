@@ -15,8 +15,8 @@ from lyrx.translation.prompt import (
     NumberedLines,
     build_user_message,
 )
-from lyrx.translation.reply_limits import deadline_from_now, read_within_limits
 from lyrx.translation.results import TokenUsage, TranslatorReply
+from lyrx.translation.streamed_post import post_within_limits
 
 # Finish reasons where Gemini's own filters stopped the reply.
 BLOCKED_FINISH_REASONS = frozenset(
@@ -119,19 +119,13 @@ def build_body(context: NumberedLines, wanted: NumberedLines) -> dict[str, Any]:
 
 def send_request(model: str, api_key: str, client: httpx2.Client, content: str) -> bytes:
     """Exactly one POST to one model; the reply body, refused as soon as it passes a limit."""
-    deadline = deadline_from_now()
-    try:
-        with client.stream(
-            "POST",
-            config.GEMINI_URL_TEMPLATE.format(model=model),
-            headers={"x-goog-api-key": api_key},
-            content=content,
-        ) as response:
-            body = read_within_limits(response, config.GEMINI_MAX_REPLY_BYTES, deadline)
-    except httpx2.TimeoutException:
-        raise ApiError("translation_unavailable", reason="timeout") from None
-    except httpx2.RequestError:
-        raise ApiError("translation_unavailable", reason="connect_error") from None
+    response, body = post_within_limits(
+        client,
+        config.GEMINI_URL_TEMPLATE.format(model=model),
+        {"x-goog-api-key": api_key},
+        content,
+        config.GEMINI_MAX_REPLY_BYTES,
+    )
     if response.status_code == HTTP_RATE_LIMITED:
         raise ApiError("translation_rate_limited", reason="http_429")
     if not response.is_success:

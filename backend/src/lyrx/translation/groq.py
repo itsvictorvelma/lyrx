@@ -14,8 +14,8 @@ from lyrx.translation.prompt import (
     NumberedLines,
     build_user_message,
 )
-from lyrx.translation.reply_limits import deadline_from_now, read_within_limits
 from lyrx.translation.results import TokenUsage, TranslatorReply
+from lyrx.translation.streamed_post import post_within_limits
 
 HTTP_BAD_REQUEST = 400
 HTTP_RATE_LIMITED = 429
@@ -105,19 +105,13 @@ def build_body(model: str, context: NumberedLines, wanted: NumberedLines) -> dic
 
 def send_request(api_key: str, client: httpx2.Client, content: str) -> bytes:
     """Exactly one POST; the reply body, refused as soon as it passes the byte cap."""
-    deadline = deadline_from_now()
-    try:
-        with client.stream(
-            "POST",
-            config.GROQ_URL,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            content=content,
-        ) as response:
-            body = read_within_limits(response, config.GROQ_MAX_REPLY_BYTES, deadline)
-    except httpx2.TimeoutException:
-        raise ApiError("translation_unavailable", reason="timeout") from None
-    except httpx2.RequestError:
-        raise ApiError("translation_unavailable", reason="connect_error") from None
+    response, body = post_within_limits(
+        client,
+        config.GROQ_URL,
+        {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        content,
+        config.GROQ_MAX_REPLY_BYTES,
+    )
     if response.status_code in (HTTP_RATE_LIMITED, HTTP_TOO_LARGE_FOR_LIMIT):
         raise ApiError("translation_rate_limited", reason="http_429")
     if response.status_code == HTTP_BAD_REQUEST and SCHEMA_FAILED_CODE in body:

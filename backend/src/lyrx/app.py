@@ -88,7 +88,7 @@ def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersio
     with logged_request(SONG_VERSIONS_PATH) as log:
         log.add("lrclib_id", body.id)
         user = signed_in_user(request)
-        cached = library.find_song_or_none(body.id)
+        cached = library.find_song(body.id)
         log.add("from_library", "true" if cached else "false")
         if cached is not None:
             reply = refill_quietly(cached, request, log).model_copy(update={"from_library": True})
