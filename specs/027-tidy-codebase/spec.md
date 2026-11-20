@@ -85,6 +85,12 @@ Make the code easier to find your way around, with no change in behaviour: a cle
 - AC-7: The README folder map matches the tree, and every image it links exists.
 - AC-8: The screenshots show the current design (taken from the running app, invented or LRCLIB-free demo content only where lyrics would show; no real lyrics committed beyond what the existing screenshots already show).
 
+## Added after review (asked for by the user, 2026-11-20)
+
+- The header keeps its search box during the whole wait after a search from home (it used to appear halfway, when the address changed).
+- On a phone, the player bar sits in centered rows: transport, Mute, and speed; then sync; then video, Change audio, and shortcuts.
+- README: no roadmap; Light theme and Your songs share the width equally.
+
 ## Left alone (flagged for you)
 
 - `database.upgrade_saved_songs`: the one-time upgrade of a database from before accounts. It is dead once every copy is upgraded. Remove it when you're sure the server's file is new.

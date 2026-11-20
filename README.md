@@ -35,9 +35,16 @@
   <img src="docs/screenshots/song-dark.png" alt="A song in four columns, the sung line highlighted, the video window and the player bar" width="880">
 </p>
 
-| Light theme | Your songs |
-|---|---|
-| ![The same song in the light theme](docs/screenshots/song-light.png) | ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) |
+<table>
+  <tr>
+    <th width="50%">Light theme</th>
+    <th width="50%">Your songs</th>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/song-light.png" alt="The same song in the light theme" width="100%"></td>
+    <td width="50%"><img src="docs/screenshots/library.png" alt="The library: saved songs as tiles, sorted by recent" width="100%"></td>
+  </tr>
+</table>
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Home: the example line, the large search box, Continue, and songs already in Lyrx" width="680">
@@ -184,12 +191,6 @@ lyrx/
 ├── scripts/                  check.sh and check-quiet.sh
 └── AGENTS.md                 The rules every contributor (human or agent) follows
 ```
-
-## Roadmap
-
-- [x] Search, four versions, saved songs, synced playback, study tools, accounts
-- [ ] Public hosting with Docker and Caddy
-- [ ] More languages, one at a time (Korean next: hangul, romanization, English)
 
 ## How this project is built
 

@@ -501,6 +501,28 @@ test("AC-5: while searching, the steps and the seconds show", async () => {
   vi.useRealTimers();
 });
 
+test("searching from home keeps the header search box for the whole wait", async () => {
+  fakeFetch.mockImplementation((input, init) =>
+    urlOf(input) === "/api/song-search"
+      ? new Promise<Response>(() => undefined)
+      : Promise.resolve(
+          init?.method === undefined || init.method === "GET"
+            ? jsonResponse(
+                200,
+                urlOf(input) === "/api/account"
+                  ? { username: "mika" }
+                  : { songs: [] },
+              )
+            : jsonResponse(404, { code: "not_found", message: "x" }),
+        ),
+  );
+
+  await findSong();
+
+  expect(await screen.findByText(/Finding the song…/)).toBeTruthy();
+  expect(screen.getAllByRole("search")).toHaveLength(1);
+});
+
 test("the timing line says how long finding and the versions took", async () => {
   respond("POST /api/song-search", jsonResponse(200, { results: [bestMatch] }));
   respond("POST /api/song-versions", songReply(bestMatch));

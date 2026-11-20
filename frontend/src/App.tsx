@@ -305,7 +305,7 @@ export function App() {
         {!focus && (
           <Header
             busy={busy}
-            showSearch={route.page !== "home"}
+            showSearch={route.page !== "home" || busy}
             currentPage={route.page}
             onSearch={(query) => {
               void find(query);

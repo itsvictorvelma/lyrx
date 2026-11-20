@@ -1665,7 +1665,8 @@ button:disabled {
     display: none;
   }
 
-  /* Two rows under the slider: transport and video, then sync and Change audio. */
+  /* Three centered rows under the slider: transport, Mute, and speed; then sync; then the video
+     toggle, Change audio, and the shortcuts button. */
   .player-bar {
     padding: 0.5rem 1rem 0.75rem;
   }
@@ -1679,12 +1680,10 @@ button:disabled {
     flex-basis: 100%;
   }
 
-  .transport {
-    flex: 1;
-  }
-
   .sync {
     order: 2;
+    flex-basis: 100%;
+    justify-content: center;
   }
 
   .link-form {
@@ -1707,9 +1706,9 @@ button:disabled {
     min-width: 5rem;
   }
 
+  .video-toggle,
   .change-audio {
     order: 3;
-    margin-left: auto;
   }
 
   /* On a phone the shortcuts button joins the row again, after Change audio. */

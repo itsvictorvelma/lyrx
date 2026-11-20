@@ -9,7 +9,7 @@ import { ThemeButton } from "./ThemeButton";
 interface HeaderProps {
   busy: boolean;
   onSearch: (query: string) => void;
-  // False on the home page, which has its own large search box.
+  // False on the home page, which has its own large search box, except while a song loads.
   showSearch: boolean;
   // Which page is shown, so its link is marked as the current page.
   currentPage: Route["page"];

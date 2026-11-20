@@ -158,7 +158,7 @@ export function PlayerControls(props: PlayerControlsProps) {
       {props.hasVideo && (
         <button
           type="button"
-          className="icon-button"
+          className="icon-button video-toggle"
           aria-label="Show video"
           aria-pressed={props.videoShown}
           onClick={props.onToggleVideo}
