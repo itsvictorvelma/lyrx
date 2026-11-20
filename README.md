@@ -1,88 +1,123 @@
-# Lyrx
+<h1 align="center">lyrx 歌詞</h1>
 
-An app for learning a Japanese song. Type the song's name, and Lyrx shows every line in four columns: Original, Hiragana, Romaji, and English.
+<p align="center"><strong>Read any Japanese song, line by line.</strong></p>
 
-The lyrics come from [LRCLIB](https://lrclib.net) (free, no key). A free AI translator makes the hiragana, romaji, and English for every line: Groq first, Gemini as the backup when Groq is busy. The server checks every reply before showing it. Every song you open is kept on your computer (`data/lyrx.db`, gitignored), so opening it again is instant and uses no quota. A line the translator could not do is asked for again, on its own, the next time you open the song.
+<p align="center">
+  Type a song's name. Lyrx shows every line four ways: the original, hiragana, romaji, and English.<br>
+  Then play along with the video while the sung line lights up.
+</p>
 
-It runs on your own computer, on `127.0.0.1`, for now.
+<p align="center">
+  <a href="docs/demo/lyrx-demo.mp4"><img src="docs/demo/preview.gif" alt="Searching for a song: kana rain while it loads, then the lyrics in four columns, the sung line lighting up, and the romaji column hidden for self-testing" width="880"></a>
+</p>
 
-[AGENTS.md](AGENTS.md) holds the rules and the workflow. [specs/](specs/) holds what is planned and approved.
+<p align="center"><sub>The song shown is invented. Click the preview for a longer walkthrough with sound (recorded on an earlier build).</sub></p>
 
-## Demo
+---
 
-[![Searching for a song: kana rain while it loads, then the lyrics in four columns](docs/demo/preview.gif)](docs/demo/lyrx-demo.mp4)
+## Features
 
-Click the preview for the full demo video (1 min 44 s, with sound).
+- **One search box.** Type a title, an artist, or both. The best match opens right away, and "Not this one?" lists the others.
+- **Four columns, one row per line.** Original, hiragana, romaji, and English, side by side. On a phone, tabs pick which reading sits next to the original.
+- **Play along.** Paste a YouTube link or play an audio file from your computer (it is never uploaded). The sung line lights up and stays in view, using LRCLIB's line timings. Click a line to jump to it, nudge the sync earlier or later, slow down to 0.75× or 0.5×, and loop a single line.
+- **Study tools.** Hide the hiragana, romaji, or English column and reveal one line at a time to test yourself. Focus mode shows only the lyrics and the player, with larger text.
+- **Your songs.** Save a song with its video and sync. Sort and filter your library, and pick up where you left off from the home page.
+- **Instant reopen.** Every translated song is cached, so opening it again is instant and costs no quota. Anyone can open songs already in Lyrx.
+- **Accounts without email.** A username and a password. Guests can search and play along; saving needs an account.
+- **Keyboard first.** Press <kbd>?</kbd> on any page for the full list, and <kbd>/</kbd> to search.
+- **Dark and light.** Follows your system setting, with a switch that remembers your choice.
 
 ## Screenshots
 
-The song and lyrics shown are invented for these screenshots.
+<sub>Every song and lyric line in these images is invented.</sub>
 
-![A song in four columns with the sung line highlighted and the player bar](docs/screenshots/song-dark.png)
-
-| Your songs | Light theme |
-|---|---|
-| ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) | ![The same song in the light theme](docs/screenshots/song-light.png) |
-
-**On a phone:** the original next to one chosen column, with the player under the lyrics.
-
-<p>
-  <img src="docs/screenshots/phone-library.png" alt="The library on a phone: two tiles per row" width="300">
-  &nbsp;
-  <img src="docs/screenshots/phone-song.png" alt="A song on a phone: the original and hiragana columns with the player bar" width="300">
+<p align="center">
+  <img src="docs/screenshots/song-dark.png" alt="A song in four columns, the sung line highlighted, the video window and the player bar" width="880">
 </p>
 
-## What works today
+| Light theme | Your songs |
+|---|---|
+| ![The same song in the light theme](docs/screenshots/song-light.png) | ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) |
 
-- **Home:** an example line sung part by part shows what Lyrx does, then a large search box. First-time visitors see how it works; returning ones get Continue. "Songs already in Lyrx" opens songs that are already translated, instantly.
-- **Accounts (`/account`):** anyone can search, open, and play along without an account. Create one (username and password) to save songs; each person sees only their own songs and videos. New (not yet translated) songs are capped per day: 20 per account, 20 per guest, 300 for the whole site. Songs already in Lyrx always open.
-- **Your songs (`/library`):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist; filter by title or artist once you have more than 8. Remove can be undone.
-- **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
-- **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
-- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line is highlighted and kept in view (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync; the volume slider and Mute set the loudness (remembered); the speed button slows the song to 0.75× or 0.5×. "Find on YouTube" opens a search for the song's video. The video and sync are kept once you save the song. Your file is never uploaded.
-- **Focus mode:** hides everything but the lyrics and the player, with bigger text.
-- **Study tools:** hide the Hiragana, Romaji, or English column and reveal one line at a time to test yourself; loop the line being sung; keyboard shortcuts for everything (press **?** on any page for the list, **/** to search).
-- **Dark and light:** follows your system; the sun/moon button switches and remembers it.
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Home: the example line, the large search box, Continue, and songs already in Lyrx" width="680">
+</p>
 
-## Coming next
+<p align="center">
+  <img src="docs/screenshots/phone-home.png" alt="Home on a phone" width="250">
+  &nbsp;
+  <img src="docs/screenshots/phone-song.png" alt="A song on a phone: the original next to the hiragana, with the player bar below" width="250">
+  &nbsp;
+  <img src="docs/screenshots/phone-library.png" alt="Your songs on a phone: two tiles per row" width="250">
+</p>
 
-1. Hosting with Docker and Caddy, so family and friends can use it.
-2. Finding the YouTube video automatically (needs a YouTube API key, so it is parked under the no-paid-services rule).
+## How it works
 
-## Setup
+```
+ search box ──► LRCLIB search ──► ranked matches (Japanese first, duplicates removed)
+                                        │
+ open a song ──► cache hit? ── yes ──► instant reply
+                     │ no
+                     ▼
+             LRCLIB lyrics + line timings
+                     │
+                     ▼
+     Groq (Gemini as backup) ──► schema + script checks ──► cache ──► page
+       chunks of 40 lines            hiragana: no kanji
+       sent in parallel              romaji: no kana or kanji
+```
 
-You need [uv](https://docs.astral.sh/uv/) (Python 3.12 or later), Node.js with npm, and a free API key from Groq, Gemini, or both (both is best: when one is busy, the other answers).
+- **Lyrics** come from [LRCLIB](https://lrclib.net). It is free and needs no key.
+- **Readings and translation** come from free-tier AI models, with Groq first. When Groq is busy or out of quota, the same request goes to Gemini. The lyrics are sent as data, never as instructions.
+- **Every reply is checked** against a strict schema before it is used. A line that fails is asked for again on its own. A line that still fails shows "Not available" and is retried the next time the song opens.
+- **Limits keep the free tier healthy.** New (uncached) songs are capped each day: 20 per account, 20 per guest, and 300 for the whole site.
 
-1. Install the dependencies:
-   ```bash
-   cd backend && uv sync && cd ..
-   cd frontend && npm install && cd ..
-   ```
-2. Get free keys at [Groq](https://console.groq.com/keys) and [Google AI Studio](https://aistudio.google.com/apikey), then:
-   ```bash
-   cp .env.example .env
-   ```
-   Put the keys after `GROQ_API_KEY=` and `GEMINI_API_KEY=` in `.env`. One key is enough; with both, a busy translator hands over to the other. The file is gitignored, so the keys are never committed.
+## Tech stack
 
-Each request goes to Groq (`gpt-oss-120b`) first. When Groq is busy or out of quota, it goes to Gemini Flash-Lite, then a second Flash-Lite model. The order is `TRANSLATORS` in `backend/src/lyrx/config.py`. Free limits: Groq about 1,000 requests a day and 8,000 tokens a minute per model (about one long song a minute; Gemini takes over when it runs out); Gemini Flash-Lite about 500 requests a day per model. A song is one call per 40 lines, so most songs take 1 or 2 calls. When every translator is at its limit, the page says so; try again later. Google may use what is sent on Gemini's free tier to improve its products.
+| | |
+|---|---|
+| **Backend** | Python 3.12+, FastAPI, uvicorn, SQLite, managed with [uv](https://docs.astral.sh/uv/) |
+| **Frontend** | React 19, TypeScript, Vite. No UI library: hand-written CSS with design tokens |
+| **Quality** | ruff, mypy `--strict`, pytest · Prettier, ESLint (strict, type-checked), `tsc`, Vitest + Testing Library |
+| **Services** | LRCLIB (lyrics), Groq and Gemini free tiers (readings and translation). No paid APIs. |
 
-## Run
+## Getting started
 
-Use two terminals.
+**You need:**
+- [uv](https://docs.astral.sh/uv/) (Python 3.12 or later);
+- Node.js with npm;
+- a free API key from [Groq](https://console.groq.com/keys), [Google AI Studio](https://aistudio.google.com/apikey) (Gemini), or both. One is enough; with both, a busy translator hands over to the other.
 
-1. The server, on `127.0.0.1:8000`:
-   ```bash
-   cd backend
-   uv run --env-file ../.env python -m lyrx
-   ```
-2. The page:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-   Open the address it prints (normally `http://127.0.0.1:5173`).
+```bash
+# 1. Install
+cd backend && uv sync && cd ..
+cd frontend && npm install && cd ..
 
-## Reset a friend's password
+# 2. Add your keys (the file is gitignored)
+cp .env.example .env        # then fill in GROQ_API_KEY and/or GEMINI_API_KEY
+
+# 3. Run the server (terminal 1), on 127.0.0.1:8000
+cd backend && uv run --env-file ../.env python -m lyrx
+
+# 4. Run the page (terminal 2)
+cd frontend && npm run dev  # open http://127.0.0.1:5173
+```
+
+<details>
+<summary>Free-tier limits and the translator order</summary>
+
+Each request goes to Groq (`gpt-oss-120b`) first, then to Gemini Flash-Lite, then to a second Flash-Lite model. The order is `TRANSLATORS` in [`backend/src/lyrx/config.py`](backend/src/lyrx/config.py).
+
+Rough free limits:
+- Groq: about 1,000 requests a day and 8,000 tokens a minute per model, which is about one long song a minute.
+- Gemini Flash-Lite: about 500 requests a day per model.
+
+A song takes one call per 40 lines, so most songs need one or two calls. When every translator is at its limit, the page says so. Google may use what is sent on Gemini's free tier to improve its products.
+
+</details>
+
+<details>
+<summary>Resetting a friend's password</summary>
 
 There is no email, so a forgotten password is reset by hand. From `backend/`:
 
@@ -90,115 +125,78 @@ There is no email, so a forgotten password is reset by hand. From `backend/`:
 uv run python -m lyrx.accounts.reset_password <username>
 ```
 
-It asks for the new password twice and signs that person out everywhere. The first account created gets the songs saved before accounts existed.
+It asks for the new password twice and signs that person out everywhere.
 
-## Check
+</details>
+
+## Checks
 
 ```bash
-scripts/check.sh
+scripts/check.sh         # everything, with full output
+scripts/check-quiet.sh   # one line when it all passes
 ```
 
-Backend: ruff format, ruff lint, mypy `--strict`, pytest. Frontend: Prettier, ESLint, `tsc`, Vitest, and the build. No test calls Groq, Gemini, LRCLIB, or the network.
+- Backend: ruff format, ruff lint, mypy `--strict`, and pytest.
+- Frontend: Prettier, ESLint, `tsc`, Vitest, and the production build.
+- No test calls Groq, Gemini, LRCLIB, or the network: a guard fails any test that tries.
 
-## Folder map
+## Project structure
 
 ```
 lyrx/
-├── AGENTS.md              Rules and workflow
-├── specs/                 One folder per feature
-├── docs/                  README media: demo/ (screen recording, GIF), screenshots/ (invented songs only)
-├── scripts/
-│   ├── check.sh           Every check in one command
-│   └── check-quiet.sh     The same, one line when all pass (only the failing step's tail otherwise)
-├── .env.example           The settings: GROQ_API_KEY and GEMINI_API_KEY
-├── backend/               Python server (FastAPI, uv)
+├── backend/                  Python server
 │   ├── src/lyrx/
-│   │   ├── __main__.py        Starts the server on 127.0.0.1
-│   │   ├── app.py             Builds the app: the routes, error handlers, and shared clients
-│   │   ├── config.py          Every setting in one place
-│   │   ├── errors.py          Error codes, their HTTP status, and their message
-│   │   ├── schemas.py         What the page sends and receives
-│   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
-│   │   ├── database.py        The SQLite file: its tables, and the upgrade of an older file
-│   │   ├── library.py         The shared song cache and each person's saved songs
-│   │   ├── rate_limits.py     Daily caps on new songs, sign-ups, and failed sign-ins
-│   │   ├── accounts/          Personal accounts
-│   │   │   ├── passwords.py       Password hashing (scrypt, a salt per password)
-│   │   │   ├── users.py           Create, find, check a password, change it, delete
-│   │   │   ├── sessions.py        The session cookie and who sent a request
-│   │   │   ├── routes.py          Sign up, sign in, sign out, delete the account
-│   │   │   └── reset_password.py  The command that resets a friend's password
-│   │   ├── lyrics/            Finding and preparing lyrics
-│   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record → song
-│   │   │   ├── search.py          Typed text → a short ranked list of songs
-│   │   │   ├── lines.py           Lyrics → trimmed lines, and each line's start time
-│   │   │   └── japanese.py        Kana and kanji, and whether lyrics look Japanese
-│   │   ├── translation/       Lines → hiragana, romaji, and English
-│   │   │   ├── chain.py           Groq first, Gemini when Groq is busy
-│   │   │   ├── chunks.py          Splits a song, sends the chunks at once, retries
-│   │   │   ├── prompt.py          What every translator is asked, and the reply shape
-│   │   │   ├── checks.py          The checks on every reply: its JSON, then each line
-│   │   │   ├── groq.py            Groq: client, one request, reply shape
-│   │   │   ├── gemini.py          Gemini: client, one request, reply shape
-│   │   │   ├── reply_limits.py    Reads a reply within its byte cap and overall deadline
-│   │   │   └── results.py         The internal result shapes
-│   │   └── server/            Guards and logging around every request
-│   │       ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
-│   │       ├── origin_check.py    Refuses a POST, PUT, or DELETE from another site
-│   │       ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
-│   │       ├── crash_guard.py     Turns any unexpected error into a plain 500
-│   │       └── request_log.py     One log line per request (no lyrics, no key)
-│   └── tests/             The same folders as src/lyrx, one test_<module>.py per module,
-│                          plus shared helpers at the top: fake Groq, Gemini, and LRCLIB,
-│                          the network guard, the error-shape check, and a raw ASGI runner
-└── frontend/              The page (React, Vite, TypeScript)
-    ├── index.html         The page shell: title, link preview tags, icons
-    ├── public/            The favicon, phone icon, and link preview image
-    └── src/
-        ├── main.tsx           Mounts the page
-        ├── App.tsx            The app shell: header, pages, search, Focus, ? and / off the song page
-        ├── routing.ts         Page addresses: / home, /library, /song/{id}, /account signing in
-        ├── mediaQuery.ts      Whether a media query matches (reduced motion, light theme, phone)
-        ├── styles.css         Night-player colours (dark and light), pages, motion, phone layout
-        ├── account/
-        │   ├── AccountPage.tsx    Sign in or create an account; sign out or delete it
-        │   ├── accountApi.ts      The account requests
-        │   ├── useAccount.ts      Who is signed in, shared with every page
-        │   └── types.ts           Account data shapes
-        ├── header/
-        │   ├── Header.tsx         The bar on every page: wordmark, search, Your songs, Sign in, theme
-        │   ├── SearchForm.tsx     The search box and Find button, in two sizes
-        │   └── ThemeButton.tsx    The sun/moon button: remembered choice, else the system setting
-        ├── home/
-        │   ├── HomePage.tsx       Home: hero, large search, how it works or Continue, recent songs
-        │   ├── HeroLine.tsx       The example line, sung part by part
-        │   └── heroTiming.ts      The example line's parts and which is sung at each tick
-        ├── library/
-        │   ├── LibraryPage.tsx    Your songs (/library): tiles, sorting, the empty welcome
-        │   ├── SongTile.tsx       One tile: art, title, last opened, Remove
-        │   ├── SongArt.tsx        A song's art: YouTube thumbnail or first character on its hue
-        │   ├── RemovedMessage.tsx "Removed …" with Undo after Remove
-        │   └── songTiles.ts       Thumbnail address, title colour, "Opened …", sort orders, filter
-        └── lyrics/
-            ├── types.ts           Data shapes shared with the server
-            ├── api.ts             The requests to the server, and the checks on their replies
-            ├── SearchProgress.tsx While a song loads: kana rain and the terminal-style steps card
-            ├── KanaRain.tsx       The falling kana behind the loading steps (canvas)
-            ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar, study tools
-            ├── ColumnButtons.tsx  The phone's column tabs and the Hide toggles
-            ├── hiddenColumns.ts   Covered columns (remembered on this browser) and revealed cells
-            ├── lineLoop.ts        Where a looped line starts and ends in the audio
-            ├── shortcuts.ts       Keyboard shortcuts (song page and elsewhere), when keys are left alone
-            ├── ShortcutList.tsx   The keyboard shortcut panel
-            ├── SaveButton.tsx     The Save / Saved toggle on a song
-            ├── OtherMatches.tsx   "Not this one?": the other results in a popover
-            ├── VersionsTable.tsx  The four-column table: sung and looped lines marked, covered cells
-            ├── followLine.ts      Calm following: scroll only when the sung line passes 60% of the view
-            ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, keeping the sync
-            ├── PlayerControls.tsx Previous / play / next, Loop line, position, Earlier/Later sync
-            ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
-            ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser
-            ├── playback.ts        Link → video id, the line being sung, the sync, the player clock
-            ├── volume.ts          The player volume: remembered level, Mute and Unmute
-            └── fakeSongPage.tsx   Test helpers: a fake YouTube player and server for song page tests
+│   │   ├── app.py              Builds the app: routes, error handlers, shared HTTP clients
+│   │   ├── config.py           Every setting in one place
+│   │   ├── schemas.py          What the page sends and receives
+│   │   ├── errors.py           Error codes, their HTTP status, and their message
+│   │   ├── song.py             Open a song: LRCLIB id → every line in four versions
+│   │   ├── library.py          The shared song cache and each person's saved songs
+│   │   ├── database.py         The SQLite file and its tables
+│   │   ├── rate_limits.py      Daily caps on new songs, sign-ups, and failed sign-ins
+│   │   ├── accounts/           Passwords (scrypt), users, session cookies, account routes
+│   │   ├── lyrics/             LRCLIB client, search ranking, lines and timings, Japanese detection
+│   │   ├── translation/        Translator chain, chunking, prompt, reply checks, Groq, Gemini
+│   │   └── server/             Guards on every request: Host, Origin, body size, crash guard, log
+│   └── tests/                The same folders, one test_<module>.py per module, plus fakes
+├── frontend/                 The page
+│   ├── index.html            Page shell: title, link preview, icons
+│   ├── public/               Favicon, phone icon, link preview image
+│   └── src/
+│       ├── main.tsx            Mounts the app
+│       ├── App.tsx             The shell: header, page switch, search and open flow
+│       ├── api.ts              Every server call, reply checks, and error wording
+│       ├── types.ts            Shared data shapes
+│       ├── routing.ts          Addresses: /, /library, /song/{id}, /account
+│       ├── browser.ts          Media queries and remembered settings
+│       ├── icons.tsx           Every icon
+│       ├── styles.css          Design tokens (dark and light), layout, motion, phone layout
+│       ├── account/            Sign in, create, sign out, delete; who is signed in
+│       ├── header/             The top bar and the theme switch
+│       ├── search/             Search box, loading screen, kana rain
+│       ├── shortcuts/          Keyboard shortcuts and their list
+│       ├── home/               Home page and the animated example line
+│       ├── library/            Your songs: tiles, sorting, filter, Undo
+│       ├── song/               The song page: four-column table, study tools, following
+│       └── player/             Player bar, YouTube and audio-file players, playback rules
+├── specs/                    One short spec per feature, from idea to done
+├── docs/                     README media (invented songs only)
+├── scripts/                  check.sh and check-quiet.sh
+└── AGENTS.md                 The rules every contributor (human or agent) follows
 ```
+
+## Roadmap
+
+- [x] Search, four versions, saved songs, synced playback, study tools, accounts
+- [ ] Public hosting with Docker and Caddy
+- [ ] More languages, one at a time (Korean next: hangul, romanization, English)
+
+## How this project is built
+
+Every change starts as a short spec in [`specs/`](specs/), is built with a test for each acceptance check, and lands as a reviewed pull request. [AGENTS.md](AGENTS.md) holds the rules: security first, then correctness, then a working page, then polish.
+
+## Credits
+
+- Lyrics and line timings from [LRCLIB](https://lrclib.net), a free, community-run lyrics database.
+- Readings and translations by [Groq](https://groq.com) and [Google Gemini](https://ai.google.dev).
+- Built by Victor Velma.
