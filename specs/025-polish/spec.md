@@ -14,6 +14,7 @@ Lyrx looks finished when someone opens a shared link or moves around: each tab n
 - The song page's back arrow goes back to the page you came from.
 - Removing a song shows "Removed … · Undo" instead of the browser's confirm box.
 - A filter box on Your songs once it holds more than 8 songs.
+- The home footer says "Built by Victor Velma."
 
 ## Out of scope
 
