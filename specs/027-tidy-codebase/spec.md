@@ -78,7 +78,7 @@ Make the code easier to find your way around, with no change in behaviour: a cle
 
 - AC-1: `scripts/check.sh` passes: ruff, mypy `--strict`, pytest, Prettier, ESLint, `tsc`, Vitest, and the build.
 - AC-2: The test count is the same as or higher than before (backend and frontend), with no test deleted.
-- AC-3: No file under `frontend/src/` imports from a sibling feature's private files. Shared code lives only in the top-level files.
+- AC-3: The top-level shared files (`api.ts`, `types.ts`, `routing.ts`, `browser.ts`, `icons.tsx`) never import from a feature folder. A feature imports only what another feature exports.
 - AC-4: `grep` finds no inline `<svg` outside `icons.tsx`. The `KanaRain` canvas is not an SVG and is not affected.
 - AC-5: `localStorage` appears only in `browser.ts` (and in tests).
 - AC-6: The API reply bodies, status codes, and log lines are unchanged. The existing backend tests are untouched apart from the two folded wrappers.

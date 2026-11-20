@@ -1,11 +1,10 @@
 // Playback rules without any player: a YouTube link to its video id, the line being sung, the sync,
 // looping a line, and the remembered volume.
+import { MAX_OFFSET_MS, VIDEO_ID } from "../api";
 import { readSetting, storeSetting } from "../browser";
 import type { Line } from "../types";
 
 const OFFSET_STEP_MS = 250;
-export const MAX_OFFSET_MS = 30_000;
-export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const YOUTUBE_HOSTS = new Set(["youtube.com", "music.youtube.com"]);
 
 // The 11-character video id from a YouTube link, or null for anything else.

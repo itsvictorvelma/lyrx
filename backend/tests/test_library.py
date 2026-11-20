@@ -516,3 +516,16 @@ def test_spec025_ac5_saved_songs_list_their_sync(
     assert [(song["id"], song["videoId"], song["offsetMs"]) for song in songs] == [
         (101, VIDEO_ID, -750)
     ]
+
+
+def test_a_database_that_cannot_be_read_counts_as_not_cached_and_none_saved(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def broken_connect() -> Any:
+        raise sqlite3.OperationalError("unable to open database file")
+
+    monkeypatch.setattr(library, "connect", broken_connect)
+
+    assert library.find_song(1) is None
+    assert library.saved_ids(1, [1]) == set()
+    assert caplog.text.count("library_unavailable") == 2

@@ -35,6 +35,7 @@ def find_song(song_id: int) -> SongVersionsResponse | None:
 
 
 def read_cached_song(song_id: int) -> SongVersionsResponse | None:
+    """The cached row as a reply; a broken row is deleted. Raises `sqlite3.Error`."""
     with connect() as connection:
         row = connection.execute(
             "SELECT id, track, artist, album, duration_seconds, lines_json FROM songs WHERE id = ?",

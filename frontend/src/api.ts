@@ -1,5 +1,5 @@
-// Calls the Lyrx server (search, open a song, saved and recent songs, playback) and checks replies.
-import { MAX_OFFSET_MS, VIDEO_ID } from "./player/playback";
+// Calls the Lyrx server (search, open a song, saved and recent songs, playback, accounts), checks
+// every reply, and words a failed one for the page.
 import type {
   ApiResult,
   Line,
@@ -10,6 +10,10 @@ import type {
   Song,
   SongVersions,
 } from "./types";
+
+// The server's limits on a song's video id and sync nudge; replies outside them are not trusted.
+export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+export const MAX_OFFSET_MS = 30_000;
 
 export async function searchSongs(
   query: string,
