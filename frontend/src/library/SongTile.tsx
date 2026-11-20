@@ -1,12 +1,7 @@
 // One library tile: the art (thumbnail or first character), title, artist, last opened, Remove.
-import type { CSSProperties } from "react";
 import type { SavedSong } from "../lyrics/types";
-import {
-  firstCharacter,
-  openedLabel,
-  thumbnailUrl,
-  titleHue,
-} from "./songTiles";
+import { SongArt } from "./SongArt";
+import { openedLabel } from "./songTiles";
 
 interface SongTileProps {
   song: SavedSong;
@@ -16,9 +11,6 @@ interface SongTileProps {
 }
 
 export function SongTile({ song, nowMs, onOpen, onRemove }: SongTileProps) {
-  const thumbnail = thumbnailUrl(song.videoId);
-  const hue = { "--tile-hue": titleHue(song.track) } as CSSProperties;
-
   return (
     <li className="tile">
       <button
@@ -29,25 +21,13 @@ export function SongTile({ song, nowMs, onOpen, onRemove }: SongTileProps) {
           onOpen(song);
         }}
       >
-        <span className="tile-art" style={hue}>
-          {thumbnail === null ? (
-            <span lang="ja" className="tile-glyph" aria-hidden="true">
-              {firstCharacter(song.track)}
-            </span>
-          ) : (
-            <img
-              src={thumbnail}
-              alt=""
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-          )}
+        <SongArt track={song.track} videoId={song.videoId}>
           <span className="tile-play" aria-hidden="true">
             <svg viewBox="0 0 24 24" className="icon icon-filled">
               <path d="M8 5v14l11-7z" />
             </svg>
           </span>
-        </span>
+        </SongArt>
         <span lang="ja" className="tile-title">
           {song.track}
         </span>

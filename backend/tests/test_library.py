@@ -23,7 +23,7 @@ from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
 from lyrx import config, library
-from lyrx.app import SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
+from lyrx.app import RECENT_SONGS_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
 
 # The invented record's non-blank lines.
 SENT = [0, 1, 3, 4]
@@ -517,3 +517,45 @@ def test_an_opened_song_with_timings_returns_and_saves_each_lines_start(
         12000,
         20500,
     ]
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec021_ac7_recent_songs_are_capped_newest_first_without_lines(
+    client: TestClient,
+    fake_lrclib: FakeLrclib,
+    fake_gemini: FakeGemini,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "RECENT_SONGS_SHOWN", 2)
+    for song_id in (101, 102, 103):
+        open_new_song(client, fake_lrclib, fake_gemini, song_id)
+    assert save(client, 102, VIDEO_ID) == 204
+    open_song(client, 101)  # Opening again moves it to the front.
+
+    response = client.get(RECENT_SONGS_PATH)
+
+    assert response.status_code == 200
+    songs = response.json()["songs"]
+    assert [song["id"] for song in songs] == [101, 103]
+    assert all("lines" not in song for song in songs)
+    assert songs[0] == {
+        "id": 101,
+        "track": "歌101",
+        "artist": songs[0]["artist"],
+        "album": songs[0]["album"],
+        "durationSeconds": songs[0]["durationSeconds"],
+        "videoId": None,
+    }
+
+
+@pytest.mark.usefixtures("gemini_key")
+def test_spec021_ac7_recent_songs_hold_saved_and_unsaved_songs(
+    client: TestClient, fake_lrclib: FakeLrclib, fake_gemini: FakeGemini
+) -> None:
+    open_new_song(client, fake_lrclib, fake_gemini, 101)
+    open_new_song(client, fake_lrclib, fake_gemini, 102)
+    assert save(client, 101, VIDEO_ID) == 204
+
+    songs = client.get(RECENT_SONGS_PATH).json()["songs"]
+
+    assert {song["id"]: song["videoId"] for song in songs} == {102: None, 101: VIDEO_ID}

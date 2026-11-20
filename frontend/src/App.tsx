@@ -1,25 +1,31 @@
-// The Lyrx app: the header, then the library at `/` or a song at `/song/{id}`; search from anywhere.
+// The Lyrx app: the header, then home at `/`, your songs at `/library`, or a song at `/song/{id}`.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Header } from "./header/Header";
+import { focusSearchBox } from "./header/SearchForm";
+import { HomePage } from "./home/HomePage";
 import { LibraryPage } from "./library/LibraryPage";
 import {
   getSongVersions,
+  listRecentSongs,
   listSavedSongs,
   unsaveSong,
   searchSongs,
 } from "./lyrics/api";
 import { SearchProgress } from "./lyrics/SearchProgress";
+import { ShortcutList } from "./lyrics/ShortcutList";
+import { SITE_SHORTCUT_LIST, useShortcuts } from "./lyrics/shortcuts";
 import type { Stage } from "./lyrics/SearchProgress";
 import { SongPage } from "./lyrics/SongPage";
 import type {
   ApiResult,
   Line,
   Playback,
+  RecentSong,
   SavedSong,
   SearchResult,
   Song,
 } from "./lyrics/types";
-import { navigate, songPath, useRoute } from "./routing";
+import { HOME_PATH, navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
@@ -58,6 +64,33 @@ function formatSeconds(milliseconds: number): string {
   return `${(milliseconds / 1000).toFixed(1)} s`;
 }
 
+// Off the song page only these keys are shortcuts; the rest stay with the browser.
+const SITE_SHORTCUTS = ["toggleShortcutList", "escape", "focusSearch"] as const;
+
+// Home and the library: ? shows or hides the shortcut list, / jumps to the search box.
+function SiteShortcuts() {
+  const [open, setOpen] = useState(false);
+
+  useShortcuts((shortcut) => {
+    if (shortcut.kind === "toggleShortcutList") {
+      setOpen((current) => !current);
+    } else if (shortcut.kind === "escape") {
+      setOpen(false);
+    } else if (shortcut.kind === "focusSearch") {
+      focusSearchBox();
+    }
+  }, SITE_SHORTCUTS);
+
+  return open ? (
+    <ShortcutList
+      shortcuts={SITE_SHORTCUT_LIST}
+      onClose={() => {
+        setOpen(false);
+      }}
+    />
+  ) : null;
+}
+
 function messageFor(result: Exclude<ApiResult<unknown>, { kind: "ok" }>) {
   switch (result.kind) {
     case "error":
@@ -75,6 +108,7 @@ export function App() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedSongs, setSavedSongs] = useState<SavedSong[]>([]);
+  const [recentSongs, setRecentSongs] = useState<RecentSong[]>([]);
   const [focus, setFocus] = useState(false);
   // The song shown or being opened, so a route change opens a song only once.
   const openedId = useRef<number | null>(null);
@@ -89,19 +123,30 @@ export function App() {
     }
   }, []);
 
-  // Every move clears the error and Focus mode. The library refreshes its tiles, stops a
-  // song still opening, and forgets the open song, so opening it again fetches it fresh.
+  // A failed load keeps the row as it was; the home page hides it when empty.
+  const refreshRecentSongs = useCallback(async () => {
+    const result = await listRecentSongs();
+    if (result.kind === "ok") {
+      setRecentSongs(result.value);
+    }
+  }, []);
+
+  // Every move clears the error and Focus mode. Home and the library refresh their songs, stop
+  // a song still opening, and forget the open song, so opening it again fetches it fresh.
   const handleRouteChange = useCallback(
     (next: Route) => {
       setError(null);
       setFocus(false);
-      if (next.page === "library") {
+      if (next.page !== "song") {
         openedId.current = null;
         setStatus((current) => (current === "finding" ? current : "idle"));
         void refreshSavedSongs();
       }
+      if (next.page === "home") {
+        void refreshRecentSongs();
+      }
     },
-    [refreshSavedSongs],
+    [refreshSavedSongs, refreshRecentSongs],
   );
   const route = useRoute(handleRouteChange);
 
@@ -130,21 +175,26 @@ export function App() {
         return;
       }
       openedId.current = null;
-      // A song the server does not have is an unknown address: show the library instead.
+      // A song the server does not have is an unknown address: show home instead.
       if (result.kind === "error" && result.code === "song_not_found") {
-        navigate("/", { replace: true });
+        navigate(HOME_PATH, { replace: true });
       }
       setError(messageFor(result));
     },
     [refreshSavedSongs],
   );
 
-  // The saved songs load once when the page opens.
+  // The saved and recent songs load once when the page opens.
   useEffect(() => {
     let active = true;
     void listSavedSongs().then((result) => {
       if (active && result.kind === "ok") {
         setSavedSongs(result.value);
+      }
+    });
+    void listRecentSongs().then((result) => {
+      if (active && result.kind === "ok") {
+        setRecentSongs(result.value);
       }
     });
     return () => {
@@ -212,11 +262,14 @@ export function App() {
       {!focus && (
         <Header
           busy={busy}
+          showSearch={route.page !== "home"}
+          isLibraryPage={route.page === "library"}
           onSearch={(query) => {
             void find(query);
           }}
         />
       )}
+      {route.page !== "song" && <SiteShortcuts />}
       <main className="app-main">
         {error !== null && (
           <p role="alert" className="error page-error">
@@ -225,6 +278,17 @@ export function App() {
         )}
         {busy ? (
           <SearchProgress stage={status} />
+        ) : route.page === "home" ? (
+          <HomePage
+            savedSongs={savedSongs}
+            recentSongs={recentSongs}
+            onSearch={(query) => {
+              void find(query);
+            }}
+            onOpenSong={(id) => {
+              navigate(songPath(id));
+            }}
+          />
         ) : route.page === "library" ? (
           <LibraryPage
             songs={savedSongs}

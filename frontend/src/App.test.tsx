@@ -1,4 +1,4 @@
-// Checks the whole app: search, song addresses and Back, the library, Remove, Focus mode, errors.
+// Checks the whole app: search, song addresses and Back, home and the library, Remove, Focus, errors.
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -32,7 +32,7 @@ beforeEach(() => {
     if (next !== undefined) {
       return Promise.resolve(next);
     }
-    if (key === "GET /api/songs") {
+    if (key === "GET /api/songs" || key === "GET /api/recent-songs") {
       return Promise.resolve(jsonResponse(200, { songs: [] }));
     }
     return Promise.reject(new TypeError(`no fake reply for ${key}`));
@@ -44,6 +44,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+const HOME_TITLE = "Read any Japanese song, line by line.";
 
 // Invented songs and lyrics only.
 const bestMatch: SearchResult = {
@@ -200,6 +202,7 @@ test("Not this one? opens another match; results say Saved and Not Japanese", as
 });
 
 test("AC-1: clicking a library tile opens the song from your songs", async () => {
+  window.history.replaceState(null, "", "/library");
   respond("GET /api/songs", jsonResponse(200, { songs: [asSaved(bestMatch)] }));
   respond("POST /api/song-versions", songReply(bestMatch, lines, true));
   const user = userEvent.setup();
@@ -224,6 +227,7 @@ test("AC-4 and spec 016 AC-9: Remove asks first; confirming takes the song off, 
     jsonResponse(200, { songs: [asSaved(bestMatch), asSaved(liveMatch)] }),
   );
   respond("DELETE /api/songs/101/saved", jsonResponse(204, null));
+  window.history.replaceState(null, "", "/library");
   const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
   const user = userEvent.setup();
   render(<App />);
@@ -249,7 +253,7 @@ test("AC-6: a song address opens that song; Back returns to the library", async 
   expect(bodyOf("POST", "/api/song-versions")).toEqual({ id: 101 });
 
   await act(async () => {
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", "/library");
     window.dispatchEvent(new PopStateEvent("popstate"));
     await Promise.resolve();
   });
@@ -257,7 +261,7 @@ test("AC-6: a song address opens that song; Back returns to the library", async 
   expect(screen.getByText("Your songs will show up here.")).toBeTruthy();
 });
 
-test("AC-6: a song the server does not have shows the library with the reason", async () => {
+test("AC-6: a song the server does not have shows home with the reason", async () => {
   window.history.replaceState(null, "", "/song/999");
   respond(
     "POST /api/song-versions",
@@ -272,12 +276,13 @@ test("AC-6: a song the server does not have shows the library with the reason", 
     "That song was not found.",
   );
   expect(window.location.pathname).toBe("/");
-  expect(screen.getByText("Your songs will show up here.")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: HOME_TITLE })).toBeTruthy();
 });
 
 test("leaving a song and opening it again fetches it fresh and refreshes the tiles", async () => {
   const saved = () => jsonResponse(200, { songs: [asSaved(bestMatch)] });
   respond("GET /api/songs", saved(), saved(), saved(), saved(), saved());
+  window.history.replaceState(null, "", "/library");
   respond(
     "POST /api/song-versions",
     songReply(bestMatch, lines, true),
@@ -301,11 +306,11 @@ test("leaving a song and opening it again fetches it fresh and refreshes the til
   expect(listCalls.length).toBeGreaterThanOrEqual(4);
 });
 
-test("AC-6: an unknown address shows the library", async () => {
+test("AC-6 and spec 021 AC-1: an unknown address shows home", async () => {
   window.history.replaceState(null, "", "/song/abc");
   render(<App />);
 
-  expect(await screen.findByText("Your songs will show up here.")).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: HOME_TITLE })).toBeTruthy();
   expect(
     fakeFetch.mock.calls.some(
       ([input]) => urlOf(input) === "/api/song-versions",

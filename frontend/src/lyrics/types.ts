@@ -40,6 +40,11 @@ export interface SavedSong extends Song {
   lastOpenedAt: number;
 }
 
+// A recently opened song on the home page row: its saved video, if any, for the thumbnail.
+export interface RecentSong extends Song {
+  videoId: string | null;
+}
+
 export interface SearchResult extends Song {
   looksJapanese: boolean;
   saved: boolean;

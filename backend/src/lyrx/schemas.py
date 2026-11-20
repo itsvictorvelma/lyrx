@@ -79,6 +79,18 @@ class SavedSongsResponse(BaseModel):
     songs: list[SavedSong]
 
 
+class RecentSong(Song):
+    """A recently opened cached song for the home page row: its saved video, if any."""
+
+    video_id: str | None = Field(serialization_alias="videoId")
+
+
+class RecentSongsResponse(BaseModel):
+    """The body of `GET /api/recent-songs`: cached songs, most recently opened first."""
+
+    songs: list[RecentSong]
+
+
 class SongVersionsResponse(BaseModel):
     """The body of a successful `POST /api/song-versions`; `fromLibrary` when it was saved."""
 

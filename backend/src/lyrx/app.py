@@ -18,6 +18,7 @@ from lyrx.lyrics.lrclib import make_lrclib_client
 from lyrx.lyrics.search import search_songs
 from lyrx.schemas import (
     Playback,
+    RecentSongsResponse,
     SavedSongsResponse,
     SongSearchRequest,
     SongSearchResponse,
@@ -38,6 +39,7 @@ SONG_VERSIONS_PATH = "/api/song-versions"
 SAVED_SONGS_PATH = "/api/songs"
 SAVED_SONG_PATH = "/api/songs/{song_id}/saved"
 PLAYBACK_PATH = "/api/songs/{song_id}/playback"
+RECENT_SONGS_PATH = "/api/recent-songs"
 
 ROUTING_ERROR_CODES: dict[int, ErrorCode] = {404: "not_found", 405: "method_not_allowed"}
 FIRST_SERVER_ERROR_STATUS = 500
@@ -132,6 +134,14 @@ def list_saved_songs() -> SavedSongsResponse:
         return SavedSongsResponse(songs=songs)
 
 
+def list_recent_songs() -> RecentSongsResponse:
+    """The home page row: recently opened cached songs, without lines (spec 021)."""
+    with logged_request(RECENT_SONGS_PATH) as log:
+        songs = library.list_recent_songs(config.RECENT_SONGS_SHOWN)
+        log.add("songs", len(songs))
+        return RecentSongsResponse(songs=songs)
+
+
 def save_song(
     song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback
 ) -> Response:
@@ -199,6 +209,7 @@ def create_app(
     app.add_api_route(SONG_SEARCH_PATH, find_songs, methods=["POST"])
     app.add_api_route(SONG_VERSIONS_PATH, get_song_versions, methods=["POST"])
     app.add_api_route(SAVED_SONGS_PATH, list_saved_songs, methods=["GET"])
+    app.add_api_route(RECENT_SONGS_PATH, list_recent_songs, methods=["GET"])
     app.add_api_route(SAVED_SONG_PATH, save_song, methods=["PUT"])
     app.add_api_route(SAVED_SONG_PATH, unsave_song, methods=["DELETE"])
     app.add_api_route(PLAYBACK_PATH, save_song_playback, methods=["PUT"])

@@ -119,6 +119,11 @@ export function stubServer(reply: Response) {
         new Response(JSON.stringify({ songs: [song] }), { status: 200 }),
       );
     }
+    if (method === "GET" && url === "/api/recent-songs") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ songs: [] }), { status: 200 }),
+      );
+    }
     if (method === "POST" && url === "/api/song-versions") {
       return Promise.resolve(reply.clone());
     }
@@ -143,7 +148,7 @@ export async function openSavedSong(reply: Response) {
 // Every test file that opens a song calls this once at the top level.
 export function installFakeSongPage() {
   beforeEach(() => {
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", "/library");
     fakePlayer.seconds = 0;
     fakePlayer.playing = false;
     fakePlayer.seeks.length = 0;

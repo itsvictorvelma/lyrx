@@ -9,7 +9,14 @@ from contextlib import closing, contextmanager
 from pydantic import TypeAdapter, ValidationError
 
 from lyrx import config
-from lyrx.schemas import Playback, SavedSong, Song, SongVersionsResponse, VersionLine
+from lyrx.schemas import (
+    Playback,
+    RecentSong,
+    SavedSong,
+    Song,
+    SongVersionsResponse,
+    VersionLine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +205,27 @@ def list_songs() -> list[SavedSong]:
             last_opened_at=round(opened_at * 1000),
         )
         for song_id, track, artist, album, duration, video_id, opened_at in rows
+    ]
+
+
+def list_recent_songs(limit: int) -> list[RecentSong]:
+    """Cached songs, saved or not, most recently opened first, without their lines."""
+    with connect() as connection:
+        rows = connection.execute(
+            "SELECT id, track, artist, album, duration_seconds, video_id FROM saved_songs"
+            " ORDER BY last_opened_at DESC, id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        RecentSong(
+            id=song_id,
+            track=track,
+            artist=artist,
+            album=album,
+            duration_seconds=duration,
+            video_id=to_playback(video_id, 0).video_id,
+        )
+        for song_id, track, artist, album, duration, video_id in rows
     ]
 
 
