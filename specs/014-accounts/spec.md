@@ -1,6 +1,6 @@
 # 014 — Personal accounts
 
-Status: approved
+Status: draft (updated 2026-11-20 for specs 021–025; approve again)
 
 ## Goal
 
@@ -22,7 +22,7 @@ Anyone with the link can search and read songs without an account, so an employe
 - Email, password reset by email, sign-in with Google or another provider.
 - Admin pages, roles, invite codes.
 - Docker, Caddy, environment settings, a trusted proxy, serving the built page: spec 020.
-- Hidden columns and the theme stay in each browser, as today.
+- Hidden columns, the theme, the volume, and the playback speed stay in each browser, as today.
 - Featured or example songs on the guest home page (an idea for later).
 
 ## Rules
@@ -41,6 +41,15 @@ Per-person data
 - The cache table holds the song and its lines only. A new table holds `(user_id, song_id, video_id, offset_ms, saved_at, last_opened_at)`.
 - `GET /api/songs`, save, unsave, and playback need a signed-in person, otherwise `401 sign_in_required`. Each one sees and changes only its own rows.
 - Opening a song works for everyone. For a signed-in person it also returns their saved state and video, and updates their last-opened time. The `saved` mark in search results is per person (always false for a guest).
+- The cache keeps its own `last_opened_at`, updated when anyone opens the song, for the home page's "Songs in Lyrx" row.
+- `GET /api/songs` keeps `offsetMs` (spec 025) so Undo after Remove restores the video and sync.
+
+Home page (spec 021)
+- "Songs in Lyrx" stays: cached songs, most recently opened by anyone, with no sign of who opened them. `GET /api/recent-songs` no longer returns another person's video: a video is one person's choice, and sharing it would let anyone put any YouTube thumbnail on the home page. A song shows its first character on its hue, or the signed-in person's own video thumbnail when they saved one.
+- The Continue card and the "Your songs" row show only for a signed-in person, from their own library. A guest sees the hero, the search box, "Songs in Lyrx", and "Sign in to save songs."
+
+Playing along as a guest (spec 024)
+- A guest can paste a YouTube link or play a file, nudge the sync, and change speed and volume. Nothing is stored and no error shows: the playback save is skipped for a guest. Saving the song is what keeps the video.
 
 Daily cap on new translations
 - Only a song that is not cached counts (a call to LRCLIB and the translators). It counts when it starts, so failures count too. Opening a cached song is always free, and so is filling in a cached song's missing lines.
@@ -52,7 +61,10 @@ Abuse limits
 - Sign-ups: 5 per IP per UTC day. Failed sign-ins: 10 per username per hour, then `429 too_many_attempts` (also for the right password, until the hour passes).
 
 Page
-- Header: "Sign in" for guests. A signed-in person sees their username, which links to `/account`.
+- Header: Home and Your songs stay (spec 023). Then "Sign in" for guests; a signed-in person sees their username, which links to `/account`.
+- Your songs for a guest: "Sign in to keep your songs here." with a Sign in button, instead of the library.
+- Tab title (spec 025): "Sign in · Lyrx" for a guest on `/account`, "Your account · Lyrx" when signed in.
+- After signing in from Save, the page returns to the song by replacing the `/account` history entry, so the song's Back arrow (spec 025) skips the sign-in page.
 - `/account` for a guest: username, password, and a switch between "Sign in" and "Create account". Errors show as text.
 - `/account` signed in: "Signed in as …", "Sign out", and "Delete account" (asks for the password).
 - Guest home: the search box and a short line, "Sign in to save songs." The Save button takes a guest to `/account`, then back to the song.
@@ -72,7 +84,7 @@ Page
 - AC-2: The stored password is a salted scrypt hash, and the right password signs in. A wrong password and an unknown username give the same `401 sign_in_failed`.
 - AC-3: The cookie is `HttpOnly` and `SameSite=Lax`, and `Secure` only when `SECURE_COOKIES` is true. The database holds the token's hash, not the token.
 - AC-4: Signing out removes the session, and the old cookie is no longer accepted. An expired session is not accepted.
-- AC-5: A guest gets `401 sign_in_required` on the saved-songs routes. A guest can search and open a song.
+- AC-5: A guest gets `401 sign_in_required` on the saved-songs routes. A guest can search and open a song, and `GET /api/recent-songs` works for a guest and never includes a video that another person chose.
 - AC-6: Two accounts save different songs and videos, and each sees only their own, in the library, on open, and in search. Unsaving one does not affect the other or remove the cached song.
 - AC-7: Opening a cached song does not count toward any cap. The 21st new song of the day for one account gives `429 daily_limit`, and LRCLIB is not called.
 - AC-8: Guests are capped per IP, separately from accounts.
@@ -84,6 +96,8 @@ Page
 - AC-14: The reset command sets a new password and signs that person out everywhere.
 - AC-15 (page): A guest sees "Sign in", and Save takes them to `/account`. After signing in they return to the song, the header shows the username, and the library shows only their songs. Sign-in errors show as text.
 - AC-16 (page): Sign out and Delete account on `/account` work, and the page returns to the guest home.
+- AC-17 (page): A guest's home has no Continue card or "Your songs" row, and Your songs shows the sign-in prompt. A guest who pastes a YouTube link gets the video playing with no error and no save request.
+- AC-18 (page): Remove then Undo works per person: the song comes back to that person's library with their video and sync.
 
 ## Plan
 
@@ -96,7 +110,7 @@ Backend, new area `backend/src/lyrx/accounts/`:
 
 Backend, other files:
 - New `database.py`: `connect()` and every `CREATE TABLE` (moved out of `library.py`), plus the one-time upgrade: old `saved_songs` → `songs` (cache) + `library_entries` with `user_id NULL` for the saved rows.
-- `library.py`: queries take a `user_id`. Cache queries (`find_song`, `cache_song`, `replace_lines`) stay shared.
+- `library.py`: queries take a `user_id`. Cache queries (`find_song`, `cache_song`, `replace_lines`, `list_recent_songs`) stay shared; `list_recent_songs` takes an optional `user_id` to add that person's own video.
 - New `rate_limits.py`: one `request_counts(kind, who, window_start, count)` table, `check_and_count(kind, who, limit, window)`. Used for new songs (account/IP/site), sign-ups, and failed sign-ins.
 - New `server/origin_check.py`: ASGI layer, after the Host check.
 - `app.py`: routes pass the signed-in user; `get_song_versions` checks the caps before `open_song`.
@@ -108,6 +122,7 @@ Frontend:
 - New `frontend/src/account/`: `accountApi.ts`, `useAccount.ts` (who is signed in, shared through context), `AccountPage.tsx` (+ test).
 - `routing.ts`: `/account` route, with a return path for Save.
 - `header/Header.tsx`: Sign in / username link. `library/LibraryPage.tsx`: guest state. `lyrics/SaveButton.tsx`: guest goes to `/account`.
+- `home/HomePage.tsx`: guest version. `lyrics/PlayerBar.tsx`: skip the playback save for a guest. `App.tsx`: `/account` tab title.
 - `lyrics/fakeSongPage.tsx`: fake server learns the account routes.
 
 Docs: README folder map, `AGENTS.md` roadmap, `specs/README.md`.
