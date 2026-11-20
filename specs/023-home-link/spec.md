@@ -1,6 +1,6 @@
 # 023 — Home link in the header
 
-Status: approved (asked for by the user on 2026-11-20)
+Status: done (asked for by the user on 2026-11-20)
 
 ## Goal
 

@@ -74,6 +74,22 @@ export interface AudioClock {
   seekMs: (milliseconds: number) => void;
   // 0 (silent) to 100 (full).
   setVolume: (percent: number) => void;
+  // 1 is normal speed; 0.5 is half.
+  setPlaybackRate: (rate: number) => void;
+}
+
+// The speeds the speed button steps through, in order; a press after the last starts again.
+const PLAYBACK_SPEEDS = [1, 0.75, 0.5];
+
+export function nextSpeed(speed: number): number {
+  const at = PLAYBACK_SPEEDS.indexOf(speed);
+  return PLAYBACK_SPEEDS[(at + 1) % PLAYBACK_SPEEDS.length] ?? 1;
+}
+
+// A YouTube search for the song, opened in a new tab; the server fetches nothing.
+export function youTubeSearchUrl(track: string, artist: string): string {
+  const query = encodeURIComponent(`${track} ${artist}`.trim());
+  return `https://www.youtube.com/results?search_query=${query}`;
 }
 
 // "1:05" for 65,400 milliseconds.

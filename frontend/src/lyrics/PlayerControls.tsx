@@ -1,4 +1,4 @@
-// The player bar's controls: previous / play / next, loop, position, volume, sync, the video toggle.
+// The player bar's controls: previous / play / next, loop, position, volume, speed, sync, video.
 import { formatClock, formatOffset } from "./playback";
 import type { Progress } from "./types";
 import { VOLUME_STEP } from "./volume";
@@ -19,6 +19,8 @@ interface PlayerControlsProps {
   onSeek: (milliseconds: number) => void;
   onPreviousLine: () => void;
   onNextLine: () => void;
+  speed: number;
+  onChangeSpeed: () => void;
   volume: number;
   onVolumeChange: (volume: number) => void;
   onToggleMute: () => void;
@@ -132,6 +134,14 @@ export function PlayerControls(props: PlayerControlsProps) {
           }}
         />
       </div>
+      <button
+        type="button"
+        className="pill-button speed-button"
+        aria-label={`Playback speed: ${String(props.speed)}×`}
+        onClick={props.onChangeSpeed}
+      >
+        {props.speed}×
+      </button>
       {hasTimings && (
         <div className="sync" role="group" aria-label="Sync">
           <button
