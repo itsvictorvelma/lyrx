@@ -67,9 +67,11 @@ class SongSearchResponse(BaseModel):
 
 
 class SavedSong(Song):
-    """A saved song in the library list: its linked video, if any, and when it was last opened."""
+    """A saved song in the library list: its video and sync, and when it was last opened."""
 
     video_id: str | None = Field(serialization_alias="videoId")
+    # Listed so Undo after Remove can save the song again with its sync (spec 025).
+    offset_ms: int = Field(serialization_alias="offsetMs")
     last_opened_at: int = Field(serialization_alias="lastOpenedAt")
 
 

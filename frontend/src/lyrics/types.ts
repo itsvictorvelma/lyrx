@@ -34,9 +34,10 @@ export interface Song {
   durationSeconds: number;
 }
 
-// A saved song in the library: its linked video, and when it was last opened (Unix milliseconds).
+// A saved song in the library: its video and sync, and when it was last opened (Unix milliseconds).
 export interface SavedSong extends Song {
   videoId: string | null;
+  offsetMs: number;
   lastOpenedAt: number;
 }
 
