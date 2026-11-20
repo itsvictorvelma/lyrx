@@ -2,8 +2,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { App, FALLBACK_MESSAGE, timingText } from "./App";
+import { App, FALLBACK_MESSAGE, pageTitle, timingText } from "./App";
 import type { Line, SavedSong, SearchResult, Song } from "./lyrics/types";
+import { REMOVED_MESSAGE_MS } from "./library/RemovedMessage";
 import { navigate } from "./routing";
 
 // A fake server: each address answers from its own queue; the saved list is empty by default.
@@ -126,7 +127,7 @@ function asSaved(
   lastOpenedAt = Date.now(),
   videoId: string | null = null,
 ): SavedSong {
-  return { ...asSong(result), videoId, lastOpenedAt };
+  return { ...asSong(result), videoId, offsetMs: 0, lastOpenedAt };
 }
 
 function songReply(
@@ -219,29 +220,78 @@ test("AC-1: clicking a library tile opens the song from your songs", async () =>
   ).toBeTruthy();
 });
 
-// Spec 016 AC-9: Remove now calls DELETE …/saved; the song stays cached, so opening it again is
-// instant (checked by the server test for spec 016 AC-5).
-test("AC-4 and spec 016 AC-9: Remove asks first; confirming takes the song off, cancelling keeps it", async () => {
+// Spec 016 AC-9: Remove calls DELETE …/saved; the song stays cached. Spec 025 AC-4: no confirm
+// box; Undo saves it again with its video and sync.
+test("spec 025 AC-4: Remove takes the song off at once, and Undo puts it back with its sync", async () => {
+  window.history.replaceState(null, "", "/library");
+  const withVideo = {
+    ...asSaved(bestMatch, Date.now(), "abcDEF12_-z"),
+    offsetMs: -750,
+  };
   respond(
     "GET /api/songs",
-    jsonResponse(200, { songs: [asSaved(bestMatch), asSaved(liveMatch)] }),
+    jsonResponse(200, { songs: [withVideo, asSaved(liveMatch)] }),
+    jsonResponse(200, { songs: [withVideo, asSaved(liveMatch)] }),
   );
   respond("DELETE /api/songs/101/saved", jsonResponse(204, null));
-  window.history.replaceState(null, "", "/library");
-  const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+  respond("PUT /api/songs/101/saved", jsonResponse(204, null));
+  const confirm = vi.spyOn(window, "confirm");
   const user = userEvent.setup();
   render(<App />);
-  const remove = await screen.findByRole("button", { name: "Remove 星の歌" });
 
-  await user.click(remove);
-  expect(confirm).toHaveBeenCalledWith("Remove 星の歌 from your songs?");
-  expect(screen.getByRole("button", { name: "Remove 星の歌" })).toBeTruthy();
-
-  await user.click(remove);
+  await user.click(
+    await screen.findByRole("button", { name: "Remove 星の歌" }),
+  );
+  expect(confirm).not.toHaveBeenCalled();
   expect(screen.queryByRole("button", { name: "Remove 星の歌" })).toBeNull();
   expect(
-    screen.getByRole("button", { name: "Remove 星の歌 (live)" }),
+    screen.getByRole("status", { name: "Removed song" }).textContent,
+  ).toContain("Removed 星の歌");
+
+  await user.click(screen.getByRole("button", { name: "Undo" }));
+  expect(bodyOf("PUT", "/api/songs/101/saved")).toEqual({
+    videoId: "abcDEF12_-z",
+    offsetMs: -750,
+  });
+  expect(
+    await screen.findByRole("button", { name: "Remove 星の歌" }),
   ).toBeTruthy();
+  expect(screen.getByRole("status", { name: "Removed song" }).textContent).toBe(
+    "",
+  );
+});
+
+test("spec 025: the Undo message stays while Undo has focus, and goes 6 s after", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  window.history.replaceState(null, "", "/library");
+  respond("GET /api/songs", jsonResponse(200, { songs: [asSaved(bestMatch)] }));
+  respond("DELETE /api/songs/101/saved", jsonResponse(204, null));
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  render(<App />);
+
+  await user.click(
+    await screen.findByRole("button", { name: "Remove 星の歌" }),
+  );
+  act(() => {
+    screen.getByRole("button", { name: "Undo" }).focus();
+  });
+  act(() => {
+    vi.advanceTimersByTime(REMOVED_MESSAGE_MS + 1000);
+  });
+  expect(
+    screen.getByRole("status", { name: "Removed song" }).textContent,
+  ).toContain("Removed 星の歌");
+
+  act(() => {
+    screen.getByRole("button", { name: "Undo" }).blur();
+  });
+  act(() => {
+    vi.advanceTimersByTime(REMOVED_MESSAGE_MS + 100);
+  });
+  expect(screen.getByRole("status", { name: "Removed song" }).textContent).toBe(
+    "",
+  );
+  vi.useRealTimers();
 });
 
 test("AC-6: a song address opens that song; Back returns to the library", async () => {
@@ -294,7 +344,7 @@ test("leaving a song and opening it again fetches it fresh and refreshes the til
 
   await user.click(await screen.findByRole("button", tile));
   await screen.findByRole("table");
-  await user.click(screen.getByRole("button", { name: "Back to your songs" }));
+  await user.click(screen.getByRole("button", { name: "Back" }));
   await user.click(await screen.findByRole("button", tile));
 
   expect(await screen.findByText("Fresh road")).toBeTruthy();
@@ -428,7 +478,9 @@ test("AC-5: while searching, the steps and the seconds show", async () => {
   await findSong();
   await vi.advanceTimersByTimeAsync(3000);
 
-  const status = screen.getByRole("status");
+  const status = screen.getByText(/Finding the song…/, {
+    selector: '[role="status"]',
+  });
   expect(status.textContent).toContain("Finding the song…");
   expect(status.textContent).toContain("3 s");
   const steps = within(screen.getByRole("list", { name: "Steps" }));
@@ -480,9 +532,9 @@ test("removing a song clears its Saved mark in the search results", async () => 
   const user = await findSong();
   await screen.findByRole("table");
 
-  await user.click(screen.getByRole("button", { name: "Back to your songs" }));
+  await user.click(screen.getByRole("link", { name: "Your songs" }));
   await user.click(
-    screen.getByRole("button", { name: "Remove 星の歌 (live)" }),
+    await screen.findByRole("button", { name: "Remove 星の歌 (live)" }),
   );
   act(() => {
     navigate("/song/101");
@@ -490,4 +542,18 @@ test("removing a song clears its Saved mark in the search results", async () => 
 
   await user.click(await screen.findByText("Not this one?"));
   expect(screen.queryByText("Saved")).toBeNull();
+});
+
+test("spec 025 AC-1: the tab title follows the page", async () => {
+  expect(pageTitle({ page: "home" }, null)).toBe(
+    "Lyrx · Read Japanese songs line by line",
+  );
+  expect(pageTitle({ page: "library" }, null)).toBe("Your songs · Lyrx");
+  expect(pageTitle({ page: "song", id: 101 }, null)).toBe("Opening… · Lyrx");
+
+  window.history.replaceState(null, "", "/song/101");
+  respond("POST /api/song-versions", songReply(bestMatch, lines, true));
+  render(<App />);
+  await screen.findByRole("table");
+  expect(document.title).toBe("星の歌 · ミナト · Lyrx");
 });

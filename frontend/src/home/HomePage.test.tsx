@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 function saved(song: RecentSong, lastOpenedAt: number): SavedSong {
-  return { ...song, lastOpenedAt };
+  return { ...song, offsetMs: 0, lastOpenedAt };
 }
 
 test("AC-1: Your songs goes to the library and the wordmark back home", async () => {

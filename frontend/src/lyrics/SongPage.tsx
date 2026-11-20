@@ -1,6 +1,6 @@
 // A song: its header row (or the Focus strip), the lyrics rows, the player bar fixed below, and the study tools.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LIBRARY_PATH, navigate } from "../routing";
+import { goBack } from "../routing";
 import { HideColumnToggles, PhoneTabs } from "./ColumnButtons";
 import { OtherMatches } from "./OtherMatches";
 import { useFollowLine } from "./followLine";
@@ -239,10 +239,8 @@ export function SongPage(props: SongPageProps) {
           <button
             type="button"
             className="icon-button"
-            aria-label="Back to your songs"
-            onClick={() => {
-              navigate(LIBRARY_PATH);
-            }}
+            aria-label="Back"
+            onClick={goBack}
           >
             <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
               <path d="M19 12H5" />

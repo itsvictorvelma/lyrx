@@ -117,6 +117,7 @@ export function stubServer(reply: Response) {
         album: "",
         durationSeconds: 214,
         videoId: null,
+        offsetMs: 0,
         lastOpenedAt: Date.now(),
       };
       return Promise.resolve(

@@ -177,7 +177,7 @@ function HomeFooter() {
           English by Groq and Gemini.
         </p>
         <p>
-          Built by Victor. <a href={SOURCE_CODE_URL}>Source on GitHub</a>
+          Built by Victor Velma. <a href={SOURCE_CODE_URL}>Source on GitHub</a>
         </p>
       </div>
       <p>

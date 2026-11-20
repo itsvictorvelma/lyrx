@@ -26,14 +26,29 @@ export function songPath(id: number): string {
   return `/song/${String(id)}`;
 }
 
+// Entries Lyrx adds are marked, so Back on a song knows there is a Lyrx page behind it.
+const IN_APP_ENTRY = { lyrx: true };
+
 // Moves to an address and tells `useRoute` listeners; `replace` swaps the current history entry.
 export function navigate(path: string, { replace = false } = {}): void {
   if (replace) {
-    window.history.replaceState(null, "", path);
+    window.history.replaceState(window.history.state, "", path);
   } else if (window.location.pathname !== path) {
-    window.history.pushState(null, "", path);
+    window.history.pushState(IN_APP_ENTRY, "", path);
   }
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+// Back to the Lyrx page before this one; home when this page was opened from outside.
+export function goBack(): void {
+  const state: unknown = window.history.state;
+  const cameFromLyrx =
+    typeof state === "object" && state !== null && "lyrx" in state;
+  if (cameFromLyrx) {
+    window.history.back();
+  } else {
+    navigate(HOME_PATH);
+  }
 }
 
 // The current page, updated on Back, Forward, and `navigate`; `onChange` hears each move.

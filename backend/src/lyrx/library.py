@@ -191,21 +191,26 @@ def list_songs() -> list[SavedSong]:
     """Every song in the library without its lines, most recently opened first."""
     with connect() as connection:
         rows = connection.execute(
-            "SELECT id, track, artist, album, duration_seconds, video_id, last_opened_at"
-            " FROM saved_songs WHERE saved = 1 ORDER BY last_opened_at DESC, id DESC"
+            "SELECT id, track, artist, album, duration_seconds, video_id, offset_ms,"
+            " last_opened_at FROM saved_songs WHERE saved = 1"
+            " ORDER BY last_opened_at DESC, id DESC"
         ).fetchall()
-    return [
-        SavedSong(
-            id=song_id,
-            track=track,
-            artist=artist,
-            album=album,
-            duration_seconds=duration,
-            video_id=to_playback(video_id, 0).video_id,
-            last_opened_at=round(opened_at * 1000),
+    songs = []
+    for song_id, track, artist, album, duration, video_id, offset_ms, opened_at in rows:
+        playback = to_playback(video_id, offset_ms)
+        songs.append(
+            SavedSong(
+                id=song_id,
+                track=track,
+                artist=artist,
+                album=album,
+                duration_seconds=duration,
+                video_id=playback.video_id,
+                offset_ms=playback.offset_ms,
+                last_opened_at=round(opened_at * 1000),
+            )
         )
-        for song_id, track, artist, album, duration, video_id, opened_at in rows
-    ]
+    return songs
 
 
 def list_recent_songs(limit: int) -> list[RecentSong]:

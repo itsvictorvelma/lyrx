@@ -35,7 +35,7 @@ The song and lyrics shown are invented for these screenshots.
 ## What works today
 
 - **Home:** an example line sung part by part shows what Lyrx does, then a large search box. First-time visitors see how it works; returning ones get Continue. "Songs already in Lyrx" opens songs that are already translated, instantly.
-- **Your songs (`/library`):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
+- **Your songs (`/library`):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist; filter by title or artist once you have more than 8. Remove can be undone.
 - **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
 - **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line is highlighted and kept in view (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync; the volume slider and Mute set the loudness (remembered); the speed button slows the song to 0.75× or 0.5×. "Find on YouTube" opens a search for the song's video. The video and sync are kept once you save the song. Your file is never uploaded.
@@ -132,6 +132,8 @@ lyrx/
 │                          plus shared helpers at the top: fake Groq, Gemini, and LRCLIB,
 │                          the network guard, the error-shape check, and a raw ASGI runner
 └── frontend/              The page (React, Vite, TypeScript)
+    ├── index.html         The page shell: title, link preview tags, icons
+    ├── public/            The favicon, phone icon, and link preview image
     └── src/
         ├── main.tsx           Mounts the page
         ├── App.tsx            The app shell: header, pages, search, Focus, ? and / off the song page
@@ -150,7 +152,8 @@ lyrx/
         │   ├── LibraryPage.tsx    Your songs (/library): tiles, sorting, the empty welcome
         │   ├── SongTile.tsx       One tile: art, title, last opened, Remove
         │   ├── SongArt.tsx        A song's art: YouTube thumbnail or first character on its hue
-        │   └── songTiles.ts       Thumbnail address, title colour, "Opened …", sort orders
+        │   ├── RemovedMessage.tsx "Removed …" with Undo after Remove
+        │   └── songTiles.ts       Thumbnail address, title colour, "Opened …", sort orders, filter
         └── lyrics/
             ├── types.ts           Data shapes shared with the server
             ├── api.ts             The requests to the server, and the checks on their replies
