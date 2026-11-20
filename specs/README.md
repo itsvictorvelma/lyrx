@@ -29,7 +29,8 @@ Numbers are permanent ids, never reused, because commits and PRs refer to them. 
 | 016 | Save songs on purpose (Save button); fill in missing lines on reopen | done |
 | 017 | Kana rain while a song loads | done |
 | 018 | Reading comfort: calm following, lead-in, tighter rows, roomier Focus mode | done |
-| 015 | Study tools: hide a column, loop a line, keyboard shortcuts | not started |
+| 019 | Translator request limits: one overall deadline, a byte cap on Gemini replies | done |
+| 015 | Study tools: hide a column, loop a line, keyboard shortcuts | approved |
 | 014 | Personal accounts, ready for hosting | not started |
 | — | Next language | decided after 008 is in use |
 

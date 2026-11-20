@@ -150,14 +150,20 @@ lyrx/
             ├── api.ts             The requests to the server, and the checks on their replies
             ├── SearchProgress.tsx While a song loads: kana rain and the terminal-style steps card
             ├── KanaRain.tsx       The falling kana behind the loading steps (canvas)
-            ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar
+            ├── SongPage.tsx       A song: header row or Focus strip, lyrics, player bar, study tools
+            ├── ColumnButtons.tsx  The phone's column tabs and the Hide toggles
+            ├── hiddenColumns.ts   Covered columns (remembered on this browser) and revealed cells
+            ├── lineLoop.ts        Where a looped line starts and ends in the audio
+            ├── shortcuts.ts       The song page's keyboard shortcuts, and when keys are left alone
+            ├── ShortcutList.tsx   The keyboard shortcut panel
             ├── SaveButton.tsx     The Save / Saved toggle on a song
             ├── OtherMatches.tsx   "Not this one?": the other results in a popover
-            ├── VersionsTable.tsx  The four-column table, with the sung line highlighted
+            ├── VersionsTable.tsx  The four-column table: sung and looped lines marked, covered cells
             ├── followLine.ts      Calm following: scroll only when the sung line passes 60% of the view
             ├── PlayerBar.tsx      The bar under a song: choosing audio, video window, keeping the sync
-            ├── PlayerControls.tsx Previous / play / next, position, Earlier/Later sync
+            ├── PlayerControls.tsx Previous / play / next, Loop line, position, Earlier/Later sync
             ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
             ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser
-            └── playback.ts        Link → video id, the line being sung, the sync, the player clock
+            ├── playback.ts        Link → video id, the line being sung, the sync, the player clock
+            └── fakeSongPage.tsx   Test helpers: a fake YouTube player and server for song page tests
 ```

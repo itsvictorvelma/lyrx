@@ -10,6 +10,9 @@ export interface Line {
   startMs: number | null;
 }
 
+// The versions next to the original: the phone shows one of them, and any of them can be hidden.
+export type VersionColumn = "hiragana" | "romaji" | "english";
+
 // A saved song's YouTube video and how far its line timings are moved, in milliseconds.
 export interface Playback {
   videoId: string | null;
