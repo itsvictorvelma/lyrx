@@ -1397,6 +1397,18 @@ button:disabled {
   accent-color: var(--accent);
 }
 
+.speed-button {
+  min-width: 3.5rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-hint {
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--dim);
+}
+
 .link-form {
   display: flex;
   flex-wrap: wrap;

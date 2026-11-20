@@ -331,6 +331,8 @@ export function SongPage(props: SongPageProps) {
       </div>
       <PlayerBar
         songId={song.id}
+        track={song.track}
+        artist={song.artist}
         savedVideoId={props.playback.videoId}
         offsetMs={offsetMs}
         hasTimings={timed}

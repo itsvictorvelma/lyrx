@@ -14,6 +14,7 @@ export interface YouTubePlayerHandle {
   pauseVideo?: () => void;
   seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
   setVolume?: (percent: number) => void;
+  setPlaybackRate?: (rate: number) => void;
   destroy: () => void;
 }
 
@@ -100,7 +101,7 @@ export function YouTubePlayer({
           playerVars: { playsinline: 1, rel: 0 },
           events: {
             onReady: () => {
-              clock?.applyVolume();
+              clock?.applySettings();
             },
           },
         });
@@ -125,21 +126,29 @@ export function YouTubePlayer({
 }
 
 // The player's methods exist only once it is ready, so each one is checked before use. A volume
-// set before then is kept and applied by `applyVolume` from the player's onReady.
+// or speed set before then is kept and applied by `applySettings` from the player's onReady.
 function clockFor(
   player: YouTubePlayerHandle,
-): AudioClock & { applyVolume: () => void } {
+): AudioClock & { applySettings: () => void } {
   let volume: number | null = null;
-  const applyVolume = () => {
+  let rate: number | null = null;
+  const applySettings = () => {
     if (volume !== null) {
       player.setVolume?.(volume);
     }
+    if (rate !== null) {
+      player.setPlaybackRate?.(rate);
+    }
   };
   return {
-    applyVolume,
+    applySettings,
     setVolume: (percent) => {
       volume = percent;
-      applyVolume();
+      applySettings();
+    },
+    setPlaybackRate: (next) => {
+      rate = next;
+      applySettings();
     },
     timeMs: () =>
       player.getCurrentTime === undefined

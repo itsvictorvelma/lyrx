@@ -10,7 +10,7 @@ import {
   songReply,
   VIDEO_ID,
 } from "./fakeSongPage";
-import { BAD_LINK_MESSAGE } from "./PlayerBar";
+import { BAD_LINK_MESSAGE, PLAY_ALONG_HINT } from "./PlayerBar";
 import { NO_TIMINGS_TEXT } from "./SongPage";
 
 installFakeSongPage();
@@ -296,6 +296,82 @@ test("spec 022 AC-1, AC-3: an audio file starts at the current level and follows
     target: { value: "80" },
   });
   expect(audio?.volume).toBeCloseTo(0.8);
+});
+
+test("spec 024 AC-1: the speed button cycles and sets the YouTube player's rate, also once ready", async () => {
+  const user = await openSavedSong(songReply(LINES, VIDEO_ID));
+  await waitFor(() => {
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
+  });
+  expect(fakePlayer.rate).toBe(1);
+
+  await user.click(screen.getByRole("button", { name: "Playback speed: 1×" }));
+  expect(fakePlayer.rate).toBe(0.75);
+  await user.click(
+    screen.getByRole("button", { name: "Playback speed: 0.75×" }),
+  );
+  expect(fakePlayer.rate).toBe(0.5);
+
+  fakePlayer.rate = null;
+  fakePlayer.becomeReady();
+  expect(fakePlayer.rate).toBe(0.5);
+
+  await user.click(
+    screen.getByRole("button", { name: "Playback speed: 0.5×" }),
+  );
+  expect(fakePlayer.rate).toBe(1);
+});
+
+test("spec 024 AC-2, AC-4: an audio file follows the speed button; the hint goes once audio plays", async () => {
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL = () => "blob:fake";
+      static revokeObjectURL = () => undefined;
+    },
+  );
+  const user = await openSavedSong(songReply(LINES));
+  expect(screen.getByText(PLAY_ALONG_HINT)).toBeTruthy();
+
+  await user.upload(
+    screen.getByLabelText("Play a file"),
+    new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
+  );
+  expect(screen.queryByText(PLAY_ALONG_HINT)).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "Playback speed: 1×" }));
+  expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
+});
+
+test("spec 024: a new player for the same song keeps the chosen speed", async () => {
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL = () => "blob:fake";
+      static revokeObjectURL = () => undefined;
+    },
+  );
+  const user = await openSavedSong(songReply(LINES, VIDEO_ID));
+  await user.click(screen.getByRole("button", { name: "Playback speed: 1×" }));
+
+  await user.click(screen.getByRole("button", { name: "Change audio" }));
+  await user.upload(
+    screen.getByLabelText("Play a file"),
+    new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
+  );
+  expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
+});
+
+test("spec 024 AC-3: Find on YouTube opens a search for the song in a new tab", async () => {
+  await openSavedSong(songReply(LINES));
+
+  const link = screen.getByRole("link", { name: "Find on YouTube" });
+  expect(link.getAttribute("href")).toBe(
+    "https://www.youtube.com/results?search_query=" +
+      encodeURIComponent("星の歌 ミナト"),
+  );
+  expect(link.getAttribute("target")).toBe("_blank");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
 });
 
 test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", async () => {

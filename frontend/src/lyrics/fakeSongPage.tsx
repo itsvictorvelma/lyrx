@@ -45,6 +45,7 @@ export const fakePlayer = {
   createdFor: [] as string[],
   // The last volume set, and YouTube's "ready" call for the newest player.
   volume: null as number | null,
+  rate: null as number | null,
   becomeReady: (() => undefined) as () => void,
 };
 
@@ -70,6 +71,9 @@ export class FakePlayer implements YouTubePlayerHandle {
   };
   setVolume = (percent: number) => {
     fakePlayer.volume = percent;
+  };
+  setPlaybackRate = (rate: number) => {
+    fakePlayer.rate = rate;
   };
   destroy = () => undefined;
 }
@@ -154,6 +158,7 @@ export function installFakeSongPage() {
     fakePlayer.seeks.length = 0;
     fakePlayer.createdFor.length = 0;
     fakePlayer.volume = null;
+    fakePlayer.rate = null;
     window.localStorage.removeItem("lyrx-volume");
     fakeFetch.mockReset();
     vi.stubGlobal("fetch", fakeFetch);

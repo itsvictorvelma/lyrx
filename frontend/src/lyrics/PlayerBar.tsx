@@ -3,7 +3,12 @@ import { useCallback, useRef, useState } from "react";
 import { matchesMedia } from "../mediaQuery";
 import { AudioFilePlayer } from "./AudioFilePlayer";
 import { savePlayback } from "./api";
-import { nudgeOffset, parseVideoId } from "./playback";
+import {
+  nextSpeed,
+  nudgeOffset,
+  parseVideoId,
+  youTubeSearchUrl,
+} from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerControls, VideoIcon } from "./PlayerControls";
 import type { Playback, Progress } from "./types";
@@ -13,6 +18,8 @@ import { YouTubePlayer } from "./YouTubePlayer";
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
 const PLAYER_FAILED_MESSAGE = "Couldn't load the YouTube player. Try again.";
 const SAVE_FAILED_MESSAGE = "Couldn't save the video and sync for this song.";
+export const PLAY_ALONG_HINT =
+  "Play along: find the song on YouTube and add its link, or play a file from your computer.";
 
 // The width below which styles.css uses the phone layout.
 const PHONE_QUERY = "(max-width: 719px)";
@@ -27,6 +34,8 @@ type Source =
 
 interface PlayerBarProps {
   songId: number;
+  track: string;
+  artist: string;
   savedVideoId: string | null;
   offsetMs: number;
   hasTimings: boolean;
@@ -65,17 +74,27 @@ export function PlayerBar(props: PlayerBarProps) {
   const volumeRef = useRef(volume);
   const beforeMute = useRef(volume);
   const clockRef = useRef<AudioClock | null>(null);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(speed);
 
-  // Every new player starts at the current volume.
+  // Every new player starts at the current volume and speed.
   const { onClock } = props;
   const handleClock = useCallback(
     (clock: AudioClock | null) => {
       clockRef.current = clock;
       clock?.setVolume(volumeRef.current);
+      clock?.setPlaybackRate(speedRef.current);
       onClock(clock);
     },
     [onClock],
   );
+
+  function changeSpeed() {
+    const next = nextSpeed(speed);
+    speedRef.current = next;
+    setSpeed(next);
+    clockRef.current?.setPlaybackRate(next);
+  }
 
   function changeVolume(next: number) {
     volumeRef.current = next;
@@ -179,9 +198,11 @@ export function PlayerBar(props: PlayerBarProps) {
           {error}
         </p>
       )}
+      {source === null && <p className="player-hint">{PLAY_ALONG_HINT}</p>}
       <div className="player-row">
         {showChooser ? (
           <AudioChooser
+            searchUrl={youTubeSearchUrl(props.track, props.artist)}
             linkFormOpen={linkFormOpen}
             onToggleLink={() => {
               setLinkFormOpen((open) => !open);
@@ -203,6 +224,8 @@ export function PlayerBar(props: PlayerBarProps) {
             hasVideo={source.kind === "youtube"}
             videoShown={videoShown}
             onNudge={nudge}
+            speed={speed}
+            onChangeSpeed={changeSpeed}
             volume={volume}
             onVolumeChange={changeVolume}
             onToggleMute={() => {
@@ -246,19 +269,30 @@ export function PlayerBar(props: PlayerBarProps) {
 }
 
 interface AudioChooserProps {
+  // A YouTube search for this song, opened in a new tab.
+  searchUrl: string;
   linkFormOpen: boolean;
   onToggleLink: () => void;
   onFile: (file: File | undefined) => void;
 }
 
-// With no audio yet: add a YouTube link, or pick a file from this computer.
+// With no audio yet: find the song on YouTube, add its link, or pick a file from this computer.
 function AudioChooser({
+  searchUrl,
   linkFormOpen,
   onToggleLink,
   onFile,
 }: AudioChooserProps) {
   return (
     <div className="audio-chooser">
+      <a
+        className="pill-button"
+        href={searchUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Find on YouTube
+      </a>
       <button
         type="button"
         className="pill-button"
