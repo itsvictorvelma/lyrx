@@ -247,47 +247,49 @@ interface AudioChooserProps {
   onFile: (file: File | undefined) => void;
 }
 
-// With no audio yet, or when changing it: find the song on YouTube and paste its link (the box is
-// always open, so it is find, copy, paste, play), or play a file from this computer.
+// With no audio yet, or when changing it, one row: find the song on YouTube, paste its link into
+// the always-open box (same pill as the header search), or play a file from this computer.
 function AudioChooser(props: AudioChooserProps) {
   return (
-    <div className="audio-chooser">
-      <p className="chooser-title">{PLAY_ALONG_TITLE}</p>
-      <div className="chooser-row">
-        <a
-          className="pill-button primary-button"
-          href={props.searchUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <VideoIcon /> Find on YouTube
-        </a>
-        <form
-          className="link-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            props.onPlayLink();
+    <div className="audio-chooser" role="group" aria-label={PLAY_ALONG_TITLE}>
+      <a
+        className="pill-button"
+        href={props.searchUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <VideoIcon /> Find on YouTube
+      </a>
+      <form
+        className="search-box link-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onPlayLink();
+        }}
+      >
+        <LinkIcon />
+        <label htmlFor="youtube-link" className="visually-hidden">
+          YouTube link
+        </label>
+        <input
+          id="youtube-link"
+          type="url"
+          placeholder="Paste the YouTube link here"
+          value={props.link}
+          onChange={(event) => {
+            props.onLinkChange(event.target.value);
           }}
+        />
+        <button
+          type="submit"
+          className="find-button"
+          disabled={props.link.trim() === ""}
         >
-          <label htmlFor="youtube-link" className="visually-hidden">
-            YouTube link
-          </label>
-          <input
-            id="youtube-link"
-            type="url"
-            placeholder="Paste a YouTube link…"
-            value={props.link}
-            onChange={(event) => {
-              props.onLinkChange(event.target.value);
-            }}
-          />
-          <button type="submit" className="pill-button">
-            Play video
-          </button>
-        </form>
-      </div>
-      <label className="file-button">
-        or play a file from your computer
+          Play video
+        </button>
+      </form>
+      <label className="pill-button file-button">
+        <MusicIcon /> Play a file
         <input
           type="file"
           accept="audio/*"
@@ -298,6 +300,25 @@ function AudioChooser(props: AudioChooserProps) {
         />
       </label>
     </div>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </svg>
+  );
+}
+
+function MusicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
   );
 }
 

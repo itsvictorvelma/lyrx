@@ -161,18 +161,6 @@ button:disabled {
   border-color: var(--accent);
 }
 
-/* The one main action in a group: the accent fill, like Find in the search box. */
-.primary-button {
-  font-weight: 600;
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.primary-button:hover {
-  box-shadow: 0 0 20px var(--accent-glow);
-}
-
 /* Saved: the accent outline and a filled bookmark, with aria-pressed for screen readers. */
 .save-button.is-saved {
   color: var(--accent);
@@ -1367,49 +1355,23 @@ button:disabled {
   gap: 0.25rem;
 }
 
-/* No audio yet: a title, Find on YouTube with the link box beside it, then the file option. */
+/* No audio yet: one row of Find on YouTube, the link box, and Play a file, as tall as the player. */
 .audio-chooser {
   display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   min-width: 0;
 }
 
-.chooser-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.chooser-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.file-button {
-  align-self: flex-start;
-  padding: 0.25rem 0;
-  font-size: 0.8125rem;
-  color: var(--dim);
-  cursor: pointer;
-}
-
-.file-button:hover {
-  color: var(--text);
-  text-decoration: underline;
-}
-
-/* The file input is hidden, so its label shows the keyboard focus. */
+/* The file input is hidden, so its pill shows the keyboard focus. */
 .file-button:focus-within {
-  border-radius: 6px;
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .shortcuts-button {
-  align-self: flex-start;
   margin-left: auto;
 }
 
@@ -1459,28 +1421,13 @@ button:disabled {
 }
 
 .link-form {
-  display: flex;
   flex: 1 1 18rem;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 34rem;
-  font-size: 0.875rem;
+  max-width: 30rem;
+  height: 2.5rem;
 }
 
-.link-form input {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 2.5rem;
-  padding: 0 1rem;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.link-form input:focus-visible {
-  border-color: var(--accent);
+.link-form .find-button {
+  height: 2rem;
 }
 
 .player-bar > .error {

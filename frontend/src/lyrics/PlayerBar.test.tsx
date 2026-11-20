@@ -284,7 +284,7 @@ test("spec 022 AC-1, AC-3: an audio file starts at the current level and follows
   const user = await openSavedSong(songReply(LINES));
 
   await user.upload(
-    screen.getByLabelText(/play a file/),
+    screen.getByLabelText("Play a file"),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
   const audio = document.querySelector("audio");
@@ -329,13 +329,13 @@ test("spec 024 AC-2, AC-4: an audio file follows the speed button; the hint goes
     },
   );
   const user = await openSavedSong(songReply(LINES));
-  expect(screen.getByText(PLAY_ALONG_TITLE)).toBeTruthy();
+  expect(screen.getByRole("group", { name: PLAY_ALONG_TITLE })).toBeTruthy();
 
   await user.upload(
-    screen.getByLabelText(/play a file/),
+    screen.getByLabelText("Play a file"),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
-  expect(screen.queryByText(PLAY_ALONG_TITLE)).toBeNull();
+  expect(screen.queryByRole("group", { name: PLAY_ALONG_TITLE })).toBeNull();
 
   await user.click(screen.getByRole("button", { name: "Playback speed: 1×" }));
   expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
@@ -354,7 +354,7 @@ test("spec 024: a new player for the same song keeps the chosen speed", async ()
 
   await user.click(screen.getByRole("button", { name: "Change audio" }));
   await user.upload(
-    screen.getByLabelText(/play a file/),
+    screen.getByLabelText("Play a file"),
     new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
   );
   expect(document.querySelector("audio")?.playbackRate).toBe(0.75);
@@ -378,7 +378,7 @@ test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", asy
   expect(screen.getByRole("link", { name: "Find on YouTube" })).toBeTruthy();
   expect(screen.getByLabelText("YouTube link")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Play video" })).toBeTruthy();
-  expect(screen.getByLabelText(/play a file/)).toBeTruthy();
+  expect(screen.getByLabelText("Play a file")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
 });
 
