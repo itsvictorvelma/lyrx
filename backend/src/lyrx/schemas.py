@@ -1,8 +1,15 @@
 """What the page sends and receives: request bodies, replies, and the error shape."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from lyrx.config import MAX_SONG_ID, PLAYBACK_MAX_OFFSET_MS, YOUTUBE_VIDEO_ID_PATTERN
+from lyrx.config import (
+    MAX_SONG_ID,
+    PASSWORD_MAX_CHARACTERS,
+    PASSWORD_MIN_CHARACTERS,
+    PLAYBACK_MAX_OFFSET_MS,
+    USERNAME_PATTERN,
+    YOUTUBE_VIDEO_ID_PATTERN,
+)
 
 
 class SongSearchRequest(BaseModel):
@@ -103,6 +110,34 @@ class SongVersionsResponse(BaseModel):
     playback: Playback = Playback()
     # Whether the song is in the learner's library.
     saved: bool = False
+
+
+class AccountRequest(BaseModel):
+    """The body of sign-up and sign-in. The username is stored and compared in lowercase."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    username: str = Field(pattern=USERNAME_PATTERN)
+    password: str = Field(min_length=PASSWORD_MIN_CHARACTERS, max_length=PASSWORD_MAX_CHARACTERS)
+
+    @field_validator("username")
+    @classmethod
+    def to_lowercase(cls, username: str) -> str:
+        return username.lower()
+
+
+class PasswordRequest(BaseModel):
+    """The body of `DELETE /api/account`: the password, asked again."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    password: str = Field(min_length=1, max_length=PASSWORD_MAX_CHARACTERS)
+
+
+class AccountResponse(BaseModel):
+    """Who is signed in: the username, or None for a guest."""
+
+    username: str | None
 
 
 class ErrorResponse(BaseModel):

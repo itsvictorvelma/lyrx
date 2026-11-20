@@ -1,5 +1,8 @@
 // The Save / Saved toggle on a song: puts the song (with its video and sync) in the library, or takes it out.
+// A guest is sent to sign in, then back to the song.
 import { useState } from "react";
+import { isGuest, useAccount } from "../account/useAccount";
+import { accountPath, navigate, songPath } from "../routing";
 import { saveSong, unsaveSong } from "./api";
 import type { Playback } from "./types";
 
@@ -17,8 +20,13 @@ export function SaveButton(props: SaveButtonProps) {
   const { songId, saved, playback, onSavedChange } = props;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const guest = isGuest(useAccount());
 
   async function toggle() {
+    if (guest) {
+      navigate(accountPath(songPath(songId)));
+      return;
+    }
     setBusy(true);
     setFailed(false);
     const result = saved

@@ -13,9 +13,13 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from lyrx import config, library
+from lyrx.accounts.routes import add_account_routes
+from lyrx.accounts.sessions import require_user, signed_in_user
+from lyrx.accounts.users import User
 from lyrx.errors import ApiError, ErrorCode, error_response
 from lyrx.lyrics.lrclib import make_lrclib_client
 from lyrx.lyrics.search import search_songs
+from lyrx.rate_limits import count_if_allowed, new_song_limits, peer_address
 from lyrx.schemas import (
     Playback,
     RecentSongsResponse,
@@ -28,6 +32,7 @@ from lyrx.schemas import (
 from lyrx.server.body_limit import BodySizeLimit
 from lyrx.server.crash_guard import CrashGuard
 from lyrx.server.host_check import HostCheck
+from lyrx.server.origin_check import OriginCheck
 from lyrx.server.request_log import RequestLog, logged_request
 from lyrx.song import fill_missing_lines, missing_lines, open_song
 from lyrx.translation.chain import ready_translators
@@ -70,29 +75,45 @@ async def handle_invalid_request(request: Request, error: Exception) -> JSONResp
 def find_songs(body: SongSearchRequest, request: Request) -> SongSearchResponse:
     """Search: a short ranked list of songs, without lyrics."""
     with logged_request(SONG_SEARCH_PATH) as log:
-        results = search_songs(body.query, request.app.state.lrclib_client)
+        user = signed_in_user(request)
+        user_id = None if user is None else user.id
+        results = search_songs(body.query, request.app.state.lrclib_client, user_id)
         log.add("results", len(results))
         return SongSearchResponse(results=results)
 
 
 def get_song_versions(body: SongVersionsRequest, request: Request) -> SongVersionsResponse:
-    """Open a song: from the cache (missing lines asked again); else LRCLIB, translators, cache."""
+    """Open a song for anyone: from the cache (missing lines asked again), else LRCLIB and the
+    translators within the daily caps. A signed-in person also gets their saved mark and video."""
     with logged_request(SONG_VERSIONS_PATH) as log:
         log.add("lrclib_id", body.id)
+        user = signed_in_user(request)
         cached = library.find_song_or_none(body.id)
         log.add("from_library", "true" if cached else "false")
         if cached is not None:
-            return refill_quietly(cached, request, log).model_copy(update={"from_library": True})
-        # Keys are read per request, so setting one after start works.
-        translators = ready_translators(request.app.state.translator_clients)
-        song, lines, versions, translation = open_song(
-            body.id, translators, request.app.state.lrclib_client
-        )
-        log.count_lines(lines)
-        log.add_translation(translation)
-        reply = SongVersionsResponse(song=song, lines=versions)
-        cache_quietly(reply, log)
-        return reply
+            reply = refill_quietly(cached, request, log).model_copy(update={"from_library": True})
+        else:
+            reply = translate_new_song(body.id, user, request, log)
+        return reply if user is None else library.with_library_entry(reply, user.id)
+
+
+def translate_new_song(
+    song_id: int, user: User | None, request: Request, log: RequestLog
+) -> SongVersionsResponse:
+    """A song not in the cache: counted toward the daily caps first, so failures count too."""
+    limits = new_song_limits(None if user is None else user.id, peer_address(request))
+    if not count_if_allowed(*limits):
+        raise ApiError("daily_limit")
+    # Keys are read per request, so setting one after start works.
+    translators = ready_translators(request.app.state.translator_clients)
+    song, lines, versions, translation = open_song(
+        song_id, translators, request.app.state.lrclib_client
+    )
+    log.count_lines(lines)
+    log.add_translation(translation)
+    reply = SongVersionsResponse(song=song, lines=versions)
+    cache_quietly(reply, log)
+    return reply
 
 
 def refill_quietly(
@@ -126,49 +147,60 @@ def cache_quietly(reply: SongVersionsResponse, log: RequestLog) -> None:
         log.add("save_failed", "true")
 
 
-def list_saved_songs() -> SavedSongsResponse:
-    """The saved songs, most recently opened first, without lines."""
+def list_saved_songs(request: Request) -> SavedSongsResponse:
+    """The signed-in person's saved songs, most recently opened first, without lines."""
     with logged_request(SAVED_SONGS_PATH) as log:
-        songs = library.list_songs()
+        user = require_user(request)
+        songs = library.list_songs(user.id)
         log.add("songs", len(songs))
         return SavedSongsResponse(songs=songs)
 
 
-def list_recent_songs() -> RecentSongsResponse:
-    """The home page row: recently opened cached songs, without lines (spec 021)."""
+def list_recent_songs(request: Request) -> RecentSongsResponse:
+    """The home page row: recently opened cached songs, without lines (spec 021).
+
+    Only the signed-in person's own videos show, never another person's (spec 014).
+    """
     with logged_request(RECENT_SONGS_PATH) as log:
-        songs = library.list_recent_songs(config.RECENT_SONGS_SHOWN)
+        user = signed_in_user(request)
+        user_id = None if user is None else user.id
+        songs = library.list_recent_songs(config.RECENT_SONGS_SHOWN, user_id)
         log.add("songs", len(songs))
         return RecentSongsResponse(songs=songs)
 
 
 def save_song(
-    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback
+    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback, request: Request
 ) -> Response:
     """Puts a cached song in the library with its video and nudge: 204, or 404 when not cached."""
     with logged_request(SAVED_SONG_PATH) as log:
         log.add("lrclib_id", song_id)
-        if not library.save_song_to_library(song_id, body):
+        user = require_user(request)
+        if not library.save_song_to_library(user.id, song_id, body):
             raise ApiError("song_not_found")
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
-def unsave_song(song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)]) -> Response:
+def unsave_song(
+    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], request: Request
+) -> Response:
     """Takes a song out of the library (it stays cached): 204, or 404 when it was not saved."""
     with logged_request(SAVED_SONG_PATH) as log:
         log.add("lrclib_id", song_id)
-        if not library.unsave_song(song_id):
+        user = require_user(request)
+        if not library.unsave_song(user.id, song_id):
             raise ApiError("song_not_found")
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 def save_song_playback(
-    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback
+    song_id: Annotated[int, Path(ge=1, le=config.MAX_SONG_ID)], body: Playback, request: Request
 ) -> Response:
     """Saves a saved song's YouTube video and sync nudge: 204, or 404 when it is not saved."""
     with logged_request(PLAYBACK_PATH) as log:
         log.add("lrclib_id", song_id)
-        if not library.save_playback(song_id, body):
+        user = require_user(request)
+        if not library.save_playback(user.id, song_id, body):
             raise ApiError("song_not_found")
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -199,8 +231,10 @@ def create_app(
     )
     app.state.lrclib_client = lrclib_client
     app.state.translator_clients = translator_clients
-    # The last layer added runs first: the crash guard, then the Host check, then the body cap.
+    # The last layer added runs first: the crash guard, the Host check, the Origin check, then
+    # the body cap.
     app.add_middleware(BodySizeLimit)
+    app.add_middleware(OriginCheck)
     app.add_middleware(HostCheck)
     app.add_middleware(CrashGuard)
     app.add_exception_handler(ApiError, handle_api_error)
@@ -213,4 +247,5 @@ def create_app(
     app.add_api_route(SAVED_SONG_PATH, save_song, methods=["PUT"])
     app.add_api_route(SAVED_SONG_PATH, unsave_song, methods=["DELETE"])
     app.add_api_route(PLAYBACK_PATH, save_song_playback, methods=["PUT"])
+    add_account_routes(app)
     return app

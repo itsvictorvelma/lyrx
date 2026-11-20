@@ -20,6 +20,7 @@ const rain: RecentSong = { ...star, id: 202, track: "雨の窓", artist: "Kaze" 
 
 let savedSongs: SavedSong[] = [];
 let recentSongs: RecentSong[] = [];
+let signedInAs: string | null = "mika";
 const fakeFetch = vi.fn<typeof fetch>();
 
 function json(body: unknown): Promise<Response> {
@@ -41,10 +42,12 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/");
   savedSongs = [];
   recentSongs = [];
+  signedInAs = "mika";
   fakeFetch.mockReset();
   fakeFetch.mockImplementation((input, init) => {
     const url = typeof input === "string" ? input : "";
     const key = `${init?.method ?? "GET"} ${url}`;
+    if (key === "GET /api/account") return json({ username: signedInAs });
     if (key === "GET /api/songs") return json({ songs: savedSongs });
     if (key === "GET /api/recent-songs") return json({ songs: recentSongs });
     if (key === "POST /api/song-search") {
@@ -210,4 +213,37 @@ test("spec 023 AC-1: Home and Your songs are in the header, the current page mar
   expect(await screen.findByRole("table")).toBeTruthy();
   expect(current("Home")).toBeNull();
   expect(current("Your songs")).toBeNull();
+});
+
+test("spec 014 AC-17: a guest's home has no Continue card, and says to sign in to save songs", async () => {
+  signedInAs = null;
+  savedSongs = [saved(star, 1000)];
+  recentSongs = [star];
+  render(<App />);
+
+  expect(
+    await screen.findByText("to save songs.", { exact: false }),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /^Continue/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /All your songs/ })).toBeNull();
+  expect(
+    screen.getByRole("heading", { name: "Songs already in Lyrx" }),
+  ).toBeTruthy();
+  const asked = fakeFetch.mock.calls.map(([url]) => url);
+  expect(asked).not.toContain("/api/songs");
+});
+
+test("spec 014 AC-17: Your songs shows a guest the sign-in prompt", async () => {
+  signedInAs = null;
+  window.history.replaceState(null, "", "/library");
+  const user = userEvent.setup();
+  render(<App />);
+
+  expect(
+    await screen.findByRole("heading", {
+      name: "Sign in to keep your songs here.",
+    }),
+  ).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(window.location.pathname).toBe("/account");
 });

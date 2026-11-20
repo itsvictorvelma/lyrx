@@ -1,6 +1,6 @@
 # 025 — Polish: titles, link previews, favicon, back, undo, filter
 
-Status: approved (batch 2, asked for by the user on 2026-11-20)
+Status: done (batch 2, asked for by the user on 2026-11-20)
 
 ## Goal
 

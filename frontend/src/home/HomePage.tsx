@@ -1,8 +1,9 @@
 // The home page: the hero line, the large search, how it works or Continue, recent songs, footer.
+import { isGuest, useAccount } from "../account/useAccount";
 import { SearchForm } from "../header/SearchForm";
 import { SongArt } from "../library/SongArt";
 import type { RecentSong, SavedSong } from "../lyrics/types";
-import { LIBRARY_PATH, navigate } from "../routing";
+import { ACCOUNT_PATH, LIBRARY_PATH, navigate } from "../routing";
 import { HeroLine } from "./HeroLine";
 
 export const SOURCE_CODE_URL = "https://github.com/itsvictorvelma/lyrx";
@@ -31,6 +32,8 @@ interface HomePageProps {
 }
 
 export function HomePage(props: HomePageProps) {
+  const guest = isGuest(useAccount());
+  // A guest has no saved songs, so never a Continue card.
   const lastOpened = mostRecent(props.savedSongs);
 
   return (
@@ -45,6 +48,21 @@ export function HomePage(props: HomePageProps) {
         <p className="home-hint">
           Press <kbd>/</kbd> to search, <kbd>?</kbd> for all keyboard shortcuts
         </p>
+        {guest && (
+          <p className="home-hint">
+            <a
+              href={ACCOUNT_PATH}
+              className="home-sign-in"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(ACCOUNT_PATH);
+              }}
+            >
+              Sign in
+            </a>{" "}
+            to save songs.
+          </p>
+        )}
       </section>
       {lastOpened === null ? (
         <HowItWorks />

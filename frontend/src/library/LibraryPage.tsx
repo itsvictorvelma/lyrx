@@ -1,6 +1,9 @@
-// Your songs (/library): saved songs as tiles, sorted and filtered; a welcome when empty.
+// Your songs (/library): saved songs as tiles, sorted and filtered; a welcome when empty, and a
+// sign-in prompt for a guest.
 import { useState } from "react";
+import { isGuest, useAccount } from "../account/useAccount";
 import type { SavedSong } from "../lyrics/types";
+import { ACCOUNT_PATH, navigate } from "../routing";
 import { SongTile } from "./SongTile";
 import { filterSongs, sortSongs } from "./songTiles";
 import type { SortOrder } from "./songTiles";
@@ -8,6 +11,7 @@ import type { SortOrder } from "./songTiles";
 export const EMPTY_LIBRARY_TEXT = "Your songs will show up here.";
 export const EMPTY_LIBRARY_HINT =
   "Type a song you love in the search box: title, artist, or both.";
+export const GUEST_LIBRARY_TEXT = "Sign in to keep your songs here.";
 
 // The filter box shows once there are more songs than fit in a glance.
 export const FILTER_SHOWN_ABOVE = 8;
@@ -24,7 +28,29 @@ interface LibraryPageProps {
   onRemove: (song: SavedSong) => void;
 }
 
-export function LibraryPage({ songs, onOpen, onRemove }: LibraryPageProps) {
+export function LibraryPage(props: LibraryPageProps) {
+  const account = useAccount();
+  if (isGuest(account)) {
+    return (
+      <section className="page library-empty">
+        <h1>{GUEST_LIBRARY_TEXT}</h1>
+        <p className="dim">Songs you save keep their video and sync.</p>
+        <button
+          type="button"
+          className="find-button library-sign-in"
+          onClick={() => {
+            navigate(ACCOUNT_PATH);
+          }}
+        >
+          Sign in
+        </button>
+      </section>
+    );
+  }
+  return <SavedSongs {...props} />;
+}
+
+function SavedSongs({ songs, onOpen, onRemove }: LibraryPageProps) {
   const [order, setOrder] = useState<SortOrder>("recent");
   const [filter, setFilter] = useState("");
   // "Now" for the "Opened …" labels, read once when the library opens.

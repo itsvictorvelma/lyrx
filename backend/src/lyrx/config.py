@@ -20,9 +20,39 @@ PLAYBACK_MAX_OFFSET_MS = 30_000
 # The largest song id accepted: SQLite's largest integer. LRCLIB ids are far smaller.
 MAX_SONG_ID = 2**63 - 1
 
-# Saved songs live in one SQLite file, gitignored (`*.db`), at the repo root's `data/` folder.
+# Songs, accounts, and counts live in one SQLite file, gitignored (`*.db`), in the repo
+# root's `data/` folder.
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DATABASE_PATH = REPO_ROOT / "data" / "lyrx.db"
+
+# Accounts (spec 014). Usernames are stored lowercase; the pattern also accepts capitals.
+USERNAME_PATTERN = r"^[A-Za-z0-9_-]{3,30}$"
+PASSWORD_MIN_CHARACTERS = 8
+PASSWORD_MAX_CHARACTERS = 128
+# scrypt cost: n (a power of two), r, p. About 16 MB of memory and tens of milliseconds per hash.
+SCRYPT_COST = (2**14, 8, 1)
+SCRYPT_SALT_BYTES = 16
+SCRYPT_HASH_BYTES = 32
+# Room for the cost above (128 * n * r bytes = 16 MB), with a margin.
+SCRYPT_MAX_MEMORY_BYTES = 64 * 1024 * 1024
+
+SESSION_COOKIE_NAME = "lyrx_session"
+SESSION_TOKEN_BYTES = 32
+# A cookie longer than this is not looked up; real tokens are 43 characters.
+SESSION_TOKEN_MAX_CHARACTERS = 100
+SESSION_DAYS = 30
+# Secure cookies need HTTPS, which comes with the deployment (spec 020).
+SECURE_COOKIES = False
+
+# Limits per window, in seconds. A day window starts at midnight UTC.
+DAY_SECONDS = 24 * 60 * 60
+HOUR_SECONDS = 60 * 60
+# New (uncached) songs a day: they call LRCLIB and the free translators.
+NEW_SONGS_PER_ACCOUNT_PER_DAY = 20
+NEW_SONGS_PER_GUEST_IP_PER_DAY = 20
+NEW_SONGS_PER_SITE_PER_DAY = 300
+SIGN_UPS_PER_IP_PER_DAY = 5
+FAILED_SIGN_INS_PER_USERNAME_PER_HOUR = 10
 
 # The lyrx loggers write at this level; other libraries stay at Python's default (warnings).
 LOG_LEVEL = logging.INFO

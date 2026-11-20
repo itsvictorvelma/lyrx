@@ -1,6 +1,6 @@
 # 024 — Play-along helpers: speed and Find on YouTube
 
-Status: approved (batch 1, asked for by the user on 2026-11-20)
+Status: done (batch 1, asked for by the user on 2026-11-20)
 
 ## Goal
 

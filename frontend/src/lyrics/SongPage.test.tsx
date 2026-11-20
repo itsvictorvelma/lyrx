@@ -236,3 +236,12 @@ test("AC-9: the shortcut list opens from its button, takes focus, and Esc gives 
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement).toBe(opener);
 });
+
+test("spec 014 AC-19: the song page credits LRCLIB with a link", async () => {
+  await openSavedSong(songReply(LINES));
+
+  const link = screen.getByRole("link", { name: "LRCLIB" });
+  expect(link.closest("p")?.textContent).toBe("Lyrics from LRCLIB");
+  expect(link.getAttribute("href")).toBe("https://lrclib.net");
+  expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+});

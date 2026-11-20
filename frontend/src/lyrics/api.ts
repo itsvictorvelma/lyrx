@@ -94,7 +94,7 @@ export function savePlayback(
 }
 
 // One request; a reply with `okStatus` must pass `isValid`, any other must be the error shape.
-async function requestJson<Reply>(
+export async function requestJson<Reply>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
   body: unknown,
@@ -137,7 +137,7 @@ function parseJson(text: string): unknown {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -228,7 +228,7 @@ function isSavedSongsReply(value: unknown): value is { songs: SavedSong[] } {
   );
 }
 
-function isNull(value: unknown): value is null {
+export function isNull(value: unknown): value is null {
   return value === null;
 }
 

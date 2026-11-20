@@ -692,7 +692,8 @@ button:disabled {
 .home-steps li {
   display: grid;
   grid-template-columns: 2.25rem 1fr;
-  gap: 1rem;
+  align-content: start;
+  column-gap: 1rem;
   counter-increment: step;
 }
 
@@ -707,6 +708,13 @@ button:disabled {
   border: 1.5px solid var(--accent);
   border-radius: 999px;
   content: counter(step);
+  grid-row: span 2;
+}
+
+/* The title and its text both sit in the second column, beside the number. */
+.home-steps h3,
+.home-steps p {
+  grid-column: 2;
 }
 
 .home-steps h3 {
@@ -830,7 +838,8 @@ button:disabled {
   margin-bottom: 1.5rem;
 }
 
-.library-filter input {
+.library-filter input,
+.account-form input {
   box-sizing: border-box;
   width: min(100%, 22rem);
   height: 2.75rem;
@@ -844,7 +853,8 @@ button:disabled {
   transition: border-color 0.2s;
 }
 
-.library-filter input:focus-visible {
+.library-filter input:focus-visible,
+.account-form input:focus-visible {
   border-color: var(--accent);
 }
 
@@ -1141,6 +1151,19 @@ button:disabled {
   margin: 0 auto;
   table-layout: fixed;
   border-spacing: 0;
+}
+
+/* "Lyrics from LRCLIB" under the last line, as quiet as the table headings. */
+.song-credit {
+  max-width: 72rem;
+  margin: 1.5rem auto 0;
+  padding: 0 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.song-credit a,
+.home-sign-in {
+  color: var(--text);
 }
 
 .versions-table th {
@@ -1743,4 +1766,65 @@ button:disabled {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Account (spec 014): one narrow column, the filter box's inputs, and the pill buttons. */
+
+.account-page {
+  max-width: 26rem;
+}
+
+.account-page h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.account-page > p {
+  margin: 0.375rem 0 1.5rem;
+  font-size: 0.875rem;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.account-form label {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.account-form input {
+  width: 100%;
+}
+
+.account-form .find-button {
+  align-self: flex-start;
+  margin-top: 1rem;
+}
+
+.account-rules {
+  font-size: 0.8125rem;
+}
+
+.account-name {
+  color: var(--text);
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.account-actions .find-button {
+  margin-top: 0;
+}
+
+.library-sign-in {
+  margin-top: 1.5rem;
 }

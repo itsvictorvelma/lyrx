@@ -35,6 +35,7 @@ The song and lyrics shown are invented for these screenshots.
 ## What works today
 
 - **Home:** an example line sung part by part shows what Lyrx does, then a large search box. First-time visitors see how it works; returning ones get Continue. "Songs already in Lyrx" opens songs that are already translated, instantly.
+- **Accounts (`/account`):** anyone can search, open, and play along without an account. Create one (username and password) to save songs; each person sees only their own songs and videos. New (not yet translated) songs are capped per day: 20 per account, 20 per guest, 300 for the whole site. Songs already in Lyrx always open.
 - **Your songs (`/library`):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist; filter by title or artist once you have more than 8. Remove can be undone.
 - **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
@@ -45,7 +46,7 @@ The song and lyrics shown are invented for these screenshots.
 
 ## Coming next
 
-1. Personal accounts, so family and friends can use a hosted copy.
+1. Hosting with Docker and Caddy, so family and friends can use it.
 2. Finding the YouTube video automatically (needs a YouTube API key, so it is parked under the no-paid-services rule).
 
 ## Setup
@@ -81,6 +82,16 @@ Use two terminals.
    ```
    Open the address it prints (normally `http://127.0.0.1:5173`).
 
+## Reset a friend's password
+
+There is no email, so a forgotten password is reset by hand. From `backend/`:
+
+```bash
+uv run python -m lyrx.accounts.reset_password <username>
+```
+
+It asks for the new password twice and signs that person out everywhere. The first account created gets the songs saved before accounts existed.
+
 ## Check
 
 ```bash
@@ -108,7 +119,15 @@ lyrx/
 │   │   ├── errors.py          Error codes, their HTTP status, and their message
 │   │   ├── schemas.py         What the page sends and receives
 │   │   ├── song.py            Open a song: LRCLIB id → every line in four versions
-│   │   ├── library.py         The song cache and your saved songs, in one SQLite file
+│   │   ├── database.py        The SQLite file: its tables, and the upgrade of an older file
+│   │   ├── library.py         The shared song cache and each person's saved songs
+│   │   ├── rate_limits.py     Daily caps on new songs, sign-ups, and failed sign-ins
+│   │   ├── accounts/          Personal accounts
+│   │   │   ├── passwords.py       Password hashing (scrypt, a salt per password)
+│   │   │   ├── users.py           Create, find, check a password, change it, delete
+│   │   │   ├── sessions.py        The session cookie and who sent a request
+│   │   │   ├── routes.py          Sign up, sign in, sign out, delete the account
+│   │   │   └── reset_password.py  The command that resets a friend's password
 │   │   ├── lyrics/            Finding and preparing lyrics
 │   │   │   ├── lrclib.py          LRCLIB: client, search and record requests, record → song
 │   │   │   ├── search.py          Typed text → a short ranked list of songs
@@ -125,6 +144,7 @@ lyrx/
 │   │   │   └── results.py         The internal result shapes
 │   │   └── server/            Guards and logging around every request
 │   │       ├── host_check.py      Refuses requests not addressed to 127.0.0.1 or localhost
+│   │       ├── origin_check.py    Refuses a POST, PUT, or DELETE from another site
 │   │       ├── body_limit.py      Refuses request bodies over 256 KiB before parsing
 │   │       ├── crash_guard.py     Turns any unexpected error into a plain 500
 │   │       └── request_log.py     One log line per request (no lyrics, no key)
@@ -137,11 +157,16 @@ lyrx/
     └── src/
         ├── main.tsx           Mounts the page
         ├── App.tsx            The app shell: header, pages, search, Focus, ? and / off the song page
-        ├── routing.ts         Page addresses: / home, /library your songs, /song/{id} a song
+        ├── routing.ts         Page addresses: / home, /library, /song/{id}, /account signing in
         ├── mediaQuery.ts      Whether a media query matches (reduced motion, light theme, phone)
         ├── styles.css         Night-player colours (dark and light), pages, motion, phone layout
+        ├── account/
+        │   ├── AccountPage.tsx    Sign in or create an account; sign out or delete it
+        │   ├── accountApi.ts      The account requests
+        │   ├── useAccount.ts      Who is signed in, shared with every page
+        │   └── types.ts           Account data shapes
         ├── header/
-        │   ├── Header.tsx         The bar on every page: wordmark, search box, Your songs, theme
+        │   ├── Header.tsx         The bar on every page: wordmark, search, Your songs, Sign in, theme
         │   ├── SearchForm.tsx     The search box and Find button, in two sizes
         │   └── ThemeButton.tsx    The sun/moon button: remembered choice, else the system setting
         ├── home/
