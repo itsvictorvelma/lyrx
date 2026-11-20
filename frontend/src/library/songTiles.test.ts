@@ -1,6 +1,6 @@
 // Checks what a library tile shows, the sort orders, and the filter.
 import { expect, test } from "vitest";
-import type { SavedSong } from "../lyrics/types";
+import type { SavedSong } from "../types";
 import {
   filterSongs,
   firstCharacter,

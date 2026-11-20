@@ -1,6 +1,6 @@
 // Decorative kana falling behind the loading steps, in the theme's colours; still under reduced motion.
 import { useEffect, useRef } from "react";
-import { prefersReducedMotion } from "../mediaQuery";
+import { prefersReducedMotion } from "../browser";
 
 const KANA =
   "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン" +

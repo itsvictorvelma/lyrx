@@ -10,9 +10,9 @@ import {
   openSongAsGuest,
   songReply,
   VIDEO_ID,
-} from "./fakeSongPage";
+} from "../song/fakeSongPage";
 import { BAD_LINK_MESSAGE, PLAY_ALONG_TITLE } from "./PlayerBar";
-import { NO_TIMINGS_TEXT } from "./SongPage";
+import { NO_TIMINGS_TEXT } from "../song/SongPage";
 
 installFakeSongPage();
 

@@ -1,6 +1,6 @@
 // "Not this one?": a popover of the other search results; each opens that song instead.
-import { formatClock } from "./playback";
-import type { SearchResult } from "./types";
+import { formatClock } from "../player/playback";
+import type { SearchResult } from "../types";
 
 interface OtherMatchesProps {
   results: SearchResult[];

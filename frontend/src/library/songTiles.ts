@@ -1,6 +1,6 @@
 // What a library tile shows (thumbnail, title colour, "Opened …"), the sort orders, the filter.
-import { VIDEO_ID } from "../lyrics/playback";
-import type { SavedSong } from "../lyrics/types";
+import { VIDEO_ID } from "../player/playback";
+import type { SavedSong } from "../types";
 
 export type SortOrder = "recent" | "title" | "artist";
 

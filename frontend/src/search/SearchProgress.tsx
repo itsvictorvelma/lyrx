@@ -1,6 +1,6 @@
 // While the server works: kana rain behind a terminal-style card with the steps, their marks, and the seconds.
 import { useEffect, useState } from "react";
-import { prefersReducedMotion } from "../mediaQuery";
+import { prefersReducedMotion } from "../browser";
 import { KanaRain } from "./KanaRain";
 
 const FINDING_TEXT = "Finding the song";

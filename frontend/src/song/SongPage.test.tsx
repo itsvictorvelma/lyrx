@@ -15,7 +15,7 @@ import {
   songReply,
   VIDEO_ID,
 } from "./fakeSongPage";
-import { SHORTCUT_LIST_TITLE } from "./ShortcutList";
+import { SHORTCUT_LIST_TITLE } from "../shortcuts/ShortcutList";
 
 installFakeSongPage();
 

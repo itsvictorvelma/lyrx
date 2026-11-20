@@ -9,7 +9,7 @@ import {
   parseVideoId,
   youTubeSearchUrl,
 } from "./playback";
-import type { Line } from "./types";
+import type { Line } from "../types";
 
 const ID = "abcDEF12_-z";
 

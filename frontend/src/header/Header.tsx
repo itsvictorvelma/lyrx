@@ -1,10 +1,10 @@
 // The bar on every page: the wordmark, the search box, Home, Your songs, Sign in or the username,
 // and the theme button.
 import type { MouseEvent } from "react";
-import { useAccount } from "../account/useAccount";
+import { useAccount } from "../account/account";
 import { ACCOUNT_PATH, HOME_PATH, LIBRARY_PATH, navigate } from "../routing";
 import type { Route } from "../routing";
-import { SearchForm } from "./SearchForm";
+import { SearchForm } from "../search/SearchForm";
 import { ThemeButton } from "./ThemeButton";
 
 interface HeaderProps {

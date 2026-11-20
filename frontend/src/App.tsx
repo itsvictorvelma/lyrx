@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAccount } from "./account/accountApi";
 import { AccountPage } from "./account/AccountPage";
-import { AccountContext, UNKNOWN_ACCOUNT } from "./account/useAccount";
+import { AccountContext, UNKNOWN_ACCOUNT } from "./account/account";
 import type { Account } from "./account/types";
 import { Header } from "./header/Header";
-import { focusSearchBox } from "./header/SearchForm";
+import { focusSearchBox } from "./search/SearchForm";
 import { HomePage } from "./home/HomePage";
 import { LibraryPage } from "./library/LibraryPage";
 import { RemovedMessage } from "./library/RemovedMessage";
@@ -17,12 +17,12 @@ import {
   saveSong,
   unsaveSong,
   searchSongs,
-} from "./lyrics/api";
-import { SearchProgress } from "./lyrics/SearchProgress";
-import { ShortcutList } from "./lyrics/ShortcutList";
-import { SITE_SHORTCUT_LIST, useShortcuts } from "./lyrics/shortcuts";
-import type { Stage } from "./lyrics/SearchProgress";
-import { SongPage } from "./lyrics/SongPage";
+} from "./api";
+import { SearchProgress } from "./search/SearchProgress";
+import { ShortcutList } from "./shortcuts/ShortcutList";
+import { SITE_SHORTCUT_LIST, useShortcuts } from "./shortcuts/shortcuts";
+import type { Stage } from "./search/SearchProgress";
+import { SongPage } from "./song/SongPage";
 import type {
   ApiResult,
   Line,
@@ -31,7 +31,7 @@ import type {
   SavedSong,
   SearchResult,
   Song,
-} from "./lyrics/types";
+} from "./types";
 import { HOME_PATH, navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 

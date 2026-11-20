@@ -12,7 +12,7 @@ import {
   openSongAsGuest,
   songReply,
   stubServer,
-} from "../lyrics/fakeSongPage";
+} from "../song/fakeSongPage";
 
 installFakeSongPage();
 

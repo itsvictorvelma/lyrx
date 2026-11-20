@@ -1,10 +1,10 @@
 // The account page (/account): sign in or create an account; when signed in, sign out or delete.
 import { useState } from "react";
 import type { SubmitEvent } from "react";
-import type { ApiResult } from "../lyrics/types";
+import type { ApiResult } from "../types";
 import { deleteAccount, enterAccount, signOut } from "./accountApi";
 import type { AccountMode } from "./accountApi";
-import { useAccount } from "./useAccount";
+import { useAccount } from "./account";
 
 // These mirror the account rules in the server's config.py, which checks them again.
 const USERNAME_MAX_CHARACTERS = 30;

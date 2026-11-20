@@ -1,6 +1,6 @@
 // Which versions are covered for self-testing (remembered on this browser), and which covered cells are revealed.
 import { useState } from "react";
-import type { VersionColumn } from "./types";
+import type { VersionColumn } from "../types";
 
 const STORAGE_KEY = "lyrx-hidden-columns";
 const COLUMNS: VersionColumn[] = ["hiragana", "romaji", "english"];

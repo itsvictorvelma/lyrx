@@ -1,5 +1,5 @@
 // Calls the Lyrx server (search, open a song, saved and recent songs, playback) and checks replies.
-import { MAX_OFFSET_MS, VIDEO_ID } from "./playback";
+import { MAX_OFFSET_MS, VIDEO_ID } from "./player/playback";
 import type {
   ApiResult,
   Line,

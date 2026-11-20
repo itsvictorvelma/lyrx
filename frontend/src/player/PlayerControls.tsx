@@ -1,6 +1,6 @@
 // The player bar's controls: previous / play / next, loop, position, volume, speed, sync, video.
 import { formatClock, formatOffset } from "./playback";
-import type { Progress } from "./types";
+import type { Progress } from "../types";
 import { VOLUME_STEP } from "./volume";
 
 interface PlayerControlsProps {

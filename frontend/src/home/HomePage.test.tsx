@@ -3,8 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { App } from "../App";
-import { SHORTCUT_LIST_TITLE } from "../lyrics/ShortcutList";
-import type { RecentSong, SavedSong } from "../lyrics/types";
+import { SHORTCUT_LIST_TITLE } from "../shortcuts/ShortcutList";
+import type { RecentSong, SavedSong } from "../types";
 import { SOURCE_CODE_URL } from "./HomePage";
 
 // Invented songs only.

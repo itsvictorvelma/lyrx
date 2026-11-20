@@ -1,7 +1,7 @@
 // Checks where a looped line starts and ends in the audio.
 import { expect, test } from "vitest";
 import { loopRange } from "./lineLoop";
-import type { Line } from "./types";
+import type { Line } from "../types";
 
 function line(index: number, startMs: number | null): Line {
   const original = startMs === null ? "" : "歌";

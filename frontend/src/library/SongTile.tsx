@@ -1,5 +1,5 @@
 // One library tile: the art (thumbnail or first character), title, artist, last opened, Remove.
-import type { SavedSong } from "../lyrics/types";
+import type { SavedSong } from "../types";
 import { SongArt } from "./SongArt";
 import { openedLabel } from "./songTiles";
 

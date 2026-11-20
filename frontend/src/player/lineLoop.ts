@@ -1,5 +1,5 @@
 // Looping one line: where the loop starts and ends in the audio.
-import type { Line } from "./types";
+import type { Line } from "../types";
 
 // Audio times in milliseconds, with the sync offset already applied.
 export interface LoopRange {

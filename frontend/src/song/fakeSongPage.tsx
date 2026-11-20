@@ -4,8 +4,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, vi } from "vitest";
 import { App } from "../App";
-import type { YouTubePlayerHandle } from "./YouTubePlayer";
-import type { Line } from "./types";
+import type { YouTubePlayerHandle } from "../player/YouTubePlayer";
+import type { Line } from "../types";
 
 export const VIDEO_ID = "abcDEF12_-z";
 // Invented lines; the blank one is a verse gap.

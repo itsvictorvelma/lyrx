@@ -1,9 +1,9 @@
 // The player bar at the bottom of a song: audio controls, sync, the video window, and choosing audio.
 import { useCallback, useRef, useState } from "react";
-import { isGuest, useAccount } from "../account/useAccount";
-import { matchesMedia } from "../mediaQuery";
+import { isGuest, useAccount } from "../account/account";
+import { matchesMedia } from "../browser";
 import { AudioFilePlayer } from "./AudioFilePlayer";
-import { savePlayback } from "./api";
+import { savePlayback } from "../api";
 import {
   nextSpeed,
   nudgeOffset,
@@ -12,7 +12,7 @@ import {
 } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerControls, VideoIcon } from "./PlayerControls";
-import type { Playback, Progress } from "./types";
+import type { Playback, Progress } from "../types";
 import { storedVolume, storeVolume, toggledVolume } from "./volume";
 import { YouTubePlayer } from "./YouTubePlayer";
 

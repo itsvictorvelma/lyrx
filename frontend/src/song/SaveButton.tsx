@@ -1,10 +1,10 @@
 // The Save / Saved toggle on a song: puts the song (with its video and sync) in the library, or takes it out.
 // A guest is sent to sign in, then back to the song.
 import { useState } from "react";
-import { isGuest, useAccount } from "../account/useAccount";
+import { isGuest, useAccount } from "../account/account";
 import { accountPath, navigate, songPath } from "../routing";
-import { saveSong, unsaveSong } from "./api";
-import type { Playback } from "./types";
+import { saveSong, unsaveSong } from "../api";
+import type { Playback } from "../types";
 
 const SAVE_SONG_FAILED_MESSAGE = "Couldn't update your songs. Try again.";
 

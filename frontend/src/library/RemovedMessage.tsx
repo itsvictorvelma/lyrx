@@ -1,6 +1,6 @@
 // "Removed <title>" with Undo, at the bottom of the page for a few seconds after Remove.
 import { useEffect, useState } from "react";
-import type { SavedSong } from "../lyrics/types";
+import type { SavedSong } from "../types";
 
 export const REMOVED_MESSAGE_MS = 6000;
 

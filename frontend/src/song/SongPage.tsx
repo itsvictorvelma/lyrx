@@ -5,15 +5,15 @@ import { HideColumnToggles, PhoneTabs } from "./ColumnButtons";
 import { OtherMatches } from "./OtherMatches";
 import { useFollowLine } from "./followLine";
 import { useHiddenColumns } from "./hiddenColumns";
-import { loopRange } from "./lineLoop";
-import { currentLineIndex, hasTimings, LEAD_IN_MS } from "./playback";
-import type { AudioClock } from "./playback";
-import { PlayerBar } from "./PlayerBar";
+import { loopRange } from "../player/lineLoop";
+import { currentLineIndex, hasTimings, LEAD_IN_MS } from "../player/playback";
+import type { AudioClock } from "../player/playback";
+import { PlayerBar } from "../player/PlayerBar";
 import { SaveButton } from "./SaveButton";
-import { ShortcutList } from "./ShortcutList";
-import { focusSearchBox } from "../header/SearchForm";
-import { SHORTCUT_LIST, useShortcuts } from "./shortcuts";
-import type { Shortcut } from "./shortcuts";
+import { ShortcutList } from "../shortcuts/ShortcutList";
+import { focusSearchBox } from "../search/SearchForm";
+import { SHORTCUT_LIST, useShortcuts } from "../shortcuts/shortcuts";
+import type { Shortcut } from "../shortcuts/shortcuts";
 import type {
   Line,
   Playback,
@@ -21,7 +21,7 @@ import type {
   SearchResult,
   Song,
   VersionColumn,
-} from "./types";
+} from "../types";
 import { VersionsTable } from "./VersionsTable";
 
 const SYNCED_TEXT = "Synced lyrics";

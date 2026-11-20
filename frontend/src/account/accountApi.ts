@@ -1,6 +1,6 @@
 // Calls the account routes: who is signed in, sign up, sign in, sign out, delete the account.
-import { isNull, isRecord, requestJson } from "../lyrics/api";
-import type { ApiResult } from "../lyrics/types";
+import { isNull, isRecord, requestJson } from "../api";
+import type { ApiResult } from "../types";
 import type { AccountReply } from "./types";
 
 function isAccountReply(value: unknown): value is AccountReply {

@@ -1,7 +1,7 @@
 // Steady following: the sung line stays about 35% down the lyrics, and each new line glides there.
 import { useEffect } from "react";
 import type { RefObject } from "react";
-import { prefersReducedMotion } from "../mediaQuery";
+import { prefersReducedMotion } from "../browser";
 
 // Where the sung row sits, as a share of the view's height from the top.
 export const STEADY_AT = 0.35;

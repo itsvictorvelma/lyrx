@@ -1,5 +1,5 @@
 // The song head's column buttons: the phone's second-column tabs, and the Hide toggles for self-testing.
-import type { VersionColumn } from "./types";
+import type { VersionColumn } from "../types";
 
 const COLUMN_BUTTONS: { column: VersionColumn; label: string; lang: string }[] =
   [

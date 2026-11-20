@@ -1,8 +1,8 @@
 // The home page: the hero line, the large search, how it works or Continue, recent songs, footer.
-import { isGuest, useAccount } from "../account/useAccount";
-import { SearchForm } from "../header/SearchForm";
+import { isGuest, useAccount } from "../account/account";
+import { SearchForm } from "../search/SearchForm";
 import { SongArt } from "../library/SongArt";
-import type { RecentSong, SavedSong } from "../lyrics/types";
+import type { RecentSong, SavedSong } from "../types";
 import { ACCOUNT_PATH, LIBRARY_PATH, navigate } from "../routing";
 import { HeroLine } from "./HeroLine";
 

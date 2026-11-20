@@ -1,6 +1,6 @@
 // Keyboard shortcuts: which key does what on the song page and elsewhere, and when keys are left alone.
 import { useEffect, useEffectEvent } from "react";
-import type { VersionColumn } from "./types";
+import type { VersionColumn } from "../types";
 
 export type Shortcut =
   | { kind: "togglePlay" }

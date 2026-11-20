@@ -1,6 +1,6 @@
 // The sun/moon button: dark or light, remembered on this browser, else the system setting.
 import { useEffect, useState } from "react";
-import { matchesMedia } from "../mediaQuery";
+import { matchesMedia } from "../browser";
 
 type Theme = "dark" | "light";
 
