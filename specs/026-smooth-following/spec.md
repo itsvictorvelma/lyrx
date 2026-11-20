@@ -58,12 +58,12 @@ Branch `claude/026-smooth-following`, from `main` (spec 014 is merged into it wh
 - `lyrics/followLine.ts`: `scrollTarget(rowTop, viewHeight, maxScroll)` puts the row at 35%, clamped. `glidePosition(from, to, elapsedMs)` gives the ease-out curve over 450 ms. The hook runs the glide with `requestAnimationFrame` and cancels a running one; under reduced motion it scrolls once. The glides use `scrollTo`, and only wheel, touch, and scroll keys pause following, as today.
 - `lyrics/VersionsTable.tsx`: wraps the table with a `SungLineMarker`, which measures the sung row (and again when the table resizes) and places the bar with `transform` and `height`.
 - `styles.css`:
-  - One `--line-box` per layout (normal, Focus, phone). Cells use `vertical-align: baseline`, and the seek button becomes `inline-flex`, so the cell's baseline is its first line.
+  - One `--line-box` for normal and phone layouts, a larger one for Focus mode. Cells use `vertical-align: baseline`, and the seek button becomes `inline-flex`, so the cell's baseline is its first line.
   - The `--shift` nudges are removed.
   - The sung row's text colour and glow change, and the row tint and box go.
   - The marker's styles are added.
 - Tests:
-  - `followLine.test.ts`: the 35% target, the clamp, and the glide curve.
+  - `followLine.test.ts`: the 35% target, the clamp, the glide curve, a new glide replacing a running one, and reduced motion.
   - `PlayerBar.test.tsx`: following and its pause.
   - `VersionsTable` marker: in an existing song page test.
   - `styles.test.ts`: the shared line box, no `--shift`, and the lit row.

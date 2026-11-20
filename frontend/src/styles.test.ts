@@ -142,6 +142,15 @@ test("spec 026 AC-5: one line box for every column, baseline-aligned, with no --
     "line-height",
   );
   expect(ruleBody(".seek-button")).toContain("display: inline-flex");
+  // Phones keep the same line box: their block sets no line height of its own on cells.
+  const phone = css.slice(css.indexOf("@media (max-width: 719px)"));
+  const phoneBlock = phone.slice(0, phone.indexOf("\n}\n"));
+  expect(phoneBlock).not.toMatch(/versions-table[^{]*\{[^}]*line-height/);
+});
+
+test("spec 026 AC-6: the marker glides only after its first placement, so it never slides in", () => {
+  expect(ruleBody(".sung-marker")).not.toContain("transition");
+  expect(ruleBody(".sung-marker[data-placed]")).toContain("transform 0.45s");
 });
 
 test("spec 026 AC-7: the sung row is lit pink with a glow, strongest on the original, and has no box", () => {

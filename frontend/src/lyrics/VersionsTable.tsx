@@ -150,29 +150,14 @@ function SungLineMarker({
     if (wrap === null || marker === null || currentLine === null) {
       return;
     }
-    function place() {
-      const row = wrap?.querySelector("tr.current");
-      if (
-        wrap === null ||
-        marker === null ||
-        row === null ||
-        row === undefined
-      ) {
-        return;
-      }
-      const wrapBox = wrap.getBoundingClientRect();
-      const rowBox = row.getBoundingClientRect();
-      const height = rowBox.height * MARKER_SHARE;
-      const top = rowBox.top - wrapBox.top + (rowBox.height - height) / 2;
-      marker.style.height = `${String(height)}px`;
-      marker.style.transform = `translate(${String(rowBox.left - wrapBox.left)}px, ${String(top)}px)`;
-    }
-    place();
+    placeMarker(wrap, marker);
     // jsdom (the test browser) has no ResizeObserver.
     if (typeof ResizeObserver === "undefined") {
       return;
     }
-    const observer = new ResizeObserver(place);
+    const observer = new ResizeObserver(() => {
+      placeMarker(wrap, marker);
+    });
     observer.observe(wrap);
     return () => {
       observer.disconnect();
@@ -182,6 +167,26 @@ function SungLineMarker({
   return currentLine === null ? null : (
     <div ref={markerRef} className="sung-marker" aria-hidden="true" />
   );
+}
+
+// Puts the marker over the sung row's left edge. Its first placement skips the glide
+// (`data-placed` turns the CSS transition on), so it appears on the row instead of sliding in.
+function placeMarker(wrap: HTMLElement, marker: HTMLElement): void {
+  const row = wrap.querySelector("tr.current");
+  if (row === null) {
+    return;
+  }
+  const wrapBox = wrap.getBoundingClientRect();
+  const rowBox = row.getBoundingClientRect();
+  const height = rowBox.height * MARKER_SHARE;
+  const top = rowBox.top - wrapBox.top + (rowBox.height - height) / 2;
+  marker.style.height = `${String(height)}px`;
+  marker.style.transform = `translate(${String(rowBox.left - wrapBox.left)}px, ${String(top)}px)`;
+  if (marker.dataset.placed === undefined) {
+    requestAnimationFrame(() => {
+      marker.dataset.placed = "true";
+    });
+  }
 }
 
 // "current" for the sung line, "next" for the one after it, "looped" for the looped one; the CSS draws the marks.

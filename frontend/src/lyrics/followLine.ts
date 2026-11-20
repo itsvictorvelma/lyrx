@@ -1,5 +1,5 @@
 // Steady following: the sung line stays about 35% down the lyrics, and each new line glides there.
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { RefObject } from "react";
 import { prefersReducedMotion } from "../mediaQuery";
 
@@ -39,8 +39,6 @@ export function useFollowLine(
   rowSelector: string,
   layout: string,
 ): void {
-  const frame = useRef<number | null>(null);
-
   useEffect(() => {
     const view = viewRef.current;
     const row = view?.querySelector<HTMLElement>(rowSelector) ?? null;
@@ -63,17 +61,17 @@ export function useFollowLine(
     const from = view.scrollTop;
     // Timed from the first frame's own clock, which is not always `performance.now()`'s.
     let started: number | null = null;
+    let frame: number | null = null;
     function step(now: number) {
       started ??= now;
       const top = glidePosition(from, target, now - started);
       view?.scrollTo({ top, behavior: "instant" });
-      frame.current = top === target ? null : requestAnimationFrame(step);
+      frame = top === target ? null : requestAnimationFrame(step);
     }
-    frame.current = requestAnimationFrame(step);
+    frame = requestAnimationFrame(step);
     return () => {
-      if (frame.current !== null) {
-        cancelAnimationFrame(frame.current);
-        frame.current = null;
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
       }
     };
   }, [viewRef, currentLine, following, rowSelector, layout]);

@@ -191,7 +191,17 @@ test("spec 018 AC-5, spec 026 AC-2 and AC-4: following glides the sung row 35% d
   const back = await screen.findByRole("button", {
     name: "Back to the current line",
   });
+
+  // While paused, a new sung line starts no glide.
   scrollTo.mockClear();
+  fakePlayer.seconds = 9.6;
+  await waitFor(() => {
+    expect(document.querySelector("tr.current")?.textContent).toContain(
+      "夜の月",
+    );
+  });
+  expect(scrollTo).not.toHaveBeenCalled();
+
   await user.click(back);
 
   expect(
@@ -480,7 +490,19 @@ test("spec 016: a failed Save says so and keeps the button as it was", async () 
   ).toBe("false");
 });
 
-test("spec 026 AC-6: one marker shows while a line is sung, and none before", async () => {
+test("spec 026 AC-6: one marker shows while a line is sung, placed and sized to the sung row", async () => {
+  // The table starts at (20, 100); the sung row at (30, 300) and is 50px tall.
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: Element) {
+      if (this.matches(".versions-wrap")) {
+        return { top: 100, left: 20, height: 900 } as DOMRect;
+      }
+      if (this.matches("tr.current")) {
+        return { top: 300, left: 30, height: 50 } as DOMRect;
+      }
+      return { top: 0, left: 0, height: 0 } as DOMRect;
+    },
+  );
   fakePlayer.seconds = 0;
   await openSavedSong(songReply(LINES, VIDEO_ID));
   expect(document.querySelectorAll(".sung-marker")).toHaveLength(0);
@@ -488,13 +510,33 @@ test("spec 026 AC-6: one marker shows while a line is sung, and none before", as
   fakePlayer.seconds = 5;
   fakePlayer.playing = true;
 
+  // The marker is placed by an effect just after it appears, so wait for its size too.
   await waitFor(() => {
     expect(document.querySelectorAll(".sung-marker")).toHaveLength(1);
+    expect(
+      document.querySelector<HTMLElement>(".sung-marker")?.style.height,
+    ).toBe("28px");
   });
-  expect(
-    document.querySelector(".sung-marker")?.getAttribute("aria-hidden"),
-  ).toBe("true");
+  const marker = document.querySelector<HTMLElement>(".sung-marker");
+  // 56% of the row's 50px, centred: 200 + (50 - 28) / 2 = 211 down, 10 across.
+  expect(marker?.style.height).toBe("28px");
+  expect(marker?.style.transform).toBe("translate(10px, 211px)");
+  expect(marker?.getAttribute("aria-hidden")).toBe("true");
   expect(
     document.querySelector("tr.current")?.getAttribute("aria-current"),
   ).toBe("true");
+});
+
+test("spec 026 AC-6: a song without timings shows no marker while its audio plays", async () => {
+  fakePlayer.seconds = 5;
+  fakePlayer.playing = true;
+  await openSavedSong(
+    songReply(
+      LINES.map((line) => ({ ...line, startMs: null })),
+      VIDEO_ID,
+    ),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 400));
+
+  expect(document.querySelectorAll(".sung-marker")).toHaveLength(0);
 });

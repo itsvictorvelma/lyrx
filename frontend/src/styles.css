@@ -1248,10 +1248,13 @@ button:disabled {
   height: 0;
   background: var(--accent);
   border-radius: 999px;
+  pointer-events: none;
+}
+
+.sung-marker[data-placed] {
   transition:
     transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
     height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: none;
 }
 
 /* inline-flex, so the cell's baseline is the button's first line, not its last. */
