@@ -72,6 +72,8 @@ export interface AudioClock {
   play: () => void;
   pause: () => void;
   seekMs: (milliseconds: number) => void;
+  // 0 (silent) to 100 (full).
+  setVolume: (percent: number) => void;
 }
 
 // "1:05" for 65,400 milliseconds.

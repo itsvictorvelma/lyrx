@@ -226,6 +226,78 @@ test("AC-9: play/pause, previous and next line, and the position slider control 
   expect(fakePlayer.seeks).toEqual([1.5, 30, 4.5]);
 });
 
+test("spec 022 AC-1, AC-4: the volume slider sets the YouTube player's volume, also once it is ready", async () => {
+  window.localStorage.setItem("lyrx-volume", "70");
+  await openSavedSong(songReply(LINES, VIDEO_ID));
+  await waitFor(() => {
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
+  });
+  expect(fakePlayer.volume).toBe(70);
+
+  fireEvent.change(screen.getByLabelText("Volume"), {
+    target: { value: "40" },
+  });
+  expect(fakePlayer.volume).toBe(40);
+  expect(screen.getByLabelText("Volume").getAttribute("aria-valuetext")).toBe(
+    "40%",
+  );
+
+  // YouTube's player only takes a volume once ready: the level is applied again then.
+  fakePlayer.volume = null;
+  fakePlayer.becomeReady();
+  expect(fakePlayer.volume).toBe(40);
+});
+
+test("spec 022 AC-2, AC-3: Mute and Unmute, and the level is remembered", async () => {
+  const user = await openSavedSong(songReply(LINES, VIDEO_ID));
+  await waitFor(() => {
+    expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
+  });
+  fireEvent.change(screen.getByLabelText("Volume"), {
+    target: { value: "55" },
+  });
+
+  await user.click(screen.getByRole("button", { name: "Mute" }));
+  expect(fakePlayer.volume).toBe(0);
+  expect(window.localStorage.getItem("lyrx-volume")).toBe("0");
+  await user.click(screen.getByRole("button", { name: "Unmute" }));
+  expect(fakePlayer.volume).toBe(55);
+  expect(window.localStorage.getItem("lyrx-volume")).toBe("55");
+
+  // Moving the slider up from 0 also unmutes.
+  await user.click(screen.getByRole("button", { name: "Mute" }));
+  fireEvent.change(screen.getByLabelText("Volume"), {
+    target: { value: "20" },
+  });
+  expect(fakePlayer.volume).toBe(20);
+  expect(screen.getByRole("button", { name: "Mute" })).toBeTruthy();
+});
+
+test("spec 022 AC-1, AC-3: an audio file starts at the current level and follows the slider", async () => {
+  // jsdom has no object URLs; a URL class with them stands in for this test.
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL = () => "blob:fake";
+      static revokeObjectURL = () => undefined;
+    },
+  );
+  window.localStorage.setItem("lyrx-volume", "30");
+  const user = await openSavedSong(songReply(LINES));
+
+  await user.upload(
+    screen.getByLabelText("Play a file"),
+    new File(["fake"], "song.mp3", { type: "audio/mpeg" }),
+  );
+  const audio = document.querySelector("audio");
+  expect(audio?.volume).toBeCloseTo(0.3);
+
+  fireEvent.change(screen.getByLabelText("Volume"), {
+    target: { value: "80" },
+  });
+  expect(audio?.volume).toBeCloseTo(0.8);
+});
+
 test("AC-9: with no audio chosen, the bar offers a YouTube link and a file", async () => {
   await openSavedSong(songReply(LINES));
 

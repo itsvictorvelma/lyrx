@@ -1,5 +1,5 @@
 // The player bar at the bottom of a song: audio controls, sync, the video window, and choosing audio.
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { matchesMedia } from "../mediaQuery";
 import { AudioFilePlayer } from "./AudioFilePlayer";
 import { savePlayback } from "./api";
@@ -7,6 +7,7 @@ import { nudgeOffset, parseVideoId } from "./playback";
 import type { AudioClock } from "./playback";
 import { PlayerControls, VideoIcon } from "./PlayerControls";
 import type { Playback, Progress } from "./types";
+import { storedVolume, storeVolume, toggledVolume } from "./volume";
 import { YouTubePlayer } from "./YouTubePlayer";
 
 export const BAD_LINK_MESSAGE = "That doesn't look like a YouTube link.";
@@ -60,6 +61,28 @@ export function PlayerBar(props: PlayerBarProps) {
   const showPlayerFailed = useCallback(() => {
     setError(PLAYER_FAILED_MESSAGE);
   }, []);
+  const [volume, setVolume] = useState(storedVolume);
+  const volumeRef = useRef(volume);
+  const beforeMute = useRef(volume);
+  const clockRef = useRef<AudioClock | null>(null);
+
+  // Every new player starts at the current volume.
+  const { onClock } = props;
+  const handleClock = useCallback(
+    (clock: AudioClock | null) => {
+      clockRef.current = clock;
+      clock?.setVolume(volumeRef.current);
+      onClock(clock);
+    },
+    [onClock],
+  );
+
+  function changeVolume(next: number) {
+    volumeRef.current = next;
+    setVolume(next);
+    storeVolume(next);
+    clockRef.current?.setVolume(next);
+  }
 
   // A 404 means the song is not in the library, so nothing is kept; any other failure is said.
   async function save(playback: Playback) {
@@ -110,7 +133,7 @@ export function PlayerBar(props: PlayerBarProps) {
         <div className={videoShown ? "video-window" : "video-window is-hidden"}>
           <YouTubePlayer
             videoId={source.videoId}
-            onClock={props.onClock}
+            onClock={handleClock}
             onLoadError={showPlayerFailed}
           />
           <button
@@ -126,7 +149,7 @@ export function PlayerBar(props: PlayerBarProps) {
         </div>
       )}
       {source?.kind === "file" && (
-        <AudioFilePlayer file={source.file} onClock={props.onClock} />
+        <AudioFilePlayer file={source.file} onClock={handleClock} />
       )}
       {linkFormOpen && (
         <form
@@ -180,6 +203,15 @@ export function PlayerBar(props: PlayerBarProps) {
             hasVideo={source.kind === "youtube"}
             videoShown={videoShown}
             onNudge={nudge}
+            volume={volume}
+            onVolumeChange={changeVolume}
+            onToggleMute={() => {
+              // Unmute returns to the level Mute was pressed at, not a slider step on the way down.
+              if (volume > 0) {
+                beforeMute.current = volume;
+              }
+              changeVolume(toggledVolume(volume, beforeMute.current));
+            }}
             onToggleVideo={() => {
               setVideoShown((shown) => !shown);
             }}

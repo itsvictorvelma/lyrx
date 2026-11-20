@@ -37,7 +37,7 @@ The song and lyrics shown are invented for these screenshots.
 - **Your songs (home):** press **Save** on a song to keep it here as a tile, with its YouTube thumbnail when it has a video. Sort by recent, A–Z, or artist.
 - **Find a song:** type a title, an artist, or both in the search box at the top. The best match opens at its own address (`/song/{id}`); "Not this one?" lists the others. Back and reload work.
 - **Four columns** for every line: Original, Hiragana, Romaji, English. A line no translator could do says "Not available". On a phone, tabs pick one column to show next to the original.
-- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line is highlighted and kept in view (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync. The video and sync are kept once you save the song. Your file is never uploaded.
+- **Play along:** add a YouTube link or pick an audio file from your computer, and control it from the player bar. The sung line is highlighted and kept in view (timings from LRCLIB). Click a line to jump to it; "Earlier" / "Later" fixes the sync; the volume slider and Mute set the loudness (remembered). The video and sync are kept once you save the song. Your file is never uploaded.
 - **Focus mode:** hides everything but the lyrics and the player, with bigger text.
 - **Study tools:** hide the Hiragana, Romaji, or English column and reveal one line at a time to test yourself; loop the line being sung; keyboard shortcuts for everything (press **?** on a song for the list).
 - **Dark and light:** follows your system; the sun/moon button switches and remembers it.
@@ -165,5 +165,6 @@ lyrx/
             ├── YouTubePlayer.tsx  The YouTube player (privacy-enhanced embed)
             ├── AudioFilePlayer.tsx An audio file from your computer, played in the browser
             ├── playback.ts        Link → video id, the line being sung, the sync, the player clock
+            ├── volume.ts          The player volume: remembered level, Mute and Unmute
             └── fakeSongPage.tsx   Test helpers: a fake YouTube player and server for song page tests
 ```

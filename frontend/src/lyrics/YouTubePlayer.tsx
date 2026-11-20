@@ -13,6 +13,7 @@ export interface YouTubePlayerHandle {
   playVideo?: () => void;
   pauseVideo?: () => void;
   seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
+  setVolume?: (percent: number) => void;
   destroy: () => void;
 }
 
@@ -28,6 +29,7 @@ interface YouTubeNamespace {
       width: string;
       height: string;
       playerVars: Record<string, number>;
+      events: { onReady: () => void };
     },
   ) => YouTubePlayerHandle;
 }
@@ -89,15 +91,22 @@ export function YouTubePlayer({
         // YouTube replaces this element with its iframe, so React never owns it.
         const target = document.createElement("div");
         container.current.replaceChildren(target);
+        let clock: ReturnType<typeof clockFor> | null = null;
         const created = new youTube.Player(target, {
           videoId,
           host: EMBED_HOST,
           width: "100%",
           height: "100%",
           playerVars: { playsinline: 1, rel: 0 },
+          events: {
+            onReady: () => {
+              clock?.applyVolume();
+            },
+          },
         });
         player = created;
-        onClock(clockFor(created));
+        clock = clockFor(created);
+        onClock(clock);
       },
       () => {
         if (active) {
@@ -115,9 +124,23 @@ export function YouTubePlayer({
   return <div className="video-frame" ref={container} />;
 }
 
-// The player's methods exist only once it is ready, so each one is checked before use.
-function clockFor(player: YouTubePlayerHandle): AudioClock {
+// The player's methods exist only once it is ready, so each one is checked before use. A volume
+// set before then is kept and applied by `applyVolume` from the player's onReady.
+function clockFor(
+  player: YouTubePlayerHandle,
+): AudioClock & { applyVolume: () => void } {
+  let volume: number | null = null;
+  const applyVolume = () => {
+    if (volume !== null) {
+      player.setVolume?.(volume);
+    }
+  };
   return {
+    applyVolume,
+    setVolume: (percent) => {
+      volume = percent;
+      applyVolume();
+    },
     timeMs: () =>
       player.getCurrentTime === undefined
         ? null
