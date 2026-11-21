@@ -19,11 +19,11 @@ from fake_gemini import (
     success,
 )
 
-from lyrx import config
-from lyrx.errors import ApiError
-from lyrx.translation.chain import ReadyTranslator, request_versions
-from lyrx.translation.gemini import make_gemini_client
-from lyrx.translation.results import ChunkReply, LineVersions, TokenUsage
+from subbed import config
+from subbed.errors import ApiError
+from subbed.translation.chain import ReadyTranslator, request_versions
+from subbed.translation.gemini import make_gemini_client
+from subbed.translation.results import ChunkReply, LineVersions, TokenUsage
 
 API_KEY = "fake-gemini-key-not-real-0123"
 # Non-blank lines of an invented song; index 1 was blank and is not sent. Index 3 has no Japanese.

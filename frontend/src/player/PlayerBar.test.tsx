@@ -263,7 +263,7 @@ test("AC-9: play/pause, previous and next line, and the position slider control 
 });
 
 test("spec 022 AC-1, AC-4: the volume slider sets the YouTube player's volume, also once it is ready", async () => {
-  window.localStorage.setItem("lyrx-volume", "70");
+  window.localStorage.setItem("subbed-volume", "70");
   await openSavedSong(songReply(LINES, VIDEO_ID));
   await waitFor(() => {
     expect(fakePlayer.createdFor).toEqual([VIDEO_ID]);
@@ -295,10 +295,10 @@ test("spec 022 AC-2, AC-3: Mute and Unmute, and the level is remembered", async 
 
   await user.click(screen.getByRole("button", { name: "Mute" }));
   expect(fakePlayer.volume).toBe(0);
-  expect(window.localStorage.getItem("lyrx-volume")).toBe("0");
+  expect(window.localStorage.getItem("subbed-volume")).toBe("0");
   await user.click(screen.getByRole("button", { name: "Unmute" }));
   expect(fakePlayer.volume).toBe(55);
-  expect(window.localStorage.getItem("lyrx-volume")).toBe("55");
+  expect(window.localStorage.getItem("subbed-volume")).toBe("55");
 
   // Moving the slider up from 0 also unmutes.
   await user.click(screen.getByRole("button", { name: "Mute" }));
@@ -318,7 +318,7 @@ test("spec 022 AC-1, AC-3: an audio file starts at the current level and follows
       static revokeObjectURL = () => undefined;
     },
   );
-  window.localStorage.setItem("lyrx-volume", "30");
+  window.localStorage.setItem("subbed-volume", "30");
   const user = await openSavedSong(songReply(LINES));
 
   await user.upload(

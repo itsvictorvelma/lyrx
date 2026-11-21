@@ -10,7 +10,7 @@ test("spec 025 AC-2: the page has the preview tags and icon links, and the files
   const page = html.replace(/\s+/g, " ");
   for (const tag of [
     '<meta name="description"',
-    '<meta property="og:title" content="Lyrx"',
+    '<meta property="og:title" content="Subbed"',
     '<meta property="og:description"',
     '<meta property="og:image" content="/og-image.png"',
     '<meta name="twitter:card" content="summary_large_image"',

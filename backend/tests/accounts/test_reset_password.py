@@ -6,8 +6,8 @@ import pytest
 from conftest import TEST_PASSWORD, sign_up
 from fastapi.testclient import TestClient
 
-from lyrx.accounts import reset_password
-from lyrx.accounts.routes import ACCOUNT_PATH, SIGN_IN_PATH
+from subbed.accounts import reset_password
+from subbed.accounts.routes import ACCOUNT_PATH, SIGN_IN_PATH
 
 NEW_PASSWORD = "a brand new password"
 

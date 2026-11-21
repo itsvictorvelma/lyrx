@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run on the server: pulls main, rebuilds and restarts Lyrx, and waits until it reports healthy.
+# Run on the server: pulls main, rebuilds and restarts Subbed, and waits until it reports healthy.
 set -euo pipefail
 
 # Everything is in main(), which bash reads whole before running: `git pull` may rewrite this
@@ -13,29 +13,29 @@ main() {
     echo "No .env here. Copy .env.example to .env and fill it in (see the README's Deploy section)."
     exit 1
   fi
-  domain="$(sed -n 's/^LYRX_DOMAIN=//p' .env | tail -n 1 | tr -d '[:space:]"')"
+  domain="$(sed -n 's/^SUBBED_DOMAIN=//p' .env | tail -n 1 | tr -d '[:space:]"')"
   if [[ -z "$domain" ]]; then
-    echo "LYRX_DOMAIN is empty in .env. Set it to your domain, without https://."
+    echo "SUBBED_DOMAIN is empty in .env. Set it to your domain, without https://."
     exit 1
   fi
 
   git pull --ff-only
   # Caddy waits for the app to be healthy, so a failed start shows here.
   docker compose up -d --build || {
-    echo "Lyrx did not start. See: docker compose logs lyrx"
+    echo "Subbed did not start. See: docker compose logs subbed"
     exit 1
   }
 
-  container="$(docker compose ps -q lyrx)"
+  container="$(docker compose ps -q subbed)"
   for _ in $(seq 1 30); do
     status="$(docker inspect -f '{{.State.Health.Status}}' "$container")"
     if [[ "$status" == "healthy" ]]; then
-      echo "Lyrx is up: https://$domain"
+      echo "Subbed is up: https://$domain"
       exit 0
     fi
     sleep 2
   done
-  echo "Lyrx did not report healthy within 60 seconds. See: docker compose logs lyrx"
+  echo "Subbed did not report healthy within 60 seconds. See: docker compose logs subbed"
   exit 1
 }
 

@@ -130,7 +130,7 @@ test("a line with no timing has no loop", () => {
 
 describe("volume", () => {
   afterEach(() => {
-    window.localStorage.removeItem("lyrx-volume");
+    window.localStorage.removeItem("subbed-volume");
   });
 
   test("AC-3: a stored level is read back; a missing or broken one means 100", () => {
@@ -138,7 +138,7 @@ describe("volume", () => {
     storeVolume(35);
     expect(storedVolume()).toBe(35);
     for (const broken of ["", "loud", "-5", "101", "12.5"]) {
-      window.localStorage.setItem("lyrx-volume", broken);
+      window.localStorage.setItem("subbed-volume", broken);
       expect(storedVolume()).toBe(100);
     }
   });

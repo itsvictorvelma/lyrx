@@ -24,8 +24,8 @@ from fake_gemini import (
 from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
-from lyrx import config, library
-from lyrx.app import RECENT_SONGS_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
+from subbed import config, library
+from subbed.app import RECENT_SONGS_PATH, SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
 
 # The invented record's non-blank lines.
 SENT = [0, 1, 3, 4]
@@ -341,7 +341,7 @@ def test_the_log_says_whether_a_song_came_from_the_library(
     open_new_song(client, fake_lrclib, fake_gemini)
     open_song(client)
 
-    lines = [r.getMessage() for r in caplog.records if r.name == "lyrx.server.request_log"]
+    lines = [r.getMessage() for r in caplog.records if r.name == "subbed.server.request_log"]
     assert "from_library=false" in lines[0]
     assert "from_library=true" in lines[1]
     assert "歌101" not in caplog.text

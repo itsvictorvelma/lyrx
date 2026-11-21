@@ -15,9 +15,13 @@ from raw_asgi import (
     run_like_uvicorn,
 )
 
-CRASH_GUARD_LOGGER = "lyrx.server.crash_guard"
+CRASH_GUARD_LOGGER = "subbed.server.crash_guard"
 CRASH_PATH = "/api/raise-outside-the-pipeline"
-CRASH_SECRETS = ["/Users/someone/lyrx/src/lyrx/app.py", "君の声が 遠く ひびく", "test-key-not-real"]
+CRASH_SECRETS = [
+    "/Users/someone/subbed/src/subbed/app.py",
+    "君の声が 遠く ひびく",
+    "test-key-not-real",
+]
 
 
 def test_ac32_crash_guard_stops_an_exception_raised_outside_the_pipeline(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from lyrx.lyrics.japanese import has_japanese, is_kana, is_kanji, looks_japanese
+from subbed.lyrics.japanese import has_japanese, is_kana, is_kanji, looks_japanese
 
 # Kana (AC-43)
 

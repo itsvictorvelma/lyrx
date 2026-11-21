@@ -25,9 +25,9 @@ export function Header({
   return (
     <header className="site-header">
       <a href={HOME_PATH} className="wordmark" onClick={followLink(HOME_PATH)}>
-        lyrx{" "}
+        subbed{" "}
         <span lang="ja" className="wordmark-kana">
-          歌詞
+          字幕
         </span>
       </a>
       {showSearch && <SearchForm busy={busy} onSearch={onSearch} />}

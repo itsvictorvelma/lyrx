@@ -2,7 +2,7 @@
 
 import pytest
 
-from lyrx.lyrics.lines import read_lyrics, read_timed_lines, start_times
+from subbed.lyrics.lines import read_lyrics, read_timed_lines, start_times
 
 
 def test_every_kind_of_line_ending_is_one_line_break() -> None:

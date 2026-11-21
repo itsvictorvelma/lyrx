@@ -4,10 +4,10 @@ import httpx2
 import pytest
 from fake_lrclib import FakeLrclib, json_reply, record
 
-from lyrx import config
-from lyrx.errors import ApiError
-from lyrx.lyrics import lrclib
-from lyrx.lyrics.lrclib import make_lrclib_client
+from subbed import config
+from subbed.errors import ApiError
+from subbed.lyrics import lrclib
+from subbed.lyrics.lrclib import make_lrclib_client
 
 
 def test_search_sends_one_get_with_the_query_and_the_user_agent() -> None:

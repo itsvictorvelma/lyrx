@@ -17,13 +17,13 @@ from fake_groq import (
 from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import SONG_VERSIONS_PATH
-from lyrx.errors import ApiError
-from lyrx.translation.chain import ReadyTranslator, ready_translators, request_versions
-from lyrx.translation.gemini import make_gemini_client
-from lyrx.translation.groq import make_groq_client
-from lyrx.translation.results import ChunkReply
+from subbed import config
+from subbed.app import SONG_VERSIONS_PATH
+from subbed.errors import ApiError
+from subbed.translation.chain import ReadyTranslator, ready_translators, request_versions
+from subbed.translation.gemini import make_gemini_client
+from subbed.translation.groq import make_groq_client
+from subbed.translation.results import ChunkReply
 
 GROQ_KEY = "fake-groq-key-not-real-4567"
 GEMINI_KEY = "fake-gemini-key-not-real-0123"
@@ -228,7 +228,7 @@ def test_ac8_the_log_names_the_translator_and_never_the_key_or_reply(
     fake_gemini.answer = answer_with_placeholders
     client.post(SONG_VERSIONS_PATH, json={"id": 202})
 
-    lines = [r.getMessage() for r in caplog.records if r.name == "lyrx.server.request_log"]
+    lines = [r.getMessage() for r in caplog.records if r.name == "subbed.server.request_log"]
     assert "translator=groq-gpt-oss-120b " in lines[0]
     assert "translator=gemini-3.5-flash-lite " in lines[1]
     assert GROQ_KEY not in caplog.text

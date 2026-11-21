@@ -54,8 +54,8 @@ function currentRoute(): Route {
   return parseRoute(window.location.pathname, window.location.search);
 }
 
-// Entries Lyrx adds are marked, so Back on a song knows there is a Lyrx page behind it.
-const IN_APP_ENTRY = { lyrx: true };
+// Entries Subbed adds are marked, so Back on a song knows there is a Subbed page behind it.
+const IN_APP_ENTRY = { subbed: true };
 
 // Moves to an address and tells `useRoute` listeners; `replace` swaps the current history entry.
 export function navigate(path: string, { replace = false } = {}): void {
@@ -75,12 +75,12 @@ export function followLink(path: string) {
   };
 }
 
-// Back to the Lyrx page before this one; home when this page was opened from outside.
+// Back to the Subbed page before this one; home when this page was opened from outside.
 export function goBack(): void {
   const state: unknown = window.history.state;
-  const cameFromLyrx =
-    typeof state === "object" && state !== null && "lyrx" in state;
-  if (cameFromLyrx) {
+  const cameFromSubbed =
+    typeof state === "object" && state !== null && "subbed" in state;
+  if (cameFromSubbed) {
     window.history.back();
   } else {
     navigate(HOME_PATH);

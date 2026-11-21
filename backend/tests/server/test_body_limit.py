@@ -21,9 +21,9 @@ from raw_asgi import (
 )
 from starlette.types import Message
 
-from lyrx.app import SONG_SEARCH_PATH
+from subbed.app import SONG_SEARCH_PATH
 
-REQUEST_LOGGER = "lyrx.server.request_log"
+REQUEST_LOGGER = "subbed.server.request_log"
 
 BODY_CAP_BYTES = 262_144
 TOO_LARGE_MESSAGE = "The request is too large."

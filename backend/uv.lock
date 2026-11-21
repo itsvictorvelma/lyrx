@@ -342,7 +342,7 @@ wheels = [
 ]
 
 [[package]]
-name = "lyrx"
+name = "subbed"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

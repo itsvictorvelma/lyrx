@@ -1,4 +1,4 @@
-// Mounts the Lyrx app into the page.
+// Mounts the Subbed app into the page.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

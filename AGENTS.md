@@ -4,9 +4,9 @@ The rules every human and agent follows in this repo. When a request conflicts w
 
 **Priority order: security, then correctness, then a working page, then polish.**
 
-## What Lyrx is
+## What Subbed is
 
-An app for learning a song in another language. The learner types a song's name in one box, and Lyrx shows every line of the song in every version that helps for that language, side by side.
+An app for learning a song in another language. The learner types a song's name in one box, and Subbed shows every line of the song in every version that helps for that language, side by side.
 
 For Japanese (the first language) that is four columns, one row per lyric line:
 
@@ -68,7 +68,7 @@ Limits:
 - Fetched and generated text is rendered as text, never as HTML.
 
 ### The app
-- The bind address and the allowed `Host` names are settings (`LYRX_HOST`, `LYRX_ALLOWED_HOSTS`, spec 020). Locally the app binds to `127.0.0.1` and accepts only `127.0.0.1` and `localhost`. On the server only Caddy is public and the only allowed name is the domain. Any other `Host` is refused.
+- The bind address and the allowed `Host` names are settings (`SUBBED_HOST`, `SUBBED_ALLOWED_HOSTS`, spec 020). Locally the app binds to `127.0.0.1` and accepts only `127.0.0.1` and `localhost`. On the server only Caddy is public and the only allowed name is the domain. Any other `Host` is refused.
 - Errors return a short code and message. Never stack traces, file paths, SQL, or secrets.
 
 ### Lyrics and tests
@@ -84,7 +84,7 @@ Limits:
 
 The code must be easy to read for someone who has never worked in this repo. The reviewer fails work that breaks these rules.
 
-- **Layout.** Backend code in `backend/src/lyrx/`, grouped by area: `lyrics/` (finding and preparing lyrics), `translation/` (the translators and their checks), `server/` (guards and logging around every request); app-wide files (`app.py`, `config.py`, `errors.py`, `schemas.py`, `song.py`, `library.py`) at the top. Tests in `backend/tests/`, in the same folders, one `test_<module>.py` per module. A data shape lives in the file that uses it; `schemas.py` holds only what the page sends and receives. Merge a file under about 40 lines into the one module that uses it rather than adding another file. Frontend code in `frontend/src/`, grouped by feature (`account/`, `header/`, `search/`, `shortcuts/`, `home/`, `library/`, `song/`, `player/`); code every feature shares lives in top-level files (`api.ts`, `types.ts`, `routing.ts`, `browser.ts`, `icons.tsx`), which never import from a feature folder. A feature may use what another feature exports (such as `SearchForm` or `useAccount`). Tests sit next to the file they test as `*.test.ts(x)`. The README holds the folder map and is updated when a folder or module is added.
+- **Layout.** Backend code in `backend/src/subbed/`, grouped by area: `lyrics/` (finding and preparing lyrics), `translation/` (the translators and their checks), `server/` (guards and logging around every request); app-wide files (`app.py`, `config.py`, `errors.py`, `schemas.py`, `song.py`, `library.py`) at the top. Tests in `backend/tests/`, in the same folders, one `test_<module>.py` per module. A data shape lives in the file that uses it; `schemas.py` holds only what the page sends and receives. Merge a file under about 40 lines into the one module that uses it rather than adding another file. Frontend code in `frontend/src/`, grouped by feature (`account/`, `header/`, `search/`, `shortcuts/`, `home/`, `library/`, `song/`, `player/`); code every feature shares lives in top-level files (`api.ts`, `types.ts`, `routing.ts`, `browser.ts`, `icons.tsx`), which never import from a feature folder. A feature may use what another feature exports (such as `SearchForm` or `useAccount`). Tests sit next to the file they test as `*.test.ts(x)`. The README holds the folder map and is updated when a folder or module is added.
 - **One job per file**, named for that job. No `utils`, `helpers`, `common`, `misc`, or `manager`. No folder for a single file.
 - **Every file opens with a one-line docstring or comment** saying what it is for.
 - **Names say what things are and do**: `split_lines`, `to_romaji`, `SongSearchForm`. No abbreviations a newcomer would have to guess.

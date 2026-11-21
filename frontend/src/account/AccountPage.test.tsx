@@ -41,7 +41,7 @@ test("AC-15: Save sends a guest to sign in, then back to the song, with their na
   await user.click(screen.getByRole("button", { name: "Save" }));
   expect(window.location.pathname).toBe("/account");
   expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
-  expect(document.title).toBe("Sign in · Lyrx");
+  expect(document.title).toBe("Sign in · Subbed");
 
   await signIn(user);
 
@@ -79,7 +79,7 @@ test("AC-16: Sign out on /account returns to the guest home", async () => {
   expect((await screen.findByText(/Signed in as/)).textContent).toBe(
     "Signed in as mika",
   );
-  expect(document.title).toBe("Your account · Lyrx");
+  expect(document.title).toBe("Your account · Subbed");
   await user.click(screen.getByRole("button", { name: "Sign out" }));
 
   expect(window.location.pathname).toBe("/");

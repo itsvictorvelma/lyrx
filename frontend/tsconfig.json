@@ -1,4 +1,4 @@
-// Strict TypeScript settings for the Lyrx page and its Vite config.
+// Strict TypeScript settings for the Subbed page and its Vite config.
 {
   "compilerOptions": {
     "target": "ES2022",

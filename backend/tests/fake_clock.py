@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import httpx2
 import pytest
 
-from lyrx.translation import streamed_post
+from subbed.translation import streamed_post
 
 
 @dataclass

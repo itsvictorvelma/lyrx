@@ -14,10 +14,10 @@ from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from lyrx import config, library
-from lyrx.accounts import routes
-from lyrx.accounts.routes import ACCOUNT_PATH, SIGN_IN_PATH, SIGN_UP_PATH
-from lyrx.app import SAVED_SONGS_PATH, SONG_VERSIONS_PATH
+from subbed import config, library
+from subbed.accounts import routes
+from subbed.accounts.routes import ACCOUNT_PATH, SIGN_IN_PATH, SIGN_UP_PATH
+from subbed.app import SAVED_SONGS_PATH, SONG_VERSIONS_PATH
 
 VIDEO_ID = "abcDEF12_-z"
 
@@ -222,4 +222,4 @@ def test_the_log_has_the_event_and_user_id_but_never_the_password_or_token(
     assert "code=sign_in_failed" in caplog.text
     assert TEST_PASSWORD not in caplog.text
     assert "wrong password" not in caplog.text
-    assert client.cookies["lyrx_session"] not in caplog.text
+    assert client.cookies["subbed_session"] not in caplog.text

@@ -29,11 +29,11 @@ test("AC-3: a hidden column is stored, and read back by the next page", () => {
 
 test("an odd stored value hides nothing it does not know", () => {
   window.localStorage.setItem(
-    "lyrx-hidden-columns",
+    "subbed-hidden-columns",
     '["english", "original", 3]',
   );
   expect([...storedHiddenColumns()]).toEqual(["english"]);
-  window.localStorage.setItem("lyrx-hidden-columns", "{not json");
+  window.localStorage.setItem("subbed-hidden-columns", "{not json");
   expect(storedHiddenColumns().size).toBe(0);
 });
 

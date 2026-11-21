@@ -1,4 +1,4 @@
-// The Lyrx app: the header, then home at `/`, your songs at `/library`, a song at `/song/{id}`,
+// The Subbed app: the header, then home at `/`, your songs at `/library`, a song at `/song/{id}`,
 // or signing in at `/account`.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountPage } from "./account/AccountPage";
@@ -33,7 +33,7 @@ import type {
 import { HOME_PATH, navigate, songPath, useRoute } from "./routing";
 import type { Route } from "./routing";
 
-const SITE_NAME = "Lyrx";
+const SITE_NAME = "Subbed";
 
 type Status = "idle" | Stage;
 

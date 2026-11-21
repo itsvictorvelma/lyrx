@@ -1,22 +1,22 @@
-"""Tests for the `python -m lyrx` entry point: uvicorn on the configured address and proxy."""
+"""Tests for the `python -m subbed` entry point: uvicorn on the configured address and proxy."""
 
 from typing import Any
 
 import pytest
 import uvicorn
 
-from lyrx import config
+from subbed import config
 
 
 def run_main(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """The options `python -m lyrx` passes to uvicorn, without starting it."""
+    """The options `python -m subbed` passes to uvicorn, without starting it."""
     uvicorn_calls: list[dict[str, Any]] = []
 
     def record_uvicorn_run(*arguments: Any, **options: Any) -> None:
         uvicorn_calls.append(options)
 
     monkeypatch.setattr(uvicorn, "run", record_uvicorn_run)
-    from lyrx.__main__ import main
+    from subbed.__main__ import main
 
     main()
 

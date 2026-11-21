@@ -1,6 +1,6 @@
-# uv project for the Lyrx server: dependencies and ruff, mypy, pytest settings.
+# uv project for the Subbed server: dependencies and ruff, mypy, pytest settings.
 [project]
-name = "lyrx"
+name = "subbed"
 version = "0.1.0"
 description = "Server that finds a Japanese song and shows it in four versions."
 requires-python = ">=3.12"

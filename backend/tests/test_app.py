@@ -17,8 +17,8 @@ from fastapi.testclient import TestClient
 from starlette.types import ASGIApp
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from lyrx import config, library
-from lyrx.app import (
+from subbed import config, library
+from subbed.app import (
     HEALTH_PATH,
     PLAYBACK_PATH,
     RECENT_SONGS_PATH,
@@ -28,7 +28,7 @@ from lyrx.app import (
     SONG_VERSIONS_PATH,
     page_file,
 )
-from lyrx.rate_limits import peer_address
+from subbed.rate_limits import peer_address
 
 VIDEO_A = "aaaaaaaaaaa"
 VIDEO_B = "bbbbbbbbbbb"
@@ -63,7 +63,7 @@ def test_query_that_is_not_a_string_is_invalid_request(client: TestClient, query
 def test_ac32_unexpected_exception_is_internal_error_without_leaks(
     app: FastAPI, client: TestClient
 ) -> None:
-    exception_text = "secret-path /Users/someone/lyrx/src/lyrx/app.py boom"
+    exception_text = "secret-path /Users/someone/subbed/src/subbed/app.py boom"
 
     def raise_unexpected_error() -> None:
         raise RuntimeError(exception_text)
@@ -255,7 +255,7 @@ def test_ac7_cached_songs_are_free_and_the_account_cap_stops_new_songs_before_lr
 
     assert response.status_code == 429
     assert_error_shape(response.json(), "daily_limit")
-    assert response.json()["message"] == "Daily limit reached. Songs already in Lyrx still open."
+    assert response.json()["message"] == "Daily limit reached. Songs already in Subbed still open."
     assert len(fake_lrclib.requests) == lrclib_calls
 
 
@@ -337,7 +337,7 @@ CADDY_ADDRESS = "172.30.0.10"
 
 def client_as_seen_behind(app: FastAPI, peer: str, trusted_proxy: str | None) -> str:
     """The guest IP the app sees for a request from `peer` carrying a forged-looking
-    `X-Forwarded-For`, wrapped the way `python -m lyrx` asks uvicorn to wrap it."""
+    `X-Forwarded-For`, wrapped the way `python -m subbed` asks uvicorn to wrap it."""
 
     def report_peer(request: Request) -> dict[str, str]:
         return {"ip": peer_address(request)}
@@ -366,7 +366,7 @@ def test_spec020_ac6_without_a_trusted_proxy_the_header_is_ignored(app: FastAPI)
 
 # Serving the built page (spec 020 AC-4).
 
-INDEX_HTML = "<!doctype html><title>Lyrx</title>"
+INDEX_HTML = "<!doctype html><title>Subbed</title>"
 ASSET_JS = "console.log('page');"
 
 
