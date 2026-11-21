@@ -23,7 +23,8 @@ class Limit(NamedTuple):
 
 
 def peer_address(request: Request) -> str:
-    """The direct peer's IP address. Spec 020 adds the trusted proxy in front."""
+    """The client's IP address: the direct peer, or the client Caddy names when uvicorn trusts
+    it as the proxy (`LYRX_TRUSTED_PROXY`, spec 020)."""
     return request.client.host if request.client is not None else "unknown"
 
 

@@ -1,12 +1,119 @@
 """Tests for the server settings in one place: the bind address, caps, hosts, and the key."""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from lyrx import config
 
+SETTING_NAMES = (
+    "LYRX_HOST",
+    "LYRX_ALLOWED_HOSTS",
+    "LYRX_DATABASE_PATH",
+    "LYRX_SECURE_COOKIES",
+    "LYRX_TRUSTED_PROXY",
+    "LYRX_PAGE_DIR",
+)
 
-def test_ac31_configured_bind_host_is_loopback_only() -> None:
-    assert config.HOST == "127.0.0.1"
+
+@pytest.fixture
+def no_settings(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    for name in SETTING_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    return monkeypatch
+
+
+def test_ac31_configured_bind_host_is_loopback_only(no_settings: pytest.MonkeyPatch) -> None:
+    assert config.read_host() == "127.0.0.1"
+
+
+def test_spec020_ac1_without_settings_the_values_are_the_local_ones(
+    no_settings: pytest.MonkeyPatch,
+) -> None:
+    assert config.read_host() == "127.0.0.1"
+    assert config.read_allowed_hosts() == {"127.0.0.1", "localhost"}
+    assert config.read_database_path() == config.REPO_ROOT / "data" / "lyrx.db"
+    assert config.read_secure_cookies() is False
+    assert config.read_trusted_proxy() is None
+    assert config.read_page_dir() is None
+
+
+def test_spec020_an_empty_setting_counts_as_unset(no_settings: pytest.MonkeyPatch) -> None:
+    for name in SETTING_NAMES:
+        no_settings.setenv(name, " ")
+    assert config.read_host() == "127.0.0.1"
+    assert config.read_allowed_hosts() == {"127.0.0.1", "localhost"}
+    assert config.read_page_dir() is None
+
+
+def test_spec020_server_values_are_read(no_settings: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    no_settings.setenv("LYRX_HOST", "0.0.0.0")
+    no_settings.setenv("LYRX_ALLOWED_HOSTS", "Lyrx.Example, www.lyrx.example")
+    no_settings.setenv("LYRX_DATABASE_PATH", "/data/lyrx.db")
+    no_settings.setenv("LYRX_SECURE_COOKIES", "TRUE")
+    no_settings.setenv("LYRX_TRUSTED_PROXY", "172.30.0.10")
+    no_settings.setenv("LYRX_PAGE_DIR", str(tmp_path))
+
+    assert config.read_host() == "0.0.0.0"
+    assert config.read_allowed_hosts() == {"lyrx.example", "www.lyrx.example"}
+    assert config.read_database_path() == Path("/data/lyrx.db")
+    assert config.read_secure_cookies() is True
+    assert config.read_trusted_proxy() == "172.30.0.10"
+    assert config.read_page_dir() == tmp_path.resolve()
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("LYRX_HOST", "everywhere"),
+        ("LYRX_ALLOWED_HOSTS", ","),
+        ("LYRX_ALLOWED_HOSTS", "https://lyrx.example"),
+        ("LYRX_ALLOWED_HOSTS", "lyrx.example:443"),
+        ("LYRX_ALLOWED_HOSTS", "lyrx example"),
+        ("LYRX_SECURE_COOKIES", "yes"),
+        ("LYRX_TRUSTED_PROXY", "caddy"),
+        ("LYRX_PAGE_DIR", "no/such/folder"),
+    ],
+)
+def test_spec020_ac3_a_bad_value_raises_naming_only_the_setting(
+    no_settings: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    no_settings.setenv(name, value)
+    readers = {
+        "LYRX_HOST": config.read_host,
+        "LYRX_ALLOWED_HOSTS": config.read_allowed_hosts,
+        "LYRX_SECURE_COOKIES": config.read_secure_cookies,
+        "LYRX_TRUSTED_PROXY": config.read_trusted_proxy,
+        "LYRX_PAGE_DIR": config.read_page_dir,
+    }
+
+    with pytest.raises(config.SettingError) as caught:
+        readers[name]()
+
+    assert str(caught.value) == name
+
+
+def test_spec020_ac3_a_bad_value_stops_the_start_without_showing_the_value() -> None:
+    secret_looking = "not-a-boolean-s3cr3t"
+    environment = {key: value for key, value in os.environ.items() if key not in SETTING_NAMES}
+    environment["LYRX_SECURE_COOKIES"] = secret_looking
+
+    started = subprocess.run(
+        [sys.executable, "-c", "import lyrx.config"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert started.returncode == 1
+    assert "LYRX_SECURE_COOKIES" in started.stderr
+    assert secret_looking not in started.stderr + started.stdout
+    assert "Traceback" not in started.stderr
 
 
 def test_spec003_ac65_request_body_cap_is_256_kib() -> None:

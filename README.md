@@ -72,6 +72,7 @@
 | **Backend** | Python 3.12+, FastAPI, uvicorn, SQLite, managed with [uv](https://docs.astral.sh/uv/) |
 | **Frontend** | React 19, TypeScript, Vite. No UI library: hand-written CSS with design tokens |
 | **Quality** | ruff, mypy `--strict`, pytest · Prettier, ESLint (strict, type-checked), `tsc`, Vitest + Testing Library |
+| **Hosting** | Docker Compose on one small server, with [Caddy](https://caddyserver.com) for HTTPS |
 | **Services** | LRCLIB (lyrics), Groq and Gemini free tiers (readings and translation). No paid APIs. |
 
 ## Getting started
@@ -122,6 +123,82 @@ It asks for the new password twice and signs that person out everywhere.
 
 </details>
 
+## Deploy
+
+Lyrx runs on one small server (for example a DigitalOcean droplet) with Docker. Caddy sits in front, gets the HTTPS certificate, and is the only part reachable from the internet. The app container serves both the page and the API, and keeps the database on a Docker volume.
+
+**1. The server.** Ubuntu 24.04 with at least 1 GB of memory. On 1 GB, add swap so the page build does not run out of memory:
+
+```bash
+fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+curl -fsSL https://get.docker.com | sh                 # Docker and Compose
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw enable
+```
+
+**2. The domain.** Add an `A` record for your domain pointing to the server's IPv4 address. Add no `AAAA` record: Docker's network is IPv4 only, so every IPv6 visitor would share one address for the daily caps. Wait until `dig +short your.domain` shows that IP. Caddy can only get the certificate after this.
+
+**3. First start.** On the server:
+
+```bash
+git clone https://github.com/itsvictorvelma/lyrx.git && cd lyrx
+cp .env.example .env && chmod 600 .env
+nano .env                  # GROQ_API_KEY, GEMINI_API_KEY, LYRX_DOMAIN=your.domain
+scripts/deploy.sh          # builds, starts, waits until healthy
+```
+
+Open `https://your.domain`. The first account you create also gets the songs saved before accounts existed (there are none on a fresh server).
+
+**4. Update** after a PR is merged into `main`:
+
+```bash
+cd lyrx && scripts/deploy.sh
+```
+
+<details>
+<summary>Logs, password reset, backup</summary>
+
+```bash
+docker compose ps                     # both containers, and whether lyrx is healthy
+docker compose logs -f lyrx           # the app log (Caddy: logs -f caddy)
+docker compose exec lyrx python -m lyrx.accounts.reset_password <username>
+```
+
+Back up the database (safe while it runs), then copy the file off the server:
+
+```bash
+docker compose exec lyrx python -c "import sqlite3; sqlite3.connect('/data/lyrx.db').backup(sqlite3.connect('/data/backup.db'))"
+docker compose cp lyrx:/data/backup.db ./lyrx-backup-$(date +%F).db
+# from your computer: scp root@your.domain:lyrx/lyrx-backup-*.db .
+```
+
+Each update leaves the old image behind; free the disk now and then with `docker image prune` (it never touches volumes). `docker compose down` stops everything and keeps the data. Never add `-v`: it deletes the database and the certificates.
+
+</details>
+
+<details>
+<summary>Try the server setup on your own computer</summary>
+
+With Docker running, add `LYRX_DOMAIN=localhost` to your `.env`, then:
+
+```bash
+docker compose up -d --build    # open https://localhost and accept the local certificate
+docker compose down
+```
+
+</details>
+
+The server settings are environment variables, read once at start. Unset, they keep the local values:
+
+| Setting | Local | In the container |
+|---|---|---|
+| `LYRX_HOST` | `127.0.0.1` | `0.0.0.0` |
+| `LYRX_ALLOWED_HOSTS` | `127.0.0.1,localhost` | your domain |
+| `LYRX_DATABASE_PATH` | `data/lyrx.db` | `/data/lyrx.db` (volume) |
+| `LYRX_SECURE_COOKIES` | `false` | `true` |
+| `LYRX_TRUSTED_PROXY` | unset | Caddy's address |
+| `LYRX_PAGE_DIR` | unset (Vite serves the page) | the built page |
+
 ## Checks
 
 ```bash
@@ -139,7 +216,7 @@ scripts/check-quiet.sh   # one line when it all passes
 lyrx/
 ├── backend/                  Python server
 │   ├── src/lyrx/
-│   │   ├── app.py              Builds the app: routes, error handlers, shared HTTP clients
+│   │   ├── app.py              Builds the app: routes, error handlers, shared HTTP clients, the built page
 │   │   ├── config.py           Every setting in one place
 │   │   ├── schemas.py          What the page sends and receives
 │   │   ├── errors.py           Error codes, their HTTP status, and their message
@@ -174,7 +251,10 @@ lyrx/
 │       └── player/             Player bar, YouTube and audio-file players, playback rules
 ├── specs/                    One short spec per feature, from idea to done
 ├── docs/                     README media (invented songs only)
-├── scripts/                  check.sh and check-quiet.sh
+├── scripts/                  check.sh, check-quiet.sh, and deploy.sh (run on the server)
+├── Dockerfile                The image: builds the page, then runs the server
+├── compose.yaml              The server setup: Caddy in front of the app
+├── Caddyfile                 HTTPS and security headers
 └── AGENTS.md                 The rules every contributor (human or agent) follows
 ```
 

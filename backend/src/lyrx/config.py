@@ -1,13 +1,107 @@
-"""Every server setting in one place."""
+"""Every server setting in one place: fixed values, and the few read from the environment."""
 
+import ipaddress
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Literal, NamedTuple
 
-HOST = "127.0.0.1"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+class SettingError(ValueError):
+    """A `LYRX_*` setting has a bad value. It carries only the setting's name, never the value."""
+
+
+def read_setting(name: str) -> str | None:
+    """A setting from the environment, trimmed. An empty value counts as unset."""
+    return os.environ.get(name, "").strip() or None
+
+
+def read_ip_address(name: str) -> str | None:
+    """An IP address setting, normalised; a bad value raises SettingError."""
+    value = read_setting(name)
+    if value is None:
+        return None
+    try:
+        return str(ipaddress.ip_address(value))
+    except ValueError:
+        raise SettingError(name) from None
+
+
+def read_host() -> str:
+    """The address the server binds to (spec 020). The local default is loopback only."""
+    return read_ip_address("LYRX_HOST") or "127.0.0.1"
+
+
+# A bare host name or IPv4 address: no scheme, port, path, or space.
+HOST_NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$")
+
+
+def read_allowed_hosts() -> frozenset[str]:
+    """The host names the Host and Origin checks accept, comma-separated, stored lowercase."""
+    value = read_setting("LYRX_ALLOWED_HOSTS")
+    if value is None:
+        return frozenset({"127.0.0.1", "localhost"})
+    names = [name.strip().lower() for name in value.split(",") if name.strip()]
+    if not names or not all(HOST_NAME_PATTERN.fullmatch(name) for name in names):
+        raise SettingError("LYRX_ALLOWED_HOSTS")
+    return frozenset(names)
+
+
+def read_path(name: str) -> Path | None:
+    """A path setting; a relative path is taken from the repo root."""
+    value = read_setting(name)
+    return None if value is None else REPO_ROOT / value
+
+
+def read_database_path() -> Path:
+    return read_path("LYRX_DATABASE_PATH") or REPO_ROOT / "data" / "lyrx.db"
+
+
+def read_secure_cookies() -> bool:
+    """Secure cookies need HTTPS, so they are on only on the server."""
+    value = read_setting("LYRX_SECURE_COOKIES")
+    if value is None:
+        return False
+    if value.lower() not in {"true", "false"}:
+        raise SettingError("LYRX_SECURE_COOKIES")
+    return value.lower() == "true"
+
+
+def read_trusted_proxy() -> str | None:
+    """The one address (Caddy) whose `X-Forwarded-For` names the client. Unset: no proxy."""
+    return read_ip_address("LYRX_TRUSTED_PROXY")
+
+
+def read_page_dir() -> Path | None:
+    """The built page folder the server serves (spec 020). Unset locally: Vite serves the page."""
+    page_dir = read_path("LYRX_PAGE_DIR")
+    if page_dir is not None and not (page_dir / "index.html").is_file():
+        raise SettingError("LYRX_PAGE_DIR")
+    return None if page_dir is None else page_dir.resolve()
+
+
+# Read once at start. A bad value stops the server with a message that names only the setting.
+try:
+    HOST = read_host()
+    ALLOWED_HOST_NAMES = read_allowed_hosts()
+    # Songs, accounts, and counts live in one SQLite file, gitignored (`*.db`); locally in the
+    # repo root's `data/` folder.
+    DATABASE_PATH = read_database_path()
+    SECURE_COOKIES = read_secure_cookies()
+    TRUSTED_PROXY = read_trusted_proxy()
+    PAGE_DIR = read_page_dir()
+except SettingError as error:
+    raise SystemExit(f"Lyrx cannot start: the setting {error} is not valid.") from None
+
 PORT = 8000
-ALLOWED_HOST_NAMES = frozenset({"127.0.0.1", "localhost"})
+# The built page: hashed asset files never change, so they are cached for a year; index.html
+# is checked again on every visit so a new deploy shows at once.
+PAGE_ASSETS_PREFIX = "assets/"
+PAGE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable"
+PAGE_INDEX_CACHE_CONTROL = "no-cache"
 
 # A security cap, not a song limit: a real song is a few kilobytes, so lyrics never reach it.
 MAX_BODY_BYTES = 256 * 1024
@@ -19,11 +113,6 @@ PLAYBACK_MAX_OFFSET_MS = 30_000
 
 # The largest song id accepted: SQLite's largest integer. LRCLIB ids are far smaller.
 MAX_SONG_ID = 2**63 - 1
-
-# Songs, accounts, and counts live in one SQLite file, gitignored (`*.db`), in the repo
-# root's `data/` folder.
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DATABASE_PATH = REPO_ROOT / "data" / "lyrx.db"
 
 # Accounts (spec 014). Usernames are stored lowercase; the pattern also accepts capitals.
 USERNAME_PATTERN = r"^[A-Za-z0-9_-]{3,30}$"
@@ -41,8 +130,6 @@ SESSION_TOKEN_BYTES = 32
 # A cookie longer than this is not looked up; real tokens are 43 characters.
 SESSION_TOKEN_MAX_CHARACTERS = 100
 SESSION_DAYS = 30
-# Secure cookies need HTTPS, which comes with the deployment (spec 020).
-SECURE_COOKIES = False
 
 # Limits per window, in seconds. A day window starts at midnight UTC.
 DAY_SECONDS = 24 * 60 * 60

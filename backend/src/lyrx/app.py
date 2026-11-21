@@ -1,5 +1,6 @@
-"""Builds the FastAPI app: its ASGI layers, the error handlers, and the routes."""
+"""Builds the FastAPI app: its ASGI layers, the error handlers, the routes, and the built page."""
 
+import pathlib
 import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -9,10 +10,10 @@ from typing import Annotated, cast
 import httpx2
 from fastapi import FastAPI, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException
 
-from lyrx import config, library
+from lyrx import config, database, library
 from lyrx.accounts.routes import add_account_routes
 from lyrx.accounts.sessions import require_user, signed_in_user
 from lyrx.accounts.users import User
@@ -45,6 +46,9 @@ SAVED_SONGS_PATH = "/api/songs"
 SAVED_SONG_PATH = "/api/songs/{song_id}/saved"
 PLAYBACK_PATH = "/api/songs/{song_id}/playback"
 RECENT_SONGS_PATH = "/api/recent-songs"
+HEALTH_PATH = "/api/health"
+API_PREFIX = "/api/"
+PAGE_METHODS = frozenset({"GET", "HEAD"})
 
 ROUTING_ERROR_CODES: dict[int, ErrorCode] = {404: "not_found", 405: "method_not_allowed"}
 FIRST_SERVER_ERROR_STATUS = 500
@@ -54,14 +58,55 @@ async def handle_api_error(request: Request, error: Exception) -> JSONResponse:
     return error_response(cast(ApiError, error))
 
 
-async def handle_http_error(request: Request, error: Exception) -> JSONResponse:
-    """404 and 405 keep their meaning; other client errors are invalid_request."""
+async def handle_http_error(request: Request, error: Exception) -> Response:
+    """404 and 405 keep their meaning; other client errors are invalid_request.
+
+    When the server has the built page, a missed page address (not `/api`) gets the page.
+    """
     http_error = cast(HTTPException, error)
     status = http_error.status_code
+    page_dir = config.PAGE_DIR
+    if status == HTTPStatus.NOT_FOUND and page_dir is not None and is_page_request(request):
+        return page_response(page_dir, request.url.path)
     if status >= FIRST_SERVER_ERROR_STATUS:
         return error_response(ApiError("internal_error"))
     code = ROUTING_ERROR_CODES.get(status, "invalid_request")
     return error_response(ApiError(code), headers=http_error.headers)
+
+
+def is_page_request(request: Request) -> bool:
+    """A GET or HEAD for anything outside `/api`."""
+    return request.method in PAGE_METHODS and not (request.url.path + "/").startswith(API_PREFIX)
+
+
+def page_response(page_dir: pathlib.Path, path: str) -> FileResponse:
+    """The file at `path` when it is inside `page_dir`, else `index.html` so the page's own
+    routing (such as `/song/5`) takes over in the browser."""
+    relative = path.lstrip("/")
+    file = page_file(page_dir, relative)
+    if file is None:
+        index = page_dir / "index.html"
+        return FileResponse(index, headers={"Cache-Control": config.PAGE_INDEX_CACHE_CONTROL})
+    cache = (
+        config.PAGE_ASSET_CACHE_CONTROL
+        if relative.startswith(config.PAGE_ASSETS_PREFIX)
+        else config.PAGE_INDEX_CACHE_CONTROL
+    )
+    return FileResponse(file, headers={"Cache-Control": cache})
+
+
+def page_file(page_dir: pathlib.Path, relative: str) -> pathlib.Path | None:
+    """The existing file `relative` names, or None when there is none or it would leave the
+    folder (`..`, a link pointing out, a null byte)."""
+    if not relative:
+        return None
+    try:
+        file = (page_dir / relative).resolve()
+        if file.is_relative_to(page_dir) and file.is_file():
+            return file
+    except (OSError, ValueError):
+        pass
+    return None
 
 
 async def handle_invalid_request(request: Request, error: Exception) -> JSONResponse:
@@ -205,6 +250,16 @@ def save_song_playback(
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
+def check_health() -> dict[str, str]:
+    """For the container's health check: ok after one cheap database read, else 503."""
+    try:
+        with database.connect() as connection:
+            connection.execute("SELECT 1")
+    except (sqlite3.Error, OSError):
+        raise ApiError("server_unavailable") from None
+    return {"status": "ok"}
+
+
 def create_app(
     lrclib_transport: httpx2.BaseTransport | None = None,
     gemini_transport: httpx2.BaseTransport | None = None,
@@ -247,5 +302,6 @@ def create_app(
     app.add_api_route(SAVED_SONG_PATH, save_song, methods=["PUT"])
     app.add_api_route(SAVED_SONG_PATH, unsave_song, methods=["DELETE"])
     app.add_api_route(PLAYBACK_PATH, save_song_playback, methods=["PUT"])
+    app.add_api_route(HEALTH_PATH, check_health, methods=["GET"])
     add_account_routes(app)
     return app

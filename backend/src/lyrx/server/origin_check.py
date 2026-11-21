@@ -32,7 +32,8 @@ class OriginCheck:
 def origin_is_allowed(origin: str) -> bool:
     """A missing, `null`, or unreadable Origin is refused (fails closed).
 
-    ponytail: any port on an allowed host passes; spec 020 makes the allowed origin a setting.
+    ponytail: any scheme and port on an allowed host pass; pin them if a host ever serves
+    something else on another port.
     """
     try:
         parts = urlsplit(origin)
