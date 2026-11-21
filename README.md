@@ -43,13 +43,6 @@
   <img src="docs/screenshots/home.png" alt="Home: the example line, the large search box, Continue, and songs already in Lyrx" width="680">
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/phone-home.png" alt="Home on a phone" width="250">
-  &nbsp;
-  <img src="docs/screenshots/phone-song.png" alt="A song on a phone: the original next to the hiragana, with the player bar below" width="250">
-  &nbsp;
-  <img src="docs/screenshots/phone-library.png" alt="Your songs on a phone: two tiles per row" width="250">
-</p>
 
 ## How it works
 
