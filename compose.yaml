@@ -1,16 +1,16 @@
-# Lyrx on a server (spec 020): Caddy (HTTPS, the only public part) in front of the app.
+# Subbed on a server (spec 020): Caddy (HTTPS, the only public part) in front of the app.
 # Start or update with scripts/deploy.sh. Settings and keys come from .env next to this file.
 
 services:
-  lyrx:
+  subbed:
     build: .
     env_file: .env
     environment:
-      LYRX_ALLOWED_HOSTS: ${LYRX_DOMAIN:?set LYRX_DOMAIN in .env}
+      SUBBED_ALLOWED_HOSTS: ${SUBBED_DOMAIN:?set SUBBED_DOMAIN in .env}
       # Only Caddy (its fixed address below) may name the client in X-Forwarded-For.
-      LYRX_TRUSTED_PROXY: 172.30.0.10
+      SUBBED_TRUSTED_PROXY: 172.30.0.10
     volumes:
-      - lyrx-data:/data
+      - subbed-data:/data
     networks:
       - private
     restart: unless-stopped
@@ -18,7 +18,7 @@ services:
   caddy:
     image: caddy:2.10
     environment:
-      LYRX_DOMAIN: ${LYRX_DOMAIN:?set LYRX_DOMAIN in .env}
+      SUBBED_DOMAIN: ${SUBBED_DOMAIN:?set SUBBED_DOMAIN in .env}
     ports:
       - "80:80"
       - "443:443"
@@ -31,7 +31,7 @@ services:
       private:
         ipv4_address: 172.30.0.10
     depends_on:
-      lyrx:
+      subbed:
         condition: service_healthy
     restart: unless-stopped
 
@@ -42,6 +42,6 @@ networks:
         - subnet: 172.30.0.0/24
 
 volumes:
-  lyrx-data:
+  subbed-data:
   caddy-data:
   caddy-config:

@@ -9,8 +9,8 @@ from fake_gemini import FakeGemini, sent_indexes, status, stopped, success, succ
 from fake_lrclib import ENGLISH_LYRICS, FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import SONG_VERSIONS_PATH
+from subbed import config
+from subbed.app import SONG_VERSIONS_PATH
 
 # The invented record's lines: 0-1 Japanese, 2 blank, 3 English, 4 Japanese.
 SENT = [0, 1, 3, 4]
@@ -189,7 +189,7 @@ def test_ac13_the_log_line_has_counts_and_never_lyrics(
 
     open_song(client)
 
-    messages = [r.getMessage() for r in caplog.records if r.name == "lyrx.server.request_log"]
+    messages = [r.getMessage() for r in caplog.records if r.name == "subbed.server.request_log"]
     assert len(messages) == 1
     for field in (
         "route=/api/song-versions",

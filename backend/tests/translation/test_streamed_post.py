@@ -6,12 +6,12 @@ from fake_clock import trickled, use_clock
 from fake_gemini import FakeGemini, success
 from fake_groq import FakeGroq, groq_success
 
-from lyrx import config
-from lyrx.errors import ApiError
-from lyrx.translation.chain import ReadyTranslator, request_versions
-from lyrx.translation.gemini import make_gemini_client
-from lyrx.translation.groq import make_groq_client
-from lyrx.translation.results import ChunkReply
+from subbed import config
+from subbed.errors import ApiError
+from subbed.translation.chain import ReadyTranslator, request_versions
+from subbed.translation.gemini import make_gemini_client
+from subbed.translation.groq import make_groq_client
+from subbed.translation.results import ChunkReply
 
 # Invented lines.
 LINES = [(0, "君の声が")]

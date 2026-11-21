@@ -8,9 +8,9 @@ import pytest
 from conftest import sign_up
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.accounts.sessions import hash_token
-from lyrx.app import SAVED_SONGS_PATH
+from subbed import config
+from subbed.accounts.sessions import hash_token
+from subbed.app import SAVED_SONGS_PATH
 
 ACCOUNT_PATH = "/api/account"
 

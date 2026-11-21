@@ -132,7 +132,7 @@ export function loopRange(
 // The player volume: 0 to 100, remembered on this browser, and what Mute and Unmute change it to.
 export const VOLUME_STEP = 5;
 const FULL_VOLUME = 100;
-const VOLUME_STORAGE_KEY = "lyrx-volume";
+const VOLUME_STORAGE_KEY = "subbed-volume";
 
 function isVolume(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value <= FULL_VOLUME;

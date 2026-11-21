@@ -9,9 +9,9 @@ from error_shape import assert_error_shape
 from fake_lrclib import FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
-from lyrx.database import connect
+from subbed import config
+from subbed.app import SAVED_SONGS_PATH, SONG_SEARCH_PATH, SONG_VERSIONS_PATH
+from subbed.database import connect
 
 VIDEO_ID = "abcDEF12_-z"
 ONE_LINE_JSON = (
@@ -32,7 +32,7 @@ def test_spec009_ac9_the_database_path_is_a_setting_and_its_folder_is_created(
 
 
 def test_the_real_database_path_is_in_the_gitignored_data_folder() -> None:
-    assert REAL_DATABASE_PATH == config.REPO_ROOT / "data" / "lyrx.db"
+    assert REAL_DATABASE_PATH == config.REPO_ROOT / "data" / "subbed.db"
     assert "*.db" in (config.REPO_ROOT / ".gitignore").read_text().splitlines()
 
 

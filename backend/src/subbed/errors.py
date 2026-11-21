@@ -1,0 +1,81 @@
+"""The API error, the table of error codes with their HTTP status and message, and its response."""
+
+from collections.abc import Mapping
+from typing import Literal
+
+from fastapi.responses import JSONResponse
+
+from subbed.schemas import ErrorResponse
+
+ErrorCode = Literal[
+    "invalid_request",
+    "empty_search",
+    "request_too_large",
+    "host_not_allowed",
+    "bad_origin",
+    "sign_in_required",
+    "sign_in_failed",
+    "username_taken",
+    "too_many_attempts",
+    "daily_limit",
+    "not_found",
+    "method_not_allowed",
+    "song_not_found",
+    "song_not_japanese",
+    "lyrics_source_unavailable",
+    "translation_rate_limited",
+    "translation_blocked",
+    "translation_unavailable",
+    "translation_invalid",
+    "server_not_configured",
+    "server_unavailable",
+    "internal_error",
+]
+
+ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
+    "invalid_request": (400, "The request is not valid."),
+    "empty_search": (400, "Type a song name first."),
+    "request_too_large": (413, "The request is too large."),
+    "host_not_allowed": (403, "This server does not answer on that address."),
+    "bad_origin": (403, "This request came from another site."),
+    "sign_in_required": (401, "Sign in to do that."),
+    "sign_in_failed": (401, "The username or password is not right."),
+    "username_taken": (409, "That username is taken."),
+    "too_many_attempts": (429, "Too many attempts. Try again later."),
+    "daily_limit": (429, "Daily limit reached. Songs already in Subbed still open."),
+    "not_found": (404, "There is nothing at this address."),
+    "method_not_allowed": (405, "This address does not accept that method."),
+    "song_not_found": (404, "No song found for that name. Try the title and artist."),
+    "song_not_japanese": (422, "Subbed only supports Japanese songs for now."),
+    "lyrics_source_unavailable": (502, "The lyrics site could not be reached. Try again."),
+    "translation_rate_limited": (429, "The free translator limits were reached. Try again later."),
+    "translation_blocked": (502, "The translator declined these lyrics."),
+    "translation_unavailable": (503, "The translators are busy right now. Try again."),
+    "translation_invalid": (502, "The translator's reply did not pass the checks. Try again."),
+    "server_not_configured": (
+        503,
+        "The server has no translator key (GROQ_API_KEY or GEMINI_API_KEY). See the README.",
+    ),
+    "server_unavailable": (503, "The server cannot reach its database right now."),
+    "internal_error": (500, "Something went wrong on the server."),
+}
+
+
+class ApiError(Exception):
+    """An error the API returns to the caller as `{code, message}`.
+
+    `reason` is a short fixed word for the server log only (such as `http_503`); it is never
+    sent to the browser.
+    """
+
+    def __init__(self, code: ErrorCode, reason: str | None = None) -> None:
+        super().__init__(code)
+        self.code = code
+        self.reason = reason
+        self.status, self.message = ERROR_TABLE[code]
+
+
+def error_response(error: ApiError, headers: Mapping[str, str] | None = None) -> JSONResponse:
+    """The one error shape: `code` and `message`."""
+    body = ErrorResponse(code=error.code, message=error.message)
+    return JSONResponse(status_code=error.status, content=body.model_dump(), headers=headers)

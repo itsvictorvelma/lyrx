@@ -5,7 +5,7 @@ import { MoonIcon, SunIcon } from "../icons";
 
 type Theme = "dark" | "light";
 
-const STORAGE_KEY = "lyrx-theme";
+const STORAGE_KEY = "subbed-theme";
 
 // The remembered choice, or null when none is stored or storage is blocked.
 function storedTheme(): Theme | null {

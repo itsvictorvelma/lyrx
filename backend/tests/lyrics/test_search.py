@@ -9,8 +9,8 @@ from error_shape import assert_error_shape
 from fake_lrclib import ENGLISH_LYRICS, FakeLrclib, json_reply, record
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import SONG_SEARCH_PATH
+from subbed import config
+from subbed.app import SONG_SEARCH_PATH
 
 
 def search(client: TestClient, query: object) -> dict[str, object]:
@@ -124,7 +124,7 @@ def test_ac13_the_log_line_never_holds_the_query(
 
     search(client, "ひみつの歌")
 
-    messages = [r.getMessage() for r in caplog.records if r.name == "lyrx.server.request_log"]
+    messages = [r.getMessage() for r in caplog.records if r.name == "subbed.server.request_log"]
     assert len(messages) == 1
     assert "results=1" in messages[0]
     assert "ひみつ" not in caplog.text

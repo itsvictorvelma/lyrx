@@ -3,7 +3,7 @@ import { useState } from "react";
 import { readSetting, storeSetting } from "../browser";
 import type { VersionColumn } from "../types";
 
-const STORAGE_KEY = "lyrx-hidden-columns";
+const STORAGE_KEY = "subbed-hidden-columns";
 const COLUMNS: VersionColumn[] = ["hiragana", "romaji", "english"];
 
 // The remembered hidden columns; none when nothing is stored, the value is odd, or storage is blocked.

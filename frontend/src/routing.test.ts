@@ -27,7 +27,7 @@ test("spec 021 AC-1: an unknown or out-of-range address is home", () => {
   }
 });
 
-test("spec 025 AC-3: Back goes back after a Lyrx move, and home when the song was the first page", () => {
+test("spec 025 AC-3: Back goes back after a Subbed move, and home when the song was the first page", () => {
   const back = vi
     .spyOn(window.history, "back")
     .mockImplementation(() => undefined);

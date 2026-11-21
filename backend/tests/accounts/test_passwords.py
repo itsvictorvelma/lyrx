@@ -1,6 +1,6 @@
 """Tests for password hashing: salted scrypt, and the right password only (spec 014 AC-2)."""
 
-from lyrx.accounts.passwords import hash_password, password_matches
+from subbed.accounts.passwords import hash_password, password_matches
 
 
 def test_ac2_a_hash_is_salted_scrypt_and_only_the_right_password_matches() -> None:

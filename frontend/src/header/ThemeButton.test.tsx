@@ -42,6 +42,7 @@ test("AC-7: the button switches the theme and the choice survives a reload", asy
     screen.getByRole("button", { name: "Switch to light mode" }),
   );
   expect(document.documentElement.dataset.theme).toBe("light");
+  expect(window.localStorage.getItem("subbed-theme")).toBe("light");
   unmount();
 
   render(<ThemeButton />);

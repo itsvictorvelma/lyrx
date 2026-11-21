@@ -1,4 +1,4 @@
-// Calls the Lyrx server (search, open a song, saved and recent songs, playback, accounts), checks
+// Calls the Subbed server (search, open a song, saved and recent songs, playback, accounts), checks
 // every reply, and words a failed one for the page.
 import type {
   ApiResult,
@@ -321,7 +321,7 @@ function isErrorReply(
 
 export const FALLBACK_MESSAGE = "Something went wrong. Try again.";
 const SERVER_UNREACHABLE_MESSAGE =
-  "Could not reach the Lyrx server. Is it running?";
+  "Could not reach the Subbed server. Is it running?";
 
 // What the page says about a failed request: the server's own message when it sent one.
 export function errorMessage(

@@ -43,7 +43,7 @@ export function SearchProgress({ stage }: { stage: Stage }) {
             <span />
             <span />
           </span>
-          lyrx@歌詞 ~ translate
+          subbed@字幕 ~ translate
         </div>
         <div className="progress-head">
           <p role="status" aria-live="polite">

@@ -6,7 +6,7 @@ import logging
 from fastapi import FastAPI
 from starlette.types import Message, Scope
 
-from lyrx.app import SONG_SEARCH_PATH
+from subbed.app import SONG_SEARCH_PATH
 
 ALLOWED_HOST_HEADER = (b"host", b"127.0.0.1:8000")
 JSON_CONTENT_TYPE_HEADER = (b"content-type", b"application/json")

@@ -1,4 +1,4 @@
-// ESLint rules for the Lyrx page: strict typed TypeScript and React hooks.
+// ESLint rules for the Subbed page: strict typed TypeScript and React hooks.
 import js from "@eslint/js";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";

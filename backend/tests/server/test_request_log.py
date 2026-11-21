@@ -5,11 +5,11 @@ import re
 
 import pytest
 
-from lyrx.errors import ApiError
-from lyrx.server.request_log import logged_request
-from lyrx.translation.results import SongTranslation, TokenUsage
+from subbed.errors import ApiError
+from subbed.server.request_log import logged_request
+from subbed.translation.results import SongTranslation, TokenUsage
 
-REQUEST_LOGGER = "lyrx.server.request_log"
+REQUEST_LOGGER = "subbed.server.request_log"
 # The request line is written as `name=value` fields, e.g. `status=200 lines=4 ...`.
 LOG_FIELD = re.compile(r"(\w+)=(\S+)")
 SECRET_MESSAGE = "/Users/someone/private 君の声が test-key-not-real"

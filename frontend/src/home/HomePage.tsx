@@ -6,7 +6,7 @@ import type { RecentSong, SavedSong } from "../types";
 import { ACCOUNT_PATH, followLink, LIBRARY_PATH } from "../routing";
 import { HeroLine } from "./HeroLine";
 
-export const SOURCE_CODE_URL = "https://github.com/itsvictorvelma/lyrx";
+export const SOURCE_CODE_URL = "https://github.com/itsvictorvelma/subbed";
 const LRCLIB_URL = "https://lrclib.net";
 
 const STEPS = [
@@ -91,7 +91,7 @@ function mostRecent(songs: SavedSong[]): SavedSong | null {
 function HowItWorks() {
   return (
     <section className="home-section" aria-labelledby="how-title">
-      <h2 id="how-title">How Lyrx works</h2>
+      <h2 id="how-title">How Subbed works</h2>
       <ol className="home-steps">
         {STEPS.map((step) => (
           <li key={step.title}>
@@ -153,7 +153,7 @@ function RecentSongs({ songs, onOpen }: RecentSongsProps) {
   return (
     <section className="home-section" aria-labelledby="recent-title">
       <div className="home-section-head">
-        <h2 id="recent-title">Songs already in Lyrx</h2>
+        <h2 id="recent-title">Songs already in Subbed</h2>
         <p className="dim">Already translated, so they open instantly.</p>
       </div>
       <ul className="recent-row">

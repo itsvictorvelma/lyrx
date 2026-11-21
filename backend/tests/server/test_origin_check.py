@@ -6,10 +6,10 @@ from error_shape import assert_error_shape
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.accounts.routes import SIGN_UP_PATH
-from lyrx.app import RECENT_SONGS_PATH, SONG_SEARCH_PATH
-from lyrx.server.origin_check import origin_is_allowed
+from subbed import config
+from subbed.accounts.routes import SIGN_UP_PATH
+from subbed.app import RECENT_SONGS_PATH, SONG_SEARCH_PATH
+from subbed.server.origin_check import origin_is_allowed
 
 SIGN_UP_BODY = {"username": "mika", "password": "correct horse battery"}
 
@@ -62,8 +62,8 @@ def test_ac11_get_is_not_checked(no_origin_client: TestClient) -> None:
 def test_spec020_ac2_the_allowed_hosts_setting_sets_the_allowed_origin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "ALLOWED_HOST_NAMES", frozenset({"lyrx.example"}))
+    monkeypatch.setattr(config, "ALLOWED_HOST_NAMES", frozenset({"subbed.example"}))
 
-    assert origin_is_allowed("https://lyrx.example")
+    assert origin_is_allowed("https://subbed.example")
     assert not origin_is_allowed("http://127.0.0.1:5173")
     assert not origin_is_allowed("https://evil.example")

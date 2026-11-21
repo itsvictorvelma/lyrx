@@ -2,8 +2,8 @@
 
 import pytest
 
-from lyrx import config, rate_limits
-from lyrx.rate_limits import Limit, count_if_allowed, uncount
+from subbed import config, rate_limits
+from subbed.rate_limits import Limit, count_if_allowed, uncount
 
 
 class FakeTime:

@@ -164,7 +164,7 @@ test("spec 017 AC-7: the terminal card shows text marks that screen readers skip
   });
 
   expect(container.querySelector(".terminal-bar")?.textContent).toContain(
-    "lyrx@歌詞",
+    "subbed@字幕",
   );
   expect(marks[0]?.textContent).toBe("[ OK ]");
   expect(marks[1]?.textContent).toBe(spinnerBefore);

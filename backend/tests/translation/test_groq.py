@@ -4,12 +4,12 @@ import httpx2
 import pytest
 from fake_groq import FakeGroq, groq_reply, groq_status, groq_success
 
-from lyrx import config
-from lyrx.errors import ApiError
-from lyrx.translation.chain import ReadyTranslator, request_versions
-from lyrx.translation.groq import make_groq_client
-from lyrx.translation.prompt import REPLY_SCHEMA
-from lyrx.translation.results import ChunkReply
+from subbed import config
+from subbed.errors import ApiError
+from subbed.translation.chain import ReadyTranslator, request_versions
+from subbed.translation.groq import make_groq_client
+from subbed.translation.prompt import REPLY_SCHEMA
+from subbed.translation.results import ChunkReply
 
 API_KEY = "fake-groq-key-not-real-4567"
 # Invented lines; index 1 was blank and is not sent.

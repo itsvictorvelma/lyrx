@@ -10,8 +10,8 @@ from fake_lrclib import FakeLrclib
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import create_app
+from subbed import config
+from subbed.app import create_app
 
 # `network_guard`: the autouse guard, every test fails if it reaches the real network.
 # `pytester`: lets test_network_guard run a small inner test session.
@@ -33,7 +33,7 @@ TEST_GROQ_KEY = "fake-groq-key-not-real-4567"
 @pytest.fixture(autouse=True)
 def temporary_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Every test gets its own empty library file; the real one is never touched."""
-    path = tmp_path / "data" / "lyrx.db"
+    path = tmp_path / "data" / "subbed.db"
     monkeypatch.setattr(config, "DATABASE_PATH", path)
     return path
 

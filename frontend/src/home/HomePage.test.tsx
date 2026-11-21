@@ -90,8 +90,15 @@ test("AC-1: Your songs goes to the library and the wordmark back home", async ()
       .getAttribute("aria-current"),
   ).toBe("page");
 
-  await user.click(screen.getByRole("link", { name: /lyrx/ }));
+  await user.click(screen.getByRole("link", { name: /subbed/ }));
   expect(window.location.pathname).toBe("/");
+});
+
+test("spec 028 AC-2: the wordmark reads subbed 字幕, with the kanji marked as Japanese", () => {
+  render(<App />);
+
+  const wordmark = screen.getByRole("link", { name: "subbed 字幕" });
+  expect(within(wordmark).getByText("字幕").getAttribute("lang")).toBe("ja");
 });
 
 test("AC-2: home has one search box, the large one, and it finds and opens a song", async () => {
@@ -110,7 +117,9 @@ test("AC-2: home has one search box, the large one, and it finds and opens a son
 test("AC-5: a first visit shows the three steps and no Continue card", async () => {
   render(<App />);
 
-  const steps = await screen.findByRole("heading", { name: "How Lyrx works" });
+  const steps = await screen.findByRole("heading", {
+    name: "How Subbed works",
+  });
   const list = within(steps.closest("section") ?? document.body);
   expect(list.getAllByRole("listitem")).toHaveLength(3);
   expect(screen.queryByText("Pick up where you left off")).toBeNull();
@@ -125,19 +134,19 @@ test("AC-5: a returning visitor gets Continue for the latest song and a link to 
     name: "Continue 雨の窓 by Kaze",
   });
   expect(screen.getByRole("link", { name: "All your songs (2)" })).toBeTruthy();
-  expect(screen.queryByText("How Lyrx works")).toBeNull();
+  expect(screen.queryByText("How Subbed works")).toBeNull();
 
   await user.click(resume);
   expect(window.location.pathname).toBe("/song/202");
 });
 
-test("AC-6: Songs already in Lyrx lists the recent songs and opens one", async () => {
+test("AC-6: Songs already in Subbed lists the recent songs and opens one", async () => {
   recentSongs = [star, rain];
   const user = userEvent.setup();
   render(<App />);
 
   const heading = await screen.findByRole("heading", {
-    name: "Songs already in Lyrx",
+    name: "Songs already in Subbed",
   });
   const row = within(heading.closest("section") ?? document.body);
   expect(row.getAllByRole("listitem")).toHaveLength(2);
@@ -150,8 +159,8 @@ test("AC-6: Songs already in Lyrx lists the recent songs and opens one", async (
 test("AC-6: with no recent songs the section is hidden", async () => {
   render(<App />);
 
-  await screen.findByRole("heading", { name: "How Lyrx works" });
-  expect(screen.queryByText("Songs already in Lyrx")).toBeNull();
+  await screen.findByRole("heading", { name: "How Subbed works" });
+  expect(screen.queryByText("Songs already in Subbed")).toBeNull();
 });
 
 test("AC-9: the footer credits LRCLIB, Groq, and Gemini and links the source", () => {
@@ -227,7 +236,7 @@ test("spec 014 AC-17: a guest's home has no Continue card, and says to sign in t
   expect(screen.queryByRole("button", { name: /^Continue/ })).toBeNull();
   expect(screen.queryByRole("link", { name: /All your songs/ })).toBeNull();
   expect(
-    screen.getByRole("heading", { name: "Songs already in Lyrx" }),
+    screen.getByRole("heading", { name: "Songs already in Subbed" }),
   ).toBeTruthy();
   const asked = fakeFetch.mock.calls.map(([url]) => url);
   expect(asked).not.toContain("/api/songs");

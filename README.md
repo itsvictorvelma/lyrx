@@ -1,14 +1,14 @@
-<h1 align="center">lyrx 歌詞</h1>
+<h1 align="center">subbed 字幕</h1>
 
 <p align="center"><strong>Read any Japanese song, line by line.</strong></p>
 
 <p align="center">
-  Type a song's name. Lyrx shows every line four ways: the original, hiragana, romaji, and English.<br>
+  Type a song's name. Subbed shows every line four ways: the original, hiragana, romaji, and English.<br>
   Then play along with the video while the sung line lights up.
 </p>
 
 <p align="center">
-  <a href="docs/demo/lyrx-demo.mp4"><img src="docs/demo/preview.gif" alt="Searching for a song: kana rain while it loads, then the lyrics in four columns, the sung line lighting up, and the romaji column hidden for self-testing" width="880"></a>
+  <a href="docs/demo/subbed-demo.mp4"><img src="docs/demo/preview.gif" alt="Searching for a song: kana rain while it loads, then the lyrics in four columns, the sung line lighting up, and the romaji column hidden for self-testing" width="880"></a>
 </p>
 
 <p align="center"><sub>The song shown is invented. Click the preview for a longer walkthrough with sound (recorded on an earlier build).</sub></p>
@@ -22,7 +22,7 @@
 - **Play along.** Paste a YouTube link or play an audio file from your computer (it is never uploaded). The sung line lights up and stays in view, using LRCLIB's line timings. Click a line to jump to it, nudge the sync earlier or later, slow down to 0.75× or 0.5×, and loop a single line.
 - **Study tools.** Hide the hiragana, romaji, or English column and reveal one line at a time to test yourself. Focus mode shows only the lyrics and the player, with larger text.
 - **Your songs.** Save a song with its video and sync. Sort and filter your library, and pick up where you left off from the home page.
-- **Instant reopen.** Every translated song is cached, so opening it again is instant and costs no quota. Anyone can open songs already in Lyrx.
+- **Instant reopen.** Every translated song is cached, so opening it again is instant and costs no quota. Anyone can open songs already in Subbed.
 - **Accounts without email.** A username and a password. Guests can search and play along; saving needs an account.
 - **Keyboard first.** Press <kbd>?</kbd> on any page for the full list, and <kbd>/</kbd> to search.
 - **Dark and light.** Follows your system setting, with a switch that remembers your choice.
@@ -40,7 +40,7 @@
 | ![The same song in the light theme](docs/screenshots/song-light.png) | ![The library: saved songs as tiles, sorted by recent](docs/screenshots/library.png) |
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Home: the example line, the large search box, Continue, and songs already in Lyrx" width="680">
+  <img src="docs/screenshots/home.png" alt="Home: the example line, the large search box, Continue, and songs already in Subbed" width="680">
 </p>
 
 
@@ -91,7 +91,7 @@ cd frontend && npm install && cd ..
 cp .env.example .env        # then fill in GROQ_API_KEY and/or GEMINI_API_KEY
 
 # 3. Run the server (terminal 1), on 127.0.0.1:8000
-cd backend && uv run --env-file ../.env python -m lyrx
+cd backend && uv run --env-file ../.env python -m subbed
 
 # 4. Run the page (terminal 2)
 cd frontend && npm run dev  # open http://127.0.0.1:5173
@@ -100,7 +100,7 @@ cd frontend && npm run dev  # open http://127.0.0.1:5173
 <details>
 <summary>Free-tier limits and the translator order</summary>
 
-Each request goes to Groq (`gpt-oss-120b`) first, then to Gemini Flash-Lite, then to a second Flash-Lite model. The order is `TRANSLATORS` in [`backend/src/lyrx/config.py`](backend/src/lyrx/config.py).
+Each request goes to Groq (`gpt-oss-120b`) first, then to Gemini Flash-Lite, then to a second Flash-Lite model. The order is `TRANSLATORS` in [`backend/src/subbed/config.py`](backend/src/subbed/config.py).
 
 Rough free limits:
 - Groq: about 1,000 requests a day and 8,000 tokens a minute per model, which is about one long song a minute.
@@ -116,7 +116,7 @@ A song takes one call per 40 lines, so most songs need one or two calls. When ev
 There is no email, so a forgotten password is reset by hand (for now). From `backend/`:
 
 ```bash
-uv run python -m lyrx.accounts.reset_password <username>
+uv run python -m subbed.accounts.reset_password <username>
 ```
 
 It asks for the new password twice and signs that person out everywhere.
@@ -125,7 +125,7 @@ It asks for the new password twice and signs that person out everywhere.
 
 ## Deploy
 
-Lyrx runs on one small server (for example a DigitalOcean droplet) with Docker. Caddy sits in front, gets the HTTPS certificate, and is the only part reachable from the internet. The app container serves both the page and the API, and keeps the database on a Docker volume.
+Subbed runs on one small server (for example a DigitalOcean droplet) with Docker. Caddy sits in front, gets the HTTPS certificate, and is the only part reachable from the internet. The app container serves both the page and the API, and keeps the database on a Docker volume.
 
 **1. The server.** Ubuntu 24.04 with at least 1 GB of memory. On 1 GB, add swap so the page build does not run out of memory:
 
@@ -141,9 +141,9 @@ ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw enable
 **3. First start.** On the server:
 
 ```bash
-git clone https://github.com/itsvictorvelma/lyrx.git && cd lyrx
+git clone https://github.com/itsvictorvelma/subbed.git && cd subbed
 cp .env.example .env && chmod 600 .env
-nano .env                  # GROQ_API_KEY, GEMINI_API_KEY, LYRX_DOMAIN=your.domain
+nano .env                  # GROQ_API_KEY, GEMINI_API_KEY, SUBBED_DOMAIN=your.domain
 scripts/deploy.sh          # builds, starts, waits until healthy
 ```
 
@@ -152,24 +152,24 @@ Open `https://your.domain`. The first account you create also gets the songs sav
 **4. Update** after a PR is merged into `main`:
 
 ```bash
-cd lyrx && scripts/deploy.sh
+cd subbed && scripts/deploy.sh
 ```
 
 <details>
 <summary>Logs, password reset, backup</summary>
 
 ```bash
-docker compose ps                     # both containers, and whether lyrx is healthy
-docker compose logs -f lyrx           # the app log (Caddy: logs -f caddy)
-docker compose exec lyrx python -m lyrx.accounts.reset_password <username>
+docker compose ps                     # both containers, and whether subbed is healthy
+docker compose logs -f subbed         # the app log (Caddy: logs -f caddy)
+docker compose exec subbed python -m subbed.accounts.reset_password <username>
 ```
 
 Back up the database (safe while it runs), then copy the file off the server:
 
 ```bash
-docker compose exec lyrx python -c "import sqlite3; sqlite3.connect('/data/lyrx.db').backup(sqlite3.connect('/data/backup.db'))"
-docker compose cp lyrx:/data/backup.db ./lyrx-backup-$(date +%F).db
-# from your computer: scp root@your.domain:lyrx/lyrx-backup-*.db .
+docker compose exec subbed python -c "import sqlite3; sqlite3.connect('/data/subbed.db').backup(sqlite3.connect('/data/backup.db'))"
+docker compose cp subbed:/data/backup.db ./subbed-backup-$(date +%F).db
+# from your computer: scp root@your.domain:subbed/subbed-backup-*.db .
 ```
 
 Each update leaves the old image behind; free the disk now and then with `docker image prune` (it never touches volumes). `docker compose down` stops everything and keeps the data. Never add `-v`: it deletes the database and the certificates.
@@ -179,7 +179,7 @@ Each update leaves the old image behind; free the disk now and then with `docker
 <details>
 <summary>Try the server setup on your own computer</summary>
 
-With Docker running, add `LYRX_DOMAIN=localhost` to your `.env`, then:
+With Docker running, add `SUBBED_DOMAIN=localhost` to your `.env`, then:
 
 ```bash
 docker compose up -d --build    # open https://localhost and accept the local certificate
@@ -192,12 +192,12 @@ The server settings are environment variables, read once at start. Unset, they k
 
 | Setting | Local | In the container |
 |---|---|---|
-| `LYRX_HOST` | `127.0.0.1` | `0.0.0.0` |
-| `LYRX_ALLOWED_HOSTS` | `127.0.0.1,localhost` | your domain |
-| `LYRX_DATABASE_PATH` | `data/lyrx.db` | `/data/lyrx.db` (volume) |
-| `LYRX_SECURE_COOKIES` | `false` | `true` |
-| `LYRX_TRUSTED_PROXY` | unset | Caddy's address |
-| `LYRX_PAGE_DIR` | unset (Vite serves the page) | the built page |
+| `SUBBED_HOST` | `127.0.0.1` | `0.0.0.0` |
+| `SUBBED_ALLOWED_HOSTS` | `127.0.0.1,localhost` | your domain |
+| `SUBBED_DATABASE_PATH` | `data/subbed.db` | `/data/subbed.db` (volume) |
+| `SUBBED_SECURE_COOKIES` | `false` | `true` |
+| `SUBBED_TRUSTED_PROXY` | unset | Caddy's address |
+| `SUBBED_PAGE_DIR` | unset (Vite serves the page) | the built page |
 
 ## Checks
 
@@ -213,9 +213,9 @@ scripts/check-quiet.sh   # one line when it all passes
 ## Project structure
 
 ```
-lyrx/
+subbed/
 ├── backend/                  Python server
-│   ├── src/lyrx/
+│   ├── src/subbed/
 │   │   ├── app.py              Builds the app: routes, error handlers, shared HTTP clients, the built page
 │   │   ├── config.py           Every setting in one place
 │   │   ├── schemas.py          What the page sends and receives

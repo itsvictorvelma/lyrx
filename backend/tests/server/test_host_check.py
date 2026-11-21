@@ -7,8 +7,8 @@ from error_shape import assert_error_shape
 from fake_gemini import FakeGemini
 from fastapi.testclient import TestClient
 
-from lyrx import config
-from lyrx.app import SONG_SEARCH_PATH
+from subbed import config
+from subbed.app import SONG_SEARCH_PATH
 
 
 @pytest.mark.parametrize(
@@ -67,10 +67,10 @@ def test_ac30_foreign_host_is_rejected_before_the_body_size_cap(
 def test_spec020_ac2_the_allowed_hosts_setting_replaces_the_local_names(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config, "ALLOWED_HOST_NAMES", frozenset({"lyrx.example"}))
-    origin = {"Origin": "https://lyrx.example"}
+    monkeypatch.setattr(config, "ALLOWED_HOST_NAMES", frozenset({"subbed.example"}))
+    origin = {"Origin": "https://subbed.example"}
 
-    on_domain = client.post(SONG_SEARCH_PATH, json={}, headers={"Host": "lyrx.example", **origin})
+    on_domain = client.post(SONG_SEARCH_PATH, json={}, headers={"Host": "subbed.example", **origin})
     on_loopback = client.post(SONG_SEARCH_PATH, json={}, headers={"Host": "127.0.0.1", **origin})
 
     # The Origin check is tested in test_origin_check; here it only has to let the domain pass.

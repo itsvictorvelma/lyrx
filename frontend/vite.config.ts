@@ -1,4 +1,4 @@
-// Vite dev server, build, and Vitest settings for the Lyrx page.
+// Vite dev server, build, and Vitest settings for the Subbed page.
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 

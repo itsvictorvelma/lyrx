@@ -450,7 +450,7 @@ test("the server being down says so", async () => {
   await findSong();
 
   expect((await screen.findByRole("alert")).textContent).toContain(
-    "Could not reach the Lyrx server.",
+    "Could not reach the Subbed server.",
   );
 });
 
@@ -553,14 +553,14 @@ test("removing a song clears its Saved mark in the search results", async () => 
 
 test("spec 025 AC-1: the tab title follows the page", async () => {
   expect(pageTitle({ page: "home" }, null)).toBe(
-    "Lyrx · Read Japanese songs line by line",
+    "Subbed · Read Japanese songs line by line",
   );
-  expect(pageTitle({ page: "library" }, null)).toBe("Your songs · Lyrx");
-  expect(pageTitle({ page: "song", id: 101 }, null)).toBe("Opening… · Lyrx");
+  expect(pageTitle({ page: "library" }, null)).toBe("Your songs · Subbed");
+  expect(pageTitle({ page: "song", id: 101 }, null)).toBe("Opening… · Subbed");
 
   window.history.replaceState(null, "", "/song/101");
   respond("POST /api/song-versions", songReply(bestMatch, lines, true));
   render(<App />);
   await screen.findByRole("table");
-  expect(document.title).toBe("星の歌 · ミナト · Lyrx");
+  expect(document.title).toBe("星の歌 · ミナト · Subbed");
 });

@@ -223,7 +223,7 @@ export function installFakeSongPage() {
     fakePlayer.volume = null;
     fakePlayer.rate = null;
     fakeAccount.username = "mika";
-    window.localStorage.removeItem("lyrx-volume");
+    window.localStorage.removeItem("subbed-volume");
     fakeFetch.mockReset();
     vi.stubGlobal("fetch", fakeFetch);
     window.YT = { Player: FakePlayer };
