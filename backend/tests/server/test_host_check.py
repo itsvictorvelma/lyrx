@@ -1,4 +1,4 @@
-"""Tests for the Host check: only 127.0.0.1 and localhost pass, before routing or the body cap."""
+"""Tests for the Host check: only allowed host names pass, before routing or the body cap."""
 
 import json
 
@@ -7,6 +7,7 @@ from error_shape import assert_error_shape
 from fake_gemini import FakeGemini
 from fastapi.testclient import TestClient
 
+from lyrx import config
 from lyrx.app import SONG_SEARCH_PATH
 
 
@@ -61,3 +62,19 @@ def test_ac30_foreign_host_is_rejected_before_the_body_size_cap(
     assert response.status_code == 403
     assert_error_shape(response.json(), "host_not_allowed")
     assert fake_gemini.requests == []
+
+
+def test_spec020_ac2_the_allowed_hosts_setting_replaces_the_local_names(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config, "ALLOWED_HOST_NAMES", frozenset({"lyrx.example"}))
+    origin = {"Origin": "https://lyrx.example"}
+
+    on_domain = client.post(SONG_SEARCH_PATH, json={}, headers={"Host": "lyrx.example", **origin})
+    on_loopback = client.post(SONG_SEARCH_PATH, json={}, headers={"Host": "127.0.0.1", **origin})
+
+    # The Origin check is tested in test_origin_check; here it only has to let the domain pass.
+
+    assert_error_shape(on_domain.json(), "invalid_request")
+    assert on_loopback.status_code == 403
+    assert_error_shape(on_loopback.json(), "host_not_allowed")

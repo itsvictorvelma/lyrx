@@ -28,6 +28,7 @@ ErrorCode = Literal[
     "translation_unavailable",
     "translation_invalid",
     "server_not_configured",
+    "server_unavailable",
     "internal_error",
 ]
 
@@ -35,7 +36,7 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
     "invalid_request": (400, "The request is not valid."),
     "empty_search": (400, "Type a song name first."),
     "request_too_large": (413, "The request is too large."),
-    "host_not_allowed": (403, "This server only answers on 127.0.0.1 or localhost."),
+    "host_not_allowed": (403, "This server does not answer on that address."),
     "bad_origin": (403, "This request came from another site."),
     "sign_in_required": (401, "Sign in to do that."),
     "sign_in_failed": (401, "The username or password is not right."),
@@ -55,6 +56,7 @@ ERROR_TABLE: dict[ErrorCode, tuple[int, str]] = {
         503,
         "The server has no translator key (GROQ_API_KEY or GEMINI_API_KEY). See the README.",
     ),
+    "server_unavailable": (503, "The server cannot reach its database right now."),
     "internal_error": (500, "Something went wrong on the server."),
 }
 

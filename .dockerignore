@@ -1,0 +1,25 @@
+# Kept out of the Docker build (spec 020): secrets, data, audio, and local build output.
+**/.env
+**/.env.*
+.git
+data
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/*.mp3
+media
+test_media
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/.impeccable
+.claude
+.vscode
+**/.DS_Store
+HANDOFF.md
+docs
+specs

@@ -41,7 +41,7 @@ def test_ac3_the_cookie_is_httponly_and_lax_and_not_secure_by_default(
     assert "secure" not in header.replace("samesite", "")
 
 
-def test_ac3_the_cookie_is_secure_when_the_setting_is_on(
+def test_ac3_spec020_ac7_the_cookie_is_secure_when_the_setting_is_on(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(config, "SECURE_COOKIES", True)

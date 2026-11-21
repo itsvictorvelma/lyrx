@@ -1,4 +1,4 @@
-"""Tests for the `python -m lyrx` entry point: it starts uvicorn on the configured local address."""
+"""Tests for the `python -m lyrx` entry point: uvicorn on the configured address and proxy."""
 
 from typing import Any
 
@@ -8,7 +8,8 @@ import uvicorn
 from lyrx import config
 
 
-def test_ac31_entry_point_starts_uvicorn_on_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
+def run_main(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """The options `python -m lyrx` passes to uvicorn, without starting it."""
     uvicorn_calls: list[dict[str, Any]] = []
 
     def record_uvicorn_run(*arguments: Any, **options: Any) -> None:
@@ -20,6 +21,31 @@ def test_ac31_entry_point_starts_uvicorn_on_loopback(monkeypatch: pytest.MonkeyP
     main()
 
     assert len(uvicorn_calls) == 1
-    assert uvicorn_calls[0]["host"] == "127.0.0.1"
-    assert uvicorn_calls[0]["host"] == config.HOST
-    assert uvicorn_calls[0]["port"] == config.PORT
+    return uvicorn_calls[0]
+
+
+def test_ac31_entry_point_starts_uvicorn_on_loopback(monkeypatch: pytest.MonkeyPatch) -> None:
+    options = run_main(monkeypatch)
+
+    assert options["host"] == "127.0.0.1"
+    assert options["host"] == config.HOST
+    assert options["port"] == config.PORT
+
+
+def test_spec020_ac6_without_a_trusted_proxy_uvicorn_ignores_forwarded_headers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "TRUSTED_PROXY", None)
+
+    assert run_main(monkeypatch)["proxy_headers"] is False
+
+
+def test_spec020_ac6_uvicorn_trusts_forwarded_headers_only_from_the_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "TRUSTED_PROXY", "172.30.0.10")
+
+    options = run_main(monkeypatch)
+
+    assert options["proxy_headers"] is True
+    assert options["forwarded_allow_ips"] == "172.30.0.10"

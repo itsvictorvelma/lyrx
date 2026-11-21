@@ -27,7 +27,7 @@ The previous version of this app is preserved at git tag `archive/cursor-v1`. It
   - Every version except the original (hiragana, romaji, English) comes from a free-tier AI translator, checked against a schema: Groq first, Gemini as the backup when Groq is busy (decided 2026-11-18, spec 010). No local reading dictionaries (decided 2026-11-17: less code, and new languages need only a new prompt).
 - **Lyrics source.** LRCLIB only. Pasting lyrics was removed (decided 2026-11-18). Scraping other lyrics sites is out for now (terms of use, fragile pages, SSRF risk). Revisit only if LRCLIB misses often.
 - **Layout.** Columns side by side, one row per lyric line.
-- **Hosting is planned.** The app will be hosted on a server for the user, family, and friends, with personal accounts (a later spec). Until that spec, it runs on `127.0.0.1`. The user handles the server and domain; specs only make the app ready for it.
+- **Hosting is planned.** The app will be hosted on a server for the user, family, and friends, with personal accounts (a later spec). Spec 020 makes it ready (Docker, Caddy, settings from the environment); locally it still runs on `127.0.0.1`. The user handles the server and domain.
 - **Roadmap:** done so far: the core, saved songs (library), synced playback (YouTube embed and optional MP3, with LRCLIB timings), the design pass, study tools, and personal accounts (spec 014). Next: a few more features, then deployment with Docker and Caddy (spec 020).
 - **Design.** The design pass (spec 013) set the look: the colour tokens and patterns in `frontend/src/styles.css`. New UI reuses them; anything new to the look is proposed and approved first.
 - **Stack.** Python server in `backend/` (FastAPI, uvicorn, uv, pytest), React page in `frontend/` (Vite, TypeScript, Vitest with jsdom and Testing Library). `scripts/check.sh` runs every check.
@@ -68,7 +68,7 @@ Limits:
 - Fetched and generated text is rendered as text, never as HTML.
 
 ### The app
-- Bind to `127.0.0.1` only, and reject a `Host` header that is not `127.0.0.1` or `localhost`, until the deployment spec (020) turns these into settings.
+- The bind address and the allowed `Host` names are settings (`LYRX_HOST`, `LYRX_ALLOWED_HOSTS`, spec 020). Locally the app binds to `127.0.0.1` and accepts only `127.0.0.1` and `localhost`. On the server only Caddy is public and the only allowed name is the domain. Any other `Host` is refused.
 - Errors return a short code and message. Never stack traces, file paths, SQL, or secrets.
 
 ### Lyrics and tests

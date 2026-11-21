@@ -1,4 +1,8 @@
-"""Refuses any request whose `Host` is not 127.0.0.1 or localhost, which blocks DNS rebinding."""
+"""Refuses any request whose `Host` is not an allowed host name, which blocks DNS rebinding.
+
+The allowed names come from `LYRX_ALLOWED_HOSTS`: locally 127.0.0.1 and localhost, on the
+server the domain (spec 020).
+"""
 
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send

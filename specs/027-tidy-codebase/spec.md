@@ -1,6 +1,6 @@
 # 027 — Tidy the codebase
 
-Status: approved
+Status: done
 
 ## Goal
 
