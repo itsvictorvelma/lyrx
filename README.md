@@ -178,12 +178,6 @@ lyrx/
 └── AGENTS.md                 The rules every contributor (human or agent) follows
 ```
 
-## Roadmap
-
-- [x] Search, four versions, saved songs, synced playback, study tools, accounts
-- [ ] Public hosting with Docker and Caddy
-- [ ] More languages, one at a time (Korean next: hangul, romanization, English)
-
 ## How this project is built
 
 Every change starts as a short spec in [`specs/`](specs/), is built with a test for each acceptance check, and lands as a reviewed pull request. [AGENTS.md](AGENTS.md) holds the rules: security first, then correctness, then a working page, then polish.
