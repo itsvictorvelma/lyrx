@@ -110,9 +110,9 @@ A song takes one call per 40 lines, so most songs need one or two calls. When ev
 </details>
 
 <details>
-<summary>Resetting a friend's password</summary>
+<summary>Resetting a password</summary>
 
-There is no email, so a forgotten password is reset by hand. From `backend/`:
+There is no email, so a forgotten password is reset by hand (for now). From `backend/`:
 
 ```bash
 uv run python -m lyrx.accounts.reset_password <username>
